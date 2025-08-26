@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ['ALL']
+
+# Configure single quotes
+[tool.ruff.format]
+line-ending = 'lf'
+quote-style = 'single'

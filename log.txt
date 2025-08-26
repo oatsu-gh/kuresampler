@@ -1,0 +1,746 @@
+2025-08-26 20:58:49,013 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmphczir8ro\temp.ust is found. loading file.
+2025-08-26 20:58:49,014 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 20:58:49,014 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 20:58:49,015 PyUtauCli.voicebank.voicebank:134 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 20:58:49,015 PyUtauCli.voicebank.voicebank:137 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 20:58:49,015 PyUtauCli.voicebank.voicebank:134 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 20:58:49,016 PyUtauCli.voicebank.voicebank:137 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 20:58:49,017 PyUtauCli.voicebank.voicebank:79 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 20:58:49,043 PyUtauCli.voicebank.voicebank:90 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 20:58:49,043 PyUtauCli.voicebank.voicebank:102 __init__ [INFO]: prefix.map is loaded
+2025-08-26 20:58:49,053 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav test.cache\0001_-+かA3_C4_e5ab22.wav C4 100  91.578 450 247.726 -455.725 100 0 !128.00 AA#45#ABACAEAHAKANAQATAWAYAaAb#1#AaAYAUAPAKAFAA/6/1/w/s/n/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/+ADAIANASAXAaAeAg
+2025-08-26 20:58:49,053 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav
+2025-08-26 20:58:49,053 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0001_-+かA3_C4_e5ab22.wav
+2025-08-26 20:58:49,053 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 20:58:49,054 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:450ms
+2025-08-26 20:58:49,745 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav test.cache\0002_a+えA3_D4_20b691.wav D4 100  2790.033 600 375.0 -583.0 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:49,745 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav
+2025-08-26 20:58:49,746 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0002_a+えA3_D4_20b691.wav
+2025-08-26 20:58:49,746 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 20:58:49,746 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:50,443 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0003_e+るD4_E4_20b691.wav E4 100  1839.999 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:50,443 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 20:58:50,444 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0003_e+るD4_E4_20b691.wav
+2025-08-26 20:58:50,444 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 20:58:50,444 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:50,484 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav test.cache\0004_u+のD4_F4_986b9a.wav F4 100  2410.0 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:50,484 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav
+2025-08-26 20:58:50,484 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0004_u+のD4_F4_986b9a.wav
+2025-08-26 20:58:50,484 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 20:58:50,484 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:51,246 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav test.cache\0005_o+うD4_E4_bc8d6c.wav E4 100  2849.864 600 375.0 -583.333 100 0 !128.00 BLBIBFBDBCBB#1#BCBEBHBKBOBTBYBdBiBnBtByB2B7B/CCCECGCH#1#CGCFCCB/B8B4BzBuBpBjBfBaBXBV/wBSBQBOBNBKBGBDA+A5A0AsAkAdAXAQALAHADABAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 20:58:51,247 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav
+2025-08-26 20:58:51,247 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0005_o+うD4_E4_bc8d6c.wav
+2025-08-26 20:58:51,247 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 20:58:51,247 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:51,285 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav test.cache\0006_u+たA3_D4_8cad03.wav D4 100  2914.475 600 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 20:58:51,286 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav
+2025-08-26 20:58:51,286 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0006_u+たA3_D4_8cad03.wav
+2025-08-26 20:58:51,286 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 20:58:51,286 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:51,321 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav test.cache\0007_a+がA3_C4_d712e6.wav C4 100  334.388 1000 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 20:58:51,322 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav
+2025-08-26 20:58:51,322 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0007_a+がA3_C4_d712e6.wav
+2025-08-26 20:58:51,322 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 20:58:51,322 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 20:58:51,375 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav test.cache\0009_-+きD4_E4_302718.wav E4 100  0.0 500 255.0 -463.332 100 0 !128.00 AA#47#ACADAFAIALAOARAUAXAZAaAb#1#AZAWARANAHAC/9/4/y/u/p/m/i/g/e/d#1#/e/f/h/k/o/s/x/2/7AAAGALAQAUAZAcAfAhAiAj#1#AiAgAdAaAW
+2025-08-26 20:58:51,376 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav
+2025-08-26 20:58:51,376 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0009_-+きD4_E4_302718.wav
+2025-08-26 20:58:51,376 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 20:58:51,376 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:500ms
+2025-08-26 20:58:52,091 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav test.cache\0010_i+こD4_F4_986b9a.wav F4 100  2906.14 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:52,091 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav
+2025-08-26 20:58:52,091 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0010_i+こD4_F4_986b9a.wav
+2025-08-26 20:58:52,092 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 20:58:52,092 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:52,133 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav test.cache\0011_o+えD4_G4_20b691.wav G4 100  1802.064 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:52,133 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav
+2025-08-26 20:58:52,133 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0011_o+えD4_G4_20b691.wav
+2025-08-26 20:58:52,133 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 20:58:52,133 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:52,172 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav test.cache\0012_e+てA4_A4_20b691.wav A4 100  400.0 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 20:58:52,173 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav
+2025-08-26 20:58:52,173 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0012_e+てA4_A4_20b691.wav
+2025-08-26 20:58:52,173 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:A4
+2025-08-26 20:58:52,173 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:52,867 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav test.cache\0013_e+くD4_G4_302b9e.wav G4 100  1893.434 600 375.0 -583.333 100 0 !128.00 CvCsCpCnCmCl#1#CmCoCrCuCyC3C8DBDGDLDRDWDaDfDjDmDoDqDr#1#DqDpDmDjDgDcDXDSDNDHDDC+C7C5/wC1CyCtCoCgCWCNCBB1BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 20:58:52,867 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav
+2025-08-26 20:58:52,867 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0013_e+くD4_G4_302b9e.wav
+2025-08-26 20:58:52,867 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 20:58:52,867 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:53,614 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0014_u+るD4_F4_8cad03.wav F4 100  331.483 600 375.0 -583.333 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 20:58:53,615 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 20:58:53,615 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0014_u+るD4_F4_8cad03.wav
+2025-08-26 20:58:53,615 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 20:58:53,615 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 20:58:53,648 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav test.cache\0015_u+よD4_E4_1cab2a.wav E4 100  2320.0 1000 375.0 -583.333 100 0 !128.00 B9CACDCFCGCH#1#CGCECBB+B6B1BwBrBmBhBbBWBSBNBJBGBEBCBB#1#BCBDBGBJBMBQBVBaBfBlBpBuBxBzAQB0ByBuBpBiBaBRBIA9A0AsAkAdAXAQALAHADABAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 20:58:53,649 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav
+2025-08-26 20:58:53,649 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0015_u+よD4_E4_1cab2a.wav
+2025-08-26 20:58:53,649 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 20:58:53,649 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 20:58:53,699 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0000__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 1752.274
+2025-08-26 20:58:53,700 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0001_-+かA3_C4_e5ab22.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.30 0.0 424.77599999999995
+2025-08-26 20:58:53,701 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0002_a+えA3_D4_20b691.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.33 0.0 552.083
+2025-08-26 20:58:53,702 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0003_e+るD4_E4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,703 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0004_u+のD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,703 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0005_o+うD4_E4_bc8d6c.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.30 0.0 552.05
+2025-08-26 20:58:53,704 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0006_u+たA3_D4_8cad03.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.30 0.0 552.05
+2025-08-26 20:58:53,705 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0007_a+がA3_C4_d712e6.wav 83.30 0.00 0.00 100 100 100 100 83.300 35.00 0.0 953.125
+2025-08-26 20:58:53,706 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0008__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 104.375
+2025-08-26 20:58:53,707 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0009_-+きD4_E4_302718.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.33 0.0 432.08299999999997
+2025-08-26 20:58:53,707 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0010_i+こD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,708 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0011_o+えD4_G4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,709 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0012_e+てA4_A4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,710 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0013_e+くD4_G4_302b9e.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,710 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0014_u+るD4_F4_8cad03.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 20:58:53,711 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0015_u+よD4_E4_1cab2a.wav 83.33 0.00 0.00 100 100 100 100 83.333 35.00 0.0 953.125
+2025-08-26 20:58:53,712 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0016__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 2109.375
+2025-08-26 22:59:11,198 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpuzegv64x\temp.ust is found. loading file.
+2025-08-26 22:59:11,199 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 22:59:11,199 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 22:59:11,201 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 22:59:11,202 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 22:59:11,202 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 22:59:11,202 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 22:59:11,203 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 22:59:11,237 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 22:59:11,238 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 22:59:11,256 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav test.cache\0001_-+かA3_C4_e5ab22.wav C4 100  91.578 450 247.726 -455.725 100 0 !128.00 AA#45#ABACAEAHAKANAQATAWAYAaAb#1#AaAYAUAPAKAFAA/6/1/w/s/n/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/+ADAIANASAXAaAeAg
+2025-08-26 22:59:11,257 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav
+2025-08-26 22:59:11,257 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0001_-+かA3_C4_e5ab22.wav
+2025-08-26 22:59:11,257 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 22:59:11,257 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:450ms
+2025-08-26 22:59:11,280 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav test.cache\0002_a+えA3_D4_20b691.wav D4 100  2790.033 600 375.0 -583.0 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,281 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav
+2025-08-26 22:59:11,281 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0002_a+えA3_D4_20b691.wav
+2025-08-26 22:59:11,281 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 22:59:11,281 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,315 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0003_e+るD4_E4_20b691.wav E4 100  1839.999 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,316 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 22:59:11,316 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0003_e+るD4_E4_20b691.wav
+2025-08-26 22:59:11,316 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 22:59:11,316 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,346 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav test.cache\0004_u+のD4_F4_986b9a.wav F4 100  2410.0 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,347 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav
+2025-08-26 22:59:11,347 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0004_u+のD4_F4_986b9a.wav
+2025-08-26 22:59:11,347 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 22:59:11,347 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,378 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav test.cache\0005_o+うD4_E4_bc8d6c.wav E4 100  2849.864 600 375.0 -583.333 100 0 !128.00 BLBIBFBDBCBB#1#BCBEBHBKBOBTBYBdBiBnBtByB2B7B/CCCECGCH#1#CGCFCCB/B8B4BzBuBpBjBfBaBXBV/wBSBQBOBNBKBGBDA+A5A0AsAkAdAXAQALAHADABAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 22:59:11,379 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav
+2025-08-26 22:59:11,379 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0005_o+うD4_E4_bc8d6c.wav
+2025-08-26 22:59:11,379 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 22:59:11,379 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,414 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav test.cache\0006_u+たA3_D4_8cad03.wav D4 100  2914.475 600 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 22:59:11,415 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav
+2025-08-26 22:59:11,415 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0006_u+たA3_D4_8cad03.wav
+2025-08-26 22:59:11,415 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 22:59:11,415 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,449 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav test.cache\0007_a+がA3_C4_d712e6.wav C4 100  334.388 1000 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 22:59:11,450 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav
+2025-08-26 22:59:11,450 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0007_a+がA3_C4_d712e6.wav
+2025-08-26 22:59:11,450 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 22:59:11,450 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 22:59:11,491 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav test.cache\0009_-+きD4_E4_302718.wav E4 100  0.0 500 255.0 -463.332 100 0 !128.00 AA#47#ACADAFAIALAOARAUAXAZAaAb#1#AZAWARANAHAC/9/4/y/u/p/m/i/g/e/d#1#/e/f/h/k/o/s/x/2/7AAAGALAQAUAZAcAfAhAiAj#1#AiAgAdAaAW
+2025-08-26 22:59:11,492 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav
+2025-08-26 22:59:11,492 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0009_-+きD4_E4_302718.wav
+2025-08-26 22:59:11,492 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 22:59:11,492 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:500ms
+2025-08-26 22:59:11,516 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav test.cache\0010_i+こD4_F4_986b9a.wav F4 100  2906.14 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,517 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav
+2025-08-26 22:59:11,517 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0010_i+こD4_F4_986b9a.wav
+2025-08-26 22:59:11,517 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 22:59:11,517 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,548 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav test.cache\0011_o+えD4_G4_20b691.wav G4 100  1802.064 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,549 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav
+2025-08-26 22:59:11,549 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0011_o+えD4_G4_20b691.wav
+2025-08-26 22:59:11,549 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 22:59:11,549 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,583 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav test.cache\0012_e+てA4_A4_20b691.wav A4 100  400.0 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 22:59:11,583 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav
+2025-08-26 22:59:11,583 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0012_e+てA4_A4_20b691.wav
+2025-08-26 22:59:11,584 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:A4
+2025-08-26 22:59:11,584 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,628 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav test.cache\0013_e+くD4_G4_302b9e.wav G4 100  1893.434 600 375.0 -583.333 100 0 !128.00 CvCsCpCnCmCl#1#CmCoCrCuCyC3C8DBDGDLDRDWDaDfDjDmDoDqDr#1#DqDpDmDjDgDcDXDSDNDHDDC+C7C5/wC1CyCtCoCgCWCNCBB1BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 22:59:11,629 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav
+2025-08-26 22:59:11,629 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0013_e+くD4_G4_302b9e.wav
+2025-08-26 22:59:11,629 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 22:59:11,629 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,664 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0014_u+るD4_F4_8cad03.wav F4 100  331.483 600 375.0 -583.333 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 22:59:11,665 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 22:59:11,665 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0014_u+るD4_F4_8cad03.wav
+2025-08-26 22:59:11,665 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 22:59:11,665 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 22:59:11,695 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav test.cache\0015_u+よD4_E4_1cab2a.wav E4 100  2320.0 1000 375.0 -583.333 100 0 !128.00 B9CACDCFCGCH#1#CGCECBB+B6B1BwBrBmBhBbBWBSBNBJBGBEBCBB#1#BCBDBGBJBMBQBVBaBfBlBpBuBxBzAQB0ByBuBpBiBaBRBIA9A0AsAkAdAXAQALAHADABAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 22:59:11,695 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav
+2025-08-26 22:59:11,695 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0015_u+よD4_E4_1cab2a.wav
+2025-08-26 22:59:11,695 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 22:59:11,695 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 22:59:11,739 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0000__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 1752.274
+2025-08-26 22:59:11,740 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0001_-+かA3_C4_e5ab22.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.30 0.0 424.77599999999995
+2025-08-26 22:59:11,740 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0002_a+えA3_D4_20b691.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.33 0.0 552.083
+2025-08-26 22:59:11,741 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0003_e+るD4_E4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,742 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0004_u+のD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,742 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0005_o+うD4_E4_bc8d6c.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.30 0.0 552.05
+2025-08-26 22:59:11,743 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0006_u+たA3_D4_8cad03.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.30 0.0 552.05
+2025-08-26 22:59:11,743 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0007_a+がA3_C4_d712e6.wav 83.30 0.00 0.00 100 100 100 100 83.300 35.00 0.0 953.125
+2025-08-26 22:59:11,744 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0008__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 104.375
+2025-08-26 22:59:11,744 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0009_-+きD4_E4_302718.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.33 0.0 432.08299999999997
+2025-08-26 22:59:11,745 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0010_i+こD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,746 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0011_o+えD4_G4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,746 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0012_e+てA4_A4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,747 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0013_e+くD4_G4_302b9e.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,747 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0014_u+るD4_F4_8cad03.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 22:59:11,748 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0015_u+よD4_E4_1cab2a.wav 83.33 0.00 0.00 100 100 100 100 83.333 35.00 0.0 953.125
+2025-08-26 22:59:11,749 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0016__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 2109.375
+2025-08-26 22:59:40,399 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpon9jl5h4\temp.ust is found. loading file.
+2025-08-26 22:59:40,400 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 22:59:40,401 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:00:53,332 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpw3t2iq46\temp.ust is found. loading file.
+2025-08-26 23:00:53,334 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:00:53,335 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:01:18,493 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmptuqnrjsw\temp.ust is found. loading file.
+2025-08-26 23:01:18,495 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:01:18,496 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:03:06,079 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp8x6myzq6\temp.ust is found. loading file.
+2025-08-26 23:03:06,081 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:03:06,082 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:03:45,804 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpd81_3kcu\temp.ust is found. loading file.
+2025-08-26 23:03:45,806 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:03:45,807 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:04:20,646 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpygtfut9r\temp.ust is found. loading file.
+2025-08-26 23:04:20,647 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:04:20,648 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:04:44,844 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:04:44,845 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:04:44,845 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:04:44,845 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:04:44,846 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:04:44,861 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:04:44,862 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:04:44,872 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav test.cache\0001_-+かA3_C4_e5ab22.wav C4 100  91.578 450 247.726 -455.725 100 0 !128.00 AA#45#ABACAEAHAKANAQATAWAYAaAb#1#AaAYAUAPAKAFAA/6/1/w/s/n/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/+ADAIANASAXAaAeAg
+2025-08-26 23:04:44,873 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav
+2025-08-26 23:04:44,873 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0001_-+かA3_C4_e5ab22.wav
+2025-08-26 23:04:44,873 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 23:04:44,873 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:450ms
+2025-08-26 23:04:44,895 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav test.cache\0002_a+えA3_D4_20b691.wav D4 100  2790.033 600 375.0 -583.0 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:44,895 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav
+2025-08-26 23:04:44,895 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0002_a+えA3_D4_20b691.wav
+2025-08-26 23:04:44,895 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 23:04:44,896 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:44,921 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0003_e+るD4_E4_20b691.wav E4 100  1839.999 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:44,921 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 23:04:44,921 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0003_e+るD4_E4_20b691.wav
+2025-08-26 23:04:44,922 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:04:44,922 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:44,949 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav test.cache\0004_u+のD4_F4_986b9a.wav F4 100  2410.0 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:44,949 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav
+2025-08-26 23:04:44,949 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0004_u+のD4_F4_986b9a.wav
+2025-08-26 23:04:44,949 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:04:44,949 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:44,978 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav test.cache\0005_o+うD4_E4_bc8d6c.wav E4 100  2849.864 600 375.0 -583.333 100 0 !128.00 BLBIBFBDBCBB#1#BCBEBHBKBOBTBYBdBiBnBtByB2B7B/CCCECGCH#1#CGCFCCB/B8B4BzBuBpBjBfBaBXBV/wBSBQBOBNBKBGBDA+A5A0AsAkAdAXAQALAHADABAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:04:44,978 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav
+2025-08-26 23:04:44,978 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0005_o+うD4_E4_bc8d6c.wav
+2025-08-26 23:04:44,978 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:04:44,979 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,006 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav test.cache\0006_u+たA3_D4_8cad03.wav D4 100  2914.475 600 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:04:45,007 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav
+2025-08-26 23:04:45,007 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0006_u+たA3_D4_8cad03.wav
+2025-08-26 23:04:45,007 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 23:04:45,007 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,035 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav test.cache\0007_a+がA3_C4_d712e6.wav C4 100  334.388 1000 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 23:04:45,036 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav
+2025-08-26 23:04:45,036 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0007_a+がA3_C4_d712e6.wav
+2025-08-26 23:04:45,036 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 23:04:45,036 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 23:04:45,071 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav test.cache\0009_-+きD4_E4_302718.wav E4 100  0.0 500 255.0 -463.332 100 0 !128.00 AA#47#ACADAFAIALAOARAUAXAZAaAb#1#AZAWARANAHAC/9/4/y/u/p/m/i/g/e/d#1#/e/f/h/k/o/s/x/2/7AAAGALAQAUAZAcAfAhAiAj#1#AiAgAdAaAW
+2025-08-26 23:04:45,071 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav
+2025-08-26 23:04:45,071 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0009_-+きD4_E4_302718.wav
+2025-08-26 23:04:45,071 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:04:45,072 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:500ms
+2025-08-26 23:04:45,094 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav test.cache\0010_i+こD4_F4_986b9a.wav F4 100  2906.14 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:45,094 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav
+2025-08-26 23:04:45,094 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0010_i+こD4_F4_986b9a.wav
+2025-08-26 23:04:45,094 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:04:45,094 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,122 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav test.cache\0011_o+えD4_G4_20b691.wav G4 100  1802.064 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:45,122 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav
+2025-08-26 23:04:45,122 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0011_o+えD4_G4_20b691.wav
+2025-08-26 23:04:45,123 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 23:04:45,123 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,156 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav test.cache\0012_e+てA4_A4_20b691.wav A4 100  400.0 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:04:45,156 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav
+2025-08-26 23:04:45,156 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0012_e+てA4_A4_20b691.wav
+2025-08-26 23:04:45,156 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:A4
+2025-08-26 23:04:45,156 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,199 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav test.cache\0013_e+くD4_G4_302b9e.wav G4 100  1893.434 600 375.0 -583.333 100 0 !128.00 CvCsCpCnCmCl#1#CmCoCrCuCyC3C8DBDGDLDRDWDaDfDjDmDoDqDr#1#DqDpDmDjDgDcDXDSDNDHDDC+C7C5/wC1CyCtCoCgCWCNCBB1BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:04:45,199 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav
+2025-08-26 23:04:45,199 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0013_e+くD4_G4_302b9e.wav
+2025-08-26 23:04:45,199 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 23:04:45,199 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,238 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0014_u+るD4_F4_8cad03.wav F4 100  331.483 600 375.0 -583.333 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:04:45,239 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 23:04:45,239 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0014_u+るD4_F4_8cad03.wav
+2025-08-26 23:04:45,239 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:04:45,239 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:04:45,274 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav test.cache\0015_u+よD4_E4_1cab2a.wav E4 100  2320.0 1000 375.0 -583.333 100 0 !128.00 B9CACDCFCGCH#1#CGCECBB+B6B1BwBrBmBhBbBWBSBNBJBGBEBCBB#1#BCBDBGBJBMBQBVBaBfBlBpBuBxBzAQB0ByBuBpBiBaBRBIA9A0AsAkAdAXAQALAHADABAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 23:04:45,274 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav
+2025-08-26 23:04:45,275 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0015_u+よD4_E4_1cab2a.wav
+2025-08-26 23:04:45,275 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:04:45,275 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 23:04:45,317 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0000__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 1752.274
+2025-08-26 23:04:45,318 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0001_-+かA3_C4_e5ab22.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.30 0.0 424.77599999999995
+2025-08-26 23:04:45,320 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0002_a+えA3_D4_20b691.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.33 0.0 552.083
+2025-08-26 23:04:45,321 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0003_e+るD4_E4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,322 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0004_u+のD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,323 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0005_o+うD4_E4_bc8d6c.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.30 0.0 552.05
+2025-08-26 23:04:45,324 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0006_u+たA3_D4_8cad03.wav 83.30 0.00 0.00 100 100 100 100 83.300 83.30 0.0 552.05
+2025-08-26 23:04:45,324 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0007_a+がA3_C4_d712e6.wav 83.30 0.00 0.00 100 100 100 100 83.300 35.00 0.0 953.125
+2025-08-26 23:04:45,325 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0008__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 104.375
+2025-08-26 23:04:45,326 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0009_-+きD4_E4_302718.wav 5.00 0.00 0.00 100 100 100 100 0.000 83.33 0.0 432.08299999999997
+2025-08-26 23:04:45,327 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0010_i+こD4_F4_986b9a.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,328 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0011_o+えD4_G4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,328 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0012_e+てA4_A4_20b691.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,329 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0013_e+くD4_G4_302b9e.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,329 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0014_u+るD4_F4_8cad03.wav 83.33 0.00 0.00 100 100 100 100 83.333 83.33 0.0 552.083
+2025-08-26 23:04:45,331 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0015_u+よD4_E4_1cab2a.wav 83.33 0.00 0.00 100 100 100 100 83.333 35.00 0.0 953.125
+2025-08-26 23:04:45,332 PyUtauCli.projects.Render:241 append [INFO]: test.cache\0016__C4_5a3dd0.wav 0 10 35 0 100 100 0 0.0 2109.375
+2025-08-26 23:07:05,188 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpj_8cx270\temp.ust is found. loading file.
+2025-08-26 23:07:05,190 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:07:05,191 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:07:05,193 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:07:05,193 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:07:05,194 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:07:05,194 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:07:05,194 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:07:05,218 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:07:05,218 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:07:05,230 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav test.cache\0001_-+かA3_C4_e5ab22.wav C4 100  91.578 450 247.726 -455.725 100 0 !128.00 AA#45#ABACAEAHAKANAQATAWAYAaAb#1#AaAYAUAPAKAFAA/6/1/w/s/n/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/+ADAIANASAXAaAeAg
+2025-08-26 23:07:05,230 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_かかんきかくか.wav
+2025-08-26 23:07:05,230 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0001_-+かA3_C4_e5ab22.wav
+2025-08-26 23:07:05,230 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 23:07:05,231 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:450ms
+2025-08-26 23:07:05,252 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav test.cache\0002_a+えA3_D4_20b691.wav D4 100  2790.033 600 375.0 -583.0 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,252 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ええんおえあえ.wav
+2025-08-26 23:07:05,252 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0002_a+えA3_D4_20b691.wav
+2025-08-26 23:07:05,252 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 23:07:05,252 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,278 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0003_e+るD4_E4_20b691.wav E4 100  1839.999 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,279 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 23:07:05,279 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0003_e+るD4_E4_20b691.wav
+2025-08-26 23:07:05,279 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:07:05,279 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,307 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav test.cache\0004_u+のD4_F4_986b9a.wav F4 100  2410.0 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,308 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ぬぬんねぬのぬ.wav
+2025-08-26 23:07:05,308 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0004_u+のD4_F4_986b9a.wav
+2025-08-26 23:07:05,308 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:07:05,308 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,336 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav test.cache\0005_o+うD4_E4_bc8d6c.wav E4 100  2849.864 600 375.0 -583.333 100 0 !128.00 BLBIBFBDBCBB#1#BCBEBHBKBOBTBYBdBiBnBtByB2B7B/CCCECGCH#1#CGCFCCB/B8B4BzBuBpBjBfBaBXBV/wBSBQBOBNBKBGBDA+A5A0AsAkAdAXAQALAHADABAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:07:05,336 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ううんうぇううぉう.wav
+2025-08-26 23:07:05,337 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0005_o+うD4_E4_bc8d6c.wav
+2025-08-26 23:07:05,337 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:07:05,337 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,367 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav test.cache\0006_u+たA3_D4_8cad03.wav D4 100  2914.475 600 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:07:05,367 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_たたんてぃたとぅた.wav
+2025-08-26 23:07:05,367 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0006_u+たA3_D4_8cad03.wav
+2025-08-26 23:07:05,367 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:D4
+2025-08-26 23:07:05,367 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,395 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav test.cache\0007_a+がA3_C4_d712e6.wav C4 100  334.388 1000 375.0 -583.0 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 23:07:05,395 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A3\_ががんぎがぐが.wav
+2025-08-26 23:07:05,395 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0007_a+がA3_C4_d712e6.wav
+2025-08-26 23:07:05,396 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:C4
+2025-08-26 23:07:05,396 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 23:07:05,434 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav test.cache\0009_-+きD4_E4_302718.wav E4 100  0.0 500 255.0 -463.332 100 0 !128.00 AA#47#ACADAFAIALAOARAUAXAZAaAb#1#AZAWARANAHAC/9/4/y/u/p/m/i/g/e/d#1#/e/f/h/k/o/s/x/2/7AAAGALAQAUAZAcAfAhAiAj#1#AiAgAdAaAW
+2025-08-26 23:07:05,434 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ききんきゅききぇき.wav
+2025-08-26 23:07:05,434 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0009_-+きD4_E4_302718.wav
+2025-08-26 23:07:05,434 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:07:05,434 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:500ms
+2025-08-26 23:07:05,462 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav test.cache\0010_i+こD4_F4_986b9a.wav F4 100  2906.14 600 375.0 -583.333 100 0 !128.00 +D+A99979695#1#96989/+C+G+L+Q+V+a+f+l+q+u+z+3+6+8+++/#1#+++9+6+3+0+w+r+m+h+b+X+S+P+N/w+M+O+S+X+e+m+v+4/D/M/U/c/j/p/w/1/5/9//AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,462 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ここんかこきこ.wav
+2025-08-26 23:07:05,462 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0010_i+こD4_F4_986b9a.wav
+2025-08-26 23:07:05,462 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:07:05,462 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,492 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav test.cache\0011_o+えD4_G4_20b691.wav G4 100  1802.064 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,493 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ええんおえあえ.wav
+2025-08-26 23:07:05,493 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0011_o+えD4_G4_20b691.wav
+2025-08-26 23:07:05,493 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 23:07:05,493 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,527 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav test.cache\0012_e+てA4_A4_20b691.wav A4 100  400.0 600 375.0 -583.333 100 0 !128.00 8f8c8Z8X8W8V#1#8W8Y8b8e8i8n8s8x82879B9G9K9P9T9W9Y9a9b#1#9a9Z9W9T9Q9M9H9C89838z8u8r8p/w8p8s8z889I9W9l91+H+Y+o+3/F/S/f/p/y/5/+AA#10#ABACAEAGAJAMAQATAVAYAaAb#1#AaAYAUAQALAFAA/7/2/x/s/o/k/h/f/e/d#1#/e/g/j/m/q/u/z/4/9ADAIANASAWAaAdAgAiAj#1#AiAh
+2025-08-26 23:07:05,528 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\A4\_ててんとてたて.wav
+2025-08-26 23:07:05,528 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0012_e+てA4_A4_20b691.wav
+2025-08-26 23:07:05,528 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:A4
+2025-08-26 23:07:05,528 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,565 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav test.cache\0013_e+くD4_G4_302b9e.wav G4 100  1893.434 600 375.0 -583.333 100 0 !128.00 CvCsCpCnCmCl#1#CmCoCrCuCyC3C8DBDGDLDRDWDaDfDjDmDoDqDr#1#DqDpDmDjDgDcDXDSDNDHDDC+C7C5/wC1CyCtCoCgCWCNCBB1BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:07:05,566 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_くくんけくこく.wav
+2025-08-26 23:07:05,566 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0013_e+くD4_G4_302b9e.wav
+2025-08-26 23:07:05,566 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:G4
+2025-08-26 23:07:05,566 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,606 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav test.cache\0014_u+るD4_F4_8cad03.wav F4 100  331.483 600 375.0 -583.333 100 0 !128.00 DhDkDnDpDqDr#1#DqDoDlDiDeDZDUDPDKDFC/C6C2CxCtCqCoCmCl#1#CmCnCqCtCwC0C5C+DDDJDNDSDVDXAQDXDUDNDEC4CqCbCLB5BoBYBJA7AuAhAXAOAHACAA#10#///+/8/6/3/0/w/t/r/o/m/l#1#/m/o/s/w/1/7AAAFAKAPAUAYAcAfAhAiAj#1#AiAgAdAaAWASANAIAD/9/4/z/u/q/m/j/g/e/d#1#/e/f
+2025-08-26 23:07:05,607 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_るるんれるろる.wav
+2025-08-26 23:07:05,607 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0014_u+るD4_F4_8cad03.wav
+2025-08-26 23:07:05,607 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:F4
+2025-08-26 23:07:05,607 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:600ms
+2025-08-26 23:07:05,642 PyUtauCli.projects.Render:130 resamp [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav test.cache\0015_u+よD4_E4_1cab2a.wav E4 100  2320.0 1000 375.0 -583.333 100 0 !128.00 B9CACDCFCGCH#1#CGCECBB+B6B1BwBrBmBhBbBWBSBNBJBGBEBCBB#1#BCBDBGBJBMBQBVBaBfBlBpBuBxBzAQB0ByBuBpBiBaBRBIA9A0AsAkAdAXAQALAHADABAA#34#///+/9/7/4/2/0/x/w/u#3#/w/z/2/7AAAGAMARAWAaAeAgAiAj#1#AhAfAcAYATAOAJAD/9/3/x/s/o/k/h/e/d#1#/e/g/i/m/q/v/1/7AAAGAMARAWAbAeAhAiAj#1#AhAfAcAYATAOAIAC/8/3/x/s/n/j/g/f/g/i/k/n/r/v/z/3/6/+AAADAEAF#2#AEACABAA#10#
+2025-08-26 23:07:05,642 PyUtauCli.projects.Render:306 __init__ [INFO]: input:E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0\D4\_ゆゆんいぇゆよゆ.wav
+2025-08-26 23:07:05,643 PyUtauCli.projects.Render:307 __init__ [INFO]: cache:test.cache\0015_u+よD4_E4_1cab2a.wav
+2025-08-26 23:07:05,643 PyUtauCli.projects.Render:308 __init__ [INFO]: target_tone:E4
+2025-08-26 23:07:05,643 PyUtauCli.projects.Render:309 __init__ [INFO]: target_length:1000ms
+2025-08-26 23:11:15,977 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpsagt06bj\temp.ust is found. loading file.
+2025-08-26 23:11:15,978 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:11:15,979 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:11:15,981 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:11:15,981 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:11:15,981 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:11:15,981 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:11:15,982 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:11:16,006 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:11:16,006 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:12:52,132 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpt8y712sd\temp.ust is found. loading file.
+2025-08-26 23:12:52,133 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:12:52,135 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:12:52,137 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:12:52,137 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:12:52,137 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:12:52,137 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:12:52,137 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:12:52,163 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:12:52,163 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:13:43,258 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpbl08w7fw\temp.ust is found. loading file.
+2025-08-26 23:13:43,259 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:13:43,261 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:13:43,263 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:13:43,263 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:13:43,263 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:13:43,264 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:13:43,264 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:13:43,297 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:13:43,298 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:15:38,190 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpcacrkt6z\temp.ust is found. loading file.
+2025-08-26 23:15:38,191 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:15:38,192 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:15:38,194 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:15:38,194 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:15:38,194 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:15:38,194 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:15:38,195 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:15:38,219 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:15:38,220 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:16:29,251 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp7yyvpgl0\temp.ust is found. loading file.
+2025-08-26 23:16:29,252 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:16:29,253 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:16:29,257 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:16:29,257 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:16:29,257 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:16:29,257 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:16:29,258 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:16:29,286 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:16:29,287 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:17:54,057 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpuxrhoa9q\temp.ust is found. loading file.
+2025-08-26 23:17:54,058 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:17:54,059 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:17:54,062 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:17:54,062 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:17:54,062 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:17:54,062 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:17:54,063 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:17:54,095 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:17:54,096 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:22:31,146 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpc90j5qzr\temp.ust is found. loading file.
+2025-08-26 23:22:31,148 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:22:31,149 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:22:31,150 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:22:31,151 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:22:31,151 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:22:31,151 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:22:31,151 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:22:31,175 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:22:31,175 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:24:06,632 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmphl0xf8tz\temp.ust is found. loading file.
+2025-08-26 23:24:06,634 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:24:06,634 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:24:06,638 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:24:06,638 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:24:06,638 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:24:06,638 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:24:06,639 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:24:06,669 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:24:06,669 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:25:32,036 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpw2bi9o2a\temp.ust is found. loading file.
+2025-08-26 23:25:32,038 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:25:32,039 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:25:32,042 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:25:32,042 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:25:32,043 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:25:32,043 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:25:32,043 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:25:32,075 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:25:32,076 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:26:10,950 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpi5oa0vc_\temp.ust is found. loading file.
+2025-08-26 23:26:10,952 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:26:10,952 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:26:10,955 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:26:10,955 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:26:10,955 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:26:10,955 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:26:10,955 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:26:10,979 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:26:10,980 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:39:31,168 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpddercd8b\temp.ust is found. loading file.
+2025-08-26 23:39:31,169 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:39:31,169 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:39:31,170 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:39:31,170 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:39:31,170 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:39:31,170 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:39:31,170 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:39:31,192 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:39:31,192 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-26 23:44:44,429 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpq46n5jp_\temp.ust is found. loading file.
+2025-08-26 23:44:44,430 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-26 23:44:44,431 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-26 23:44:44,432 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:44:44,432 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:44:44,433 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-26 23:44:44,433 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-26 23:44:44,433 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-26 23:44:44,449 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-26 23:44:44,449 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:04:21,060 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpx93ho1_z\temp.ust is found. loading file.
+2025-08-27 01:04:21,061 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:04:21,062 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:04:21,063 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:04:21,064 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:04:21,064 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:04:21,064 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:04:21,064 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:04:21,080 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:04:21,081 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:06:40,806 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp5p2af4g8\temp.ust is found. loading file.
+2025-08-27 01:06:40,807 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:06:40,808 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:06:40,809 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:06:40,809 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:06:40,809 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:06:40,809 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:06:40,809 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:06:40,828 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:06:40,828 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:09:09,270 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp1q382lp6\temp.ust is found. loading file.
+2025-08-27 01:09:09,270 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:09:09,272 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:09:09,273 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:09:09,274 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:09:09,274 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:09:09,274 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:09:09,274 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:09:09,290 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:09:09,290 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:10:08,189 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpdhv_mkld\temp.ust is found. loading file.
+2025-08-27 01:10:08,190 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:10:08,191 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:10:08,192 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:10:08,192 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:10:08,192 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:10:08,193 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:10:08,193 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:10:08,209 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:10:08,210 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:11:27,982 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpta4dfx53\temp.ust is found. loading file.
+2025-08-27 01:11:27,983 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:11:27,983 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:11:27,985 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:11:27,985 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:11:27,985 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:11:27,985 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:11:27,986 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:11:28,002 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:11:28,002 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:12:40,674 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp1kggay00\temp.ust is found. loading file.
+2025-08-27 01:12:40,676 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:12:40,676 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:12:40,678 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:12:40,678 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:12:40,678 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:12:40,678 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:12:40,679 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:12:40,699 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:12:40,700 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:12:53,708 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpw5x06_d4\temp.ust is found. loading file.
+2025-08-27 01:12:53,709 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:12:53,709 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:12:53,710 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:12:53,710 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:12:53,710 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:12:53,712 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:12:53,712 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:12:53,727 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:12:53,727 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:13:14,727 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpsmp3f8ry\temp.ust is found. loading file.
+2025-08-27 01:13:14,728 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:13:14,729 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:13:14,730 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:13:14,730 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:13:14,730 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:13:14,731 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:13:14,731 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:13:14,747 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:13:14,748 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:13:43,852 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpb6v36bh9\temp.ust is found. loading file.
+2025-08-27 01:13:43,852 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:13:43,853 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:13:43,854 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:13:43,854 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:13:43,854 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:13:43,854 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:13:43,855 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:13:43,870 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:13:43,871 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:14:43,099 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpaolcgkae\temp.ust is found. loading file.
+2025-08-27 01:14:43,100 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:14:43,101 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:14:43,103 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:14:43,103 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:14:43,103 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:14:43,103 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:14:43,104 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:14:43,122 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:14:43,123 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:16:10,120 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpazpmm99q\temp.ust is found. loading file.
+2025-08-27 01:16:10,120 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:16:10,121 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:16:10,122 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:16:10,122 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:16:10,122 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:16:10,122 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:16:10,123 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:16:10,140 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:16:10,140 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:18:17,857 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpxytw8tuw\temp.ust is found. loading file.
+2025-08-27 01:18:17,858 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:18:17,858 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:18:17,860 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:17,860 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:17,860 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:17,861 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:17,861 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:18:17,877 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:18:17,877 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:18:28,510 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpzar8_i6r\temp.ust is found. loading file.
+2025-08-27 01:18:28,511 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:18:28,512 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:18:28,513 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:28,513 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:28,513 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:28,513 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:28,513 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:18:28,536 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:18:28,537 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:18:41,224 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpbs0u8j26\temp.ust is found. loading file.
+2025-08-27 01:18:41,224 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:18:41,225 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:18:41,226 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:41,226 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:41,226 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:18:41,226 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:18:41,226 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:18:41,242 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:18:41,242 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:24:54,225 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpqqeaheex\temp.ust is found. loading file.
+2025-08-27 01:24:54,226 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:24:54,227 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:24:54,228 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:24:54,228 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:24:54,229 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:24:54,229 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:24:54,229 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:24:54,245 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:24:54,245 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:01,202 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpd25eoup8\temp.ust is found. loading file.
+2025-08-27 01:25:01,203 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:01,203 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:01,205 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:01,205 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:01,205 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:01,205 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:01,206 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:01,222 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:01,222 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:08,309 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmplq24dod_\temp.ust is found. loading file.
+2025-08-27 01:25:08,310 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:08,310 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:08,311 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:08,311 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:08,311 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:08,312 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:08,312 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:08,328 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:08,329 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:18,304 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpu4pdg_h_\temp.ust is found. loading file.
+2025-08-27 01:25:18,305 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:18,306 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:18,307 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:18,307 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:18,307 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:18,307 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:18,307 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:18,324 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:18,324 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:25,163 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmp7o_0h6h0\temp.ust is found. loading file.
+2025-08-27 01:25:25,164 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:25,165 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:25,166 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:25,166 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:25,166 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:25,166 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:25,166 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:25,182 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:25,182 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:31,432 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpiptx5cw6\temp.ust is found. loading file.
+2025-08-27 01:25:31,433 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:31,434 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:31,436 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:31,436 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:31,436 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:31,436 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:31,437 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:31,457 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:31,458 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:36,721 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpphsgv6n3\temp.ust is found. loading file.
+2025-08-27 01:25:36,722 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:36,722 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:36,723 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:36,724 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:36,724 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:36,724 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:36,724 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:36,741 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:36,741 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:43,101 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpq5fywdjj\temp.ust is found. loading file.
+2025-08-27 01:25:43,102 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:43,102 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:43,104 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:43,104 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:43,104 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:43,104 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:43,105 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:43,123 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:43,124 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:48,121 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmpvr86g6ws\temp.ust is found. loading file.
+2025-08-27 01:25:48,121 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:48,122 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:48,123 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:48,124 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:48,124 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:48,124 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:48,124 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:48,148 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:48,149 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
+2025-08-27 01:25:53,257 PyUtauCli.projects.Ust:104 load [INFO]: C:\Users\CrazY\AppData\Local\Temp\tmppzzpegqg\temp.ust is found. loading file.
+2025-08-27 01:25:53,258 PyUtauCli.projects.Ust:108 load [INFO]: loading header complete.
+2025-08-27 01:25:53,259 PyUtauCli.projects.Ust:110 load [INFO]: loading note complete.notes:17
+2025-08-27 01:25:53,260 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:53,261 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:53,261 PyUtauCli.voicebank.voicebank:128 is_utau_voicebank [INFO]: E:\UTAU\voice\く_くれぽ5音階連続音_v1.1.0 is found. checking directory
+2025-08-27 01:25:53,261 PyUtauCli.voicebank.voicebank:131 is_utau_voicebank [INFO]: character.txt is found.
+2025-08-27 01:25:53,261 PyUtauCli.voicebank.voicebank:77 __init__ [INFO]: character.txt is loaded. VBName:くれぽ v1.1.0
+2025-08-27 01:25:53,277 PyUtauCli.voicebank.voicebank:86 __init__ [INFO]: oto.ini is loaded.files 6, records 6924
+2025-08-27 01:25:53,278 PyUtauCli.voicebank.voicebank:96 __init__ [INFO]: prefix.map is loaded
