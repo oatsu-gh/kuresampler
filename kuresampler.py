@@ -16,20 +16,21 @@ UTAU engine for smooth crossfades
 
 """
 
-from tqdm.auto import tqdm
+import logging
+import os
+import sys
+from logging import Logger
+from os.path import dirname, join
+from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
+import pyworld as pw  # pyright: ignore[reportMissingTypeStubs]
 import utaupy
+from PyRwu import frq_io, settings, wave_io
+from PyRwu.resamp import Resamp
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
-from os.path import join, dirname
-
-from PyRwu.resamp import Resamp
-from tempfile import TemporaryDirectory
-import logging
-from logging import Logger
-import sys
-import os
+from tqdm.auto import tqdm
 
 
 class WorldFeatureResamp(Resamp):
@@ -63,6 +64,108 @@ class WorldFeatureResamp(Resamp):
         # TODO: WORLD特徴量を npy または npz ファイルに出力する処理を追加する。Path指定から。
         # TODO: 無音だったら無音のWORLD特徴量を出力する？
         return self.f0, self.sp, self.ap
+
+    def getInputData_in_nnsvs_format(
+        self,
+        f0_floor: float = settings.PYWORLD_F0_FLOOR,
+        f0_ceil: float = settings.PYWORLD_F0_CEIL,
+        frame_period: float = settings.PYWORLD_PERIOD,
+        q1: float = settings.PYWORLD_Q1,
+        threshold: float = settings.PYWORLD_THRESHOLD,
+    ) -> None:
+        """
+        # NOTE: 親クラスの getInputData() メソッドをもとに、NNSVSでの WORLD 特長量と一致するように改造。
+        入力された音声データからworldパラメータを取得し、self._input_data, self._framerate, self._f0, self._sp, self._apを更新します。
+
+        Notes
+        -----
+        | 音声データの取得方法を変更したい場合、このメソッドをオーバーライドしてください。
+        | オーバーライドする際、self._input_dataはこれ以降の処理で使用しないため、更新しなくても問題ありません。
+
+        Parameters
+        ----------
+        f0_floor: float, default settings.PYWORLD_F0_FLOOR
+
+            | worldでの分析するf0の下限
+            | デフォルトでは71.0
+
+        f0_ceil: float, default settings.PYWORLD_F0_CEIL
+
+            | worldでの分析するf0の上限
+            | デフォルトでは800.0
+
+        frame_period: float, default settings.PYWORLD_PERIOD
+
+            | worldデータの1フレーム当たりの時間(ms)
+            | 初期設定では5.0
+
+        q1: float, default settings.PYWORLD_Q1
+
+            | worldでスペクトル包絡抽出時の補正値
+            | 通常は変更不要
+            | 初期設定では-15.0
+
+        threshold: float, default settings.PYWORLD_THRESHOLD
+
+            | worldで非周期性指標抽出時に、有声/無声を決定する閾値(0 ～ 1)
+            | 値が0の場合、音声のあるフレームを全て有声と判定します。
+            | 値が0超の場合、一部のフレームを無声音として判断します。
+            | 初期値0.85はharvestと組み合わせる前提で調整されています。
+
+        Raises
+        ------
+        FileNotFoundError
+            input_pathにファイルがなかったとき
+        TypeError
+            input_pathで指定したファイルがwavではなかったとき
+        """
+        # pyworld の npz キャッシュファイルを使用する場合
+        if settings.USE_PYWORLD_CACHE:
+            self._getInputFromNpz(f0_floor, f0_ceil, frame_period, q1, threshold)
+        # pyworld のキャッシュファイルを使用しない場合
+        else:
+            frq_path: str = os.path.splitext(self._input_path)[0] + '_wav.frq'
+            # 原音のWAVファイルを切り出して、データとフレームレートを取得
+            self._input_data, self._framerate = wave_io.read(
+                self._input_path, self._offset, self._end_ms
+            )
+
+            ## f0 ----------------------------------------------------------
+            # 周波数表FRQファイルが無い場合は新規作成する
+            if not os.path.isfile(frq_path):
+                input_data, framerate = wave_io.read(self._input_path, 0, 0)
+                frq_io.write(input_data, frq_path, framerate)
+            # 周波数表FRQファイルがもとからある場合、もしくは直前に新規作成された場合は読み込む
+            if os.path.isfile(frq_path):
+                self._f0, self._t = frq_io.read(
+                    frq_path, self._offset, self._end_ms, self._framerate, frame_period
+                )
+            # FRQファイルをうまく作成できていなかった場合、pyworld で直接解析する
+            else:
+                self._f0, self._t = pw.harvest(  # pyright: ignore[reportAttributeAccessIssue]
+                    self._input_data,
+                    self._framerate,
+                    f0_floor=f0_floor,
+                    f0_ceil=f0_ceil,
+                    frame_period=frame_period,
+                )
+                self._f0 = pw.stonemask(  # pyright: ignore[reportAttributeAccessIssue]
+                    self._input_data, self._f0, self._t, self._framerate
+                )
+            ## spectrogram -------------------------------------------------
+            self._sp = pw.cheaptrick(  # pyright: ignore[reportAttributeAccessIssue]
+                self._input_data,
+                self._f0,
+                self._t,
+                self._framerate,
+                q1=q1,
+                f0_floor=f0_floor,
+            )
+            ## aperiodicity -------------------------------------------------
+            self._getAp(f0_floor, f0_ceil, frame_period, threshold)
+            ##
+
+    # TODO: stretch をオーバーライドして、単パラメータのみ伸縮できるようにする。
 
 
 class WorldFeatureRender(Render):
