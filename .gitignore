@@ -1,5 +1,6 @@
 *.code-workspace
 *.pyc
 *.wav
+*.xlsx
 *.zip
 log.txt
