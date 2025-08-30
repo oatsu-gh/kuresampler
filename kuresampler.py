@@ -26,11 +26,12 @@ from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
 import numpy as np
+import PyRwu as pyrwu
+import PyWavTool as pywavetool
 import pyworld
 import torch
 import utaupy
 from nnsvs.gen import predict_waveform
-from PyRwu.resamp import Resamp
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 from sklearn.preprocessing import StandardScaler
@@ -48,7 +49,7 @@ def setup_logger() -> Logger:
     return logging.getLogger(__name__)
 
 
-class WorldFeatureResamp(Resamp):
+class WorldFeatureResamp(pyrwu.Resamp):
     """WAVファイルの代わりにWORLDの特徴量をファイルに出力するResampler
 
     PyRwu.resamp.Resamp からの変更点
@@ -154,6 +155,43 @@ class WorldFeatureResamp(Resamp):
         return self.f0, self.sp, self.ap
 
 
+class WorldFeatureWavTool(pywavetool.WavTool):
+    """WAV出力の代わりに WORLD の特徴量を出力するのに用いる。"""
+
+    _export_wav: bool
+    _export_features: bool
+
+    def __init__(self, output: str):
+        """
+        Parameters
+        ----------
+        output : str
+            出力するwavのパス
+        """
+        self._error = False
+        if os.path.split(output)[0] != '':
+            os.makedirs(os.path.split(output)[0], exist_ok=True)
+        self._header = pywavetool.whd.Whd(output + '.whd')
+        self._dat = pywavetool.dat.Dat(output + '.dat')
+        self._output = output
+
+    @property
+    def export_wav(self) -> bool:
+        return self._export_wav
+
+    @export_wav.setter
+    def export_wav(self, value: bool) -> None:
+        self._export_wav = value
+
+    @property
+    def export_features(self) -> bool:
+        return self._export_features
+
+    @export_features.setter
+    def export_features(self, value: bool) -> None:
+        self._export_features = value
+
+
 class WorldFeatureRender(Render):
     """
     WAV出力の代わりに WORLD の特徴量ファイルを出力するのに用いる。
@@ -195,7 +233,7 @@ class WorldFeatureRender(Render):
     def export_features(self, value: bool) -> None:
         self._export_features = value
 
-    def resamp(self, *args, force: bool = False) -> None:
+    def resamp(self, *, force: bool = False) -> None:
         """
         Resampの代わりにWorldFeatureResampを用いる。
 
@@ -252,6 +290,24 @@ class WorldFeatureRender(Render):
         self.logger.debug('------------------------------------------------')
 
 
+def wavfile_to_features(wav_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """WAVファイルを読み取って、world 特徴量を抽出する。
+
+    Args:
+        wav_path (Path | str): WAVファイルのパス
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray]: (f0, spectrogram, aperiodicity)
+    """
+    # WAVファイルを読み込む
+    wav, sample_rate = librosa.load(wav_path, sr=None)
+
+    # WORLD特徴量を抽出する
+    spectrogram = pyworld.cheaptrick(x, f0, timeaxis, fs)
+    aperiodicity = pyworld.d4c(x, f0, timeaxis, fs, threshold=self.d4c_threshold)
+
+    return f0, spectrogram, aperiodicity
+
 def world_original_to_world_nnsvs(
     f0: np.ndarray,
     spectrogram: np.ndarray,
@@ -286,7 +342,21 @@ def world_original_to_world_nnsvs(
     return mgc, lf0, vuv, bap
 
 
-def npz2wav(
+def wav2world(wav: np.ndarray, fs:int, fft_size=None, frame_period=5.0)
+
+def npzfile2world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """NPZ ファイルを読み取って WORLD 特徴量を返す。
+    Args:
+        npz_path (Path | str): NPZファイルのパス
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray]: (f0, spectrogram, aperiodicity)
+    """
+    # NPZファイルを読み込む
+    npz_data = np.load(npz_path)
+    return npz_data['f0'], npz_data['spectrogram'], npz_data['aperiodicity']
+
+
+def npzfile2wavform(
     npz_path: Path | str,
     sample_rate: int,
     vocoder: torch.nn.Module | None,
@@ -308,7 +378,7 @@ def npz2wav(
         logger (Logger | None, optional): logger instance. Defaults to None.
 
     Returns:
-        np.ndarray: waveform
+        waveform (np.ndarray): generated waveform
     """
     logger = logging.getLogger(__name__) if logger is None else logger
 
@@ -320,7 +390,7 @@ def npz2wav(
     aperiodicity = npz_data['aperiodicity']
 
     # WORLD特徴量からwavを生成する
-    wav = world2wav(
+    wav = world2waveform(
         f0=f0,
         spectrogram=spectrogram,
         aperiodicity=aperiodicity,
@@ -334,7 +404,7 @@ def npz2wav(
     return wav
 
 
-def world2wav(
+def world2waveform(
     f0: np.ndarray,
     spectrogram: np.ndarray,
     aperiodicity: np.ndarray,
@@ -433,6 +503,8 @@ def render_wav_from_ust(path_ust_in, path_wav_out) -> None:
     # render.append()
 
 
+
+
 def main_as_normal_resampler(path_ust_in, path_wav_out) -> None:
     """全体の処理を行う。"""
     logger = setup_logger()
@@ -487,19 +559,32 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
 
 
     """
+    logger = setup_logger()
+
+    # TODO: 特徴量取得を実装
+    f0 = None
+    spectrogram = None
+    aperiodicity = None
+    # TODO: モデルとconfig読み取りを実装
+    sample_rate = 48000
+    vocoder = None
+    vocoder_config = None
+    vocoder_in_scaler = None
+    vocoder_type = 'usfgan'
+
     # WORLD特徴量をNNSVS用に前処理する
     mgc, lf0, vuv, bap = world_original_to_world_nnsvs(f0, spectrogram, aperiodicity)
     # 関数に渡すために形式を整える
     multistream_features = (mgc, lf0, vuv, bap)
 
-    # auto detect device
+    # Auto detect device
     device = (
         torch.accelerator.current_accelerator()
         if torch.accelerator.is_available()
         else torch.device('cpu')
     )
 
-    # predict waveform with nnsvs-usfgan model
+    # Predict waveform with nnsvs-usfgan model
     wav = predict_waveform(
         device=device,
         multistream_features=multistream_features,
