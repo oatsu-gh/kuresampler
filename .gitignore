@@ -1,6 +1,11 @@
+# Directories
+/*.cache
+
+# Files
 *.code-workspace
 *.pyc
 *.wav
 *.xlsx
 *.zip
+*.npz
 log.txt
