@@ -43,7 +43,7 @@ def wavfile_to_waveform(
         wav_path           (Path)    : The path to the WAV file.
         target_sample_rate (int)     : Sample rate for the output waveform.
         dtype              (np.dtype): dtype for the output waveform.
-        resample_type      (str)     : Resampling method. Select from `res_type` options of `librosa.resample`. (kaiser_best / kaiser_fast が良さげ？)
+        resample_type      (str)     : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
 
     Returns:
         waveform    (np.ndarray): The waveform as a numpy array.
@@ -231,7 +231,7 @@ def world_to_nnsvs(
     # aperiodicity -> bap
     bap = pyworld.code_aperiodicity(aperiodicity, sample_rate)
     # nnsvs 向けの world 特徴量を返す
-    return mgc, lf0, vuv, bap
+    return mgc.reshape(1, -1).T, lf0.reshape(1, -1).T, vuv.reshape(1, -1).T, bap
 
 
 def nnsvs_to_world(
