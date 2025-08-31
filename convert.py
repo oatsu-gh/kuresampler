@@ -32,8 +32,8 @@ DEFAULT_FFT_SIZE = 512
 
 def wavfile_to_waveform(
     wav_path: Path,
-    *,
     target_sample_rate: int,
+    *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
     dtype: type = DEFAULT_WAV_DTYPE,
 ) -> np.ndarray:
@@ -57,7 +57,7 @@ def wavfile_to_waveform(
             target_sr=target_sample_rate,
             res_type=resample_type,
         )
-    return waveform, target_sample_rate
+    return waveform
 
 
 def waveform_to_wavfile(
@@ -224,7 +224,8 @@ def world_to_nnsvs(
     # spectrogram -> mgc
     mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
-    lf0 = np.where(f0 > 0, np.log(f0), 0)
+    lf0 = np.zeros_like(f0)
+    lf0[np.nonzero(f0)] = np.log(f0[np.nonzero(f0)])
     # vuv を作成
     vuv = (f0 > 0).astype(np.float32)
     # aperiodicity -> bap
