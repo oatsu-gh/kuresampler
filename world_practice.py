@@ -23,6 +23,19 @@ F0_CEIL = 700
 FRAME_PERIOD = 5.0
 SAMPLE_RATE = 48000
 
+from convert import (  # noqa: F401
+    nnsvs_to_npzfile,
+    nnsvs_to_world,
+    npzfile_to_nnsvs,
+    npzfile_to_world,
+    waveform_to_wavfile,
+    waveform_to_world,
+    wavfile_to_waveform,
+    world_to_nnsvs,
+    world_to_npzfile,
+    world_to_waveform,
+)
+
 
 def read_wav_nnsvs(
     wav_path: str | Path,
@@ -167,21 +180,13 @@ def read_wav_nnsvs(
     pf_features = np.hstack((spectrogram, lf0, vuv, bap)).astype(np.float32)
 
     # Align waveform and features
-    wave = x.astype(np.float32)
+    waveform = x.astype(np.float32)
 
     assert np.isfinite(features).all()
-    assert np.isfinite(wave).all()
+    assert np.isfinite(waveform).all()
     assert np.isfinite(pf_features).all()
 
-    return wave, spectrogram, mgc, lf0, vuv, bap
-
-
-def read_wav_pyrwu(path_wav) -> None:
-    """
-    WAVファイルを読み取って、PyRwu用のWORLD特徴量を返す。
-    """
-    print('------------------------------------------')
-    pass
+    return waveform, spectrogram, mgc, lf0, vuv, bap
 
 
 def main() -> None:
@@ -189,6 +194,7 @@ def main() -> None:
     path_wav = '_ああんいあうあ.wav'
 
     wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
+    print('NNSVS reader result ----------------------------------')
     print('- wave.shape        :', wave.shape)
     print('- spectrogram.shape :', spectrogram.shape)
     print('- mgc.shape         :', mgc.shape)
@@ -196,9 +202,21 @@ def main() -> None:
     print('- vuv.shape         :', vuv.shape)
     print('- bap.shape         :', bap.shape)
 
-    features_pyrwu = read_wav_pyrwu(path_wav)
-    print(features_pyrwu)
-    print()
+    print('Converter result -------------------------------------')
+    sample_rate = 48000
+    waveform = wavfile_to_waveform(path_wav, target_sample_rate=sample_rate)
+    print('waveform.shape:', waveform.shape)
+
+    f0, sp, ap = waveform_to_world(waveform, sample_rate, frame_period=5.0)  # type: ignore
+    print('- f0.shape :', f0.shape)
+    print('- sp.shape :', sp.shape)
+    print('- ap.shape :', ap.shape)
+
+    mgc2, lf02, vuv2, bap2 = world_to_nnsvs(f0, sp, ap, sample_rate)
+    print('- mgc2.shape       :', mgc2.shape)
+    print('- lf02.shape       :', lf02.shape)
+    print('- vuv2.shape       :', vuv2.shape)
+    print('- bap2.shape       :', bap2.shape)
 
 
 if __name__ == '__main__':
