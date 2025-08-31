@@ -28,7 +28,6 @@ import colored_traceback.auto  # noqa: F401
 import numpy as np
 import PyRwu as pyrwu
 import PyWavTool as pywavetool
-import pyworld
 import torch
 import utaupy
 from nnsvs.gen import predict_waveform
@@ -36,6 +35,19 @@ from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 from sklearn.preprocessing import StandardScaler
 from tqdm.auto import tqdm
+
+from .convert import (  # noqa: F401
+    nnsvs_to_npzfile,
+    nnsvs_to_world,
+    npzfile_to_nnsvs,
+    npzfile_to_world,
+    waveform_to_wavfile,
+    waveform_to_world,
+    wavfile_to_waveform,
+    world_to_nnsvs,
+    world_to_npzfile,
+    world_to_waveform,
+)
 
 
 def setup_logger() -> Logger:
@@ -290,73 +302,7 @@ class WorldFeatureRender(Render):
         self.logger.debug('------------------------------------------------')
 
 
-def wavfile_to_features(wav_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """WAVファイルを読み取って、world 特徴量を抽出する。
-
-    Args:
-        wav_path (Path | str): WAVファイルのパス
-
-    Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray]: (f0, spectrogram, aperiodicity)
-    """
-    # WAVファイルを読み込む
-    wav, sample_rate = librosa.load(wav_path, sr=None)
-
-    # WORLD特徴量を抽出する
-    spectrogram = pyworld.cheaptrick(x, f0, timeaxis, fs)
-    aperiodicity = pyworld.d4c(x, f0, timeaxis, fs, threshold=self.d4c_threshold)
-
-    return f0, spectrogram, aperiodicity
-
-def world_original_to_world_nnsvs(
-    f0: np.ndarray,
-    spectrogram: np.ndarray,
-    aperiodicity: np.ndarray,
-    sample_rate: int,
-    number_of_mgc_dimensions: int = 60,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    world 特徴量を nnsvs 対応の形式に変換する。
-
-    Args:
-        f0           (np.ndarray): F0
-        spectrogram  (np.ndarray): spectrogram
-        aperiodicity (np.ndarray): aperiodicity
-
-    Returns:
-        mgc (np.ndarray): mel-generalized cepstral coefficients
-        lf0 (np.ndarray): log F0
-        vuv (np.ndarray): voiced / unvoiced flag
-        bap (np.ndarray): band aperiodicity
-    """
-    # spectrogram -> mgc
-    mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
-    # f0 -> lf0
-    lf0 = np.where(f0 > 0, np.log(f0), 0)
-    # vuv を作成
-    vuv = (f0 > 0).astype(np.float32)
-    # aperiodicity -> bap
-    bap = pyworld.code_aperiodicity(aperiodicity, sample_rate)
-
-    # nnsvs 向けの world 特徴量を返す
-    return mgc, lf0, vuv, bap
-
-
-def wav2world(wav: np.ndarray, fs:int, fft_size=None, frame_period=5.0)
-
-def npzfile2world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """NPZ ファイルを読み取って WORLD 特徴量を返す。
-    Args:
-        npz_path (Path | str): NPZファイルのパス
-    Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray]: (f0, spectrogram, aperiodicity)
-    """
-    # NPZファイルを読み込む
-    npz_data = np.load(npz_path)
-    return npz_data['f0'], npz_data['spectrogram'], npz_data['aperiodicity']
-
-
-def npzfile2wavform(
+def npzfile_to_wavform(
     npz_path: Path | str,
     sample_rate: int,
     vocoder: torch.nn.Module | None,
@@ -435,7 +381,7 @@ def world2waveform(
     logger = logging.getLogger(__name__) if logger is None else logger
 
     # WORLD特徴量をNNSVS用に前処理する
-    mgc, lf0, vuv, bap = world_original_to_world_nnsvs(f0, spectrogram, aperiodicity)
+    mgc, lf0, vuv, bap = world_to_nnsvs(f0, spectrogram, aperiodicity)
     # 関数に渡すために形式を整える
     multistream_features = (mgc, lf0, vuv, bap)
 
@@ -501,8 +447,6 @@ def render_wav_from_ust(path_ust_in, path_wav_out) -> None:
     render.resamp(force=True)
 
     # render.append()
-
-
 
 
 def main_as_normal_resampler(path_ust_in, path_wav_out) -> None:
@@ -573,7 +517,7 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
     vocoder_type = 'usfgan'
 
     # WORLD特徴量をNNSVS用に前処理する
-    mgc, lf0, vuv, bap = world_original_to_world_nnsvs(f0, spectrogram, aperiodicity)
+    mgc, lf0, vuv, bap = world_to_nnsvs(f0, spectrogram, aperiodicity)
     # 関数に渡すために形式を整える
     multistream_features = (mgc, lf0, vuv, bap)
 
