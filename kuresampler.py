@@ -19,9 +19,9 @@ UTAU engine for smooth crossfades
 import logging
 import os
 import sys
+from argparse import ArgumentParser
 from logging import Logger
 from os.path import dirname, join, splitext
-from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
@@ -36,7 +36,7 @@ from PyUtauCli.projects.Ust import Ust
 from sklearn.preprocessing import StandardScaler
 from tqdm.auto import tqdm
 
-from .convert import (  # noqa: F401
+from convert import (  # noqa: F401
     nnsvs_to_npzfile,
     nnsvs_to_world,
     npzfile_to_nnsvs,
@@ -90,8 +90,8 @@ class WorldFeatureResamp(pyrwu.Resamp):
         pitchbend: str = '',
         *,
         logger: Logger | None = None,
-        export_wav: bool = False,
-        export_features: bool = False,
+        export_wav: bool,
+        export_features: bool,
     ) -> None:
         super().__init__(
             input_path=input_path,
@@ -302,55 +302,7 @@ class WorldFeatureRender(Render):
         self.logger.debug('------------------------------------------------')
 
 
-def npzfile_to_wavform(
-    npz_path: Path | str,
-    sample_rate: int,
-    vocoder: torch.nn.Module | None,
-    vocoder_config: dict | None,
-    vocoder_in_scaler: StandardScaler | None,
-    vocoder_type: str,
-    *,
-    logger: Logger | None = None,
-) -> np.ndarray:
-    """WORLD特徴量 (f0, spectrogram, aperiodicity) のファイルを読み取って waveform を生成する。
-
-    Args:
-        npz_file (Path | str): archive of WORLD features (f0, spectrogram, aperiodicity)
-        sample_rate (int): sample rate for the output waveform
-        vocoder (torch.nn.Module | None): vocoder model for waveform generation
-        vocoder_config (dict | None): configuration for the vocoder
-        vocoder_in_scaler (StandardScaler | None): scaler for vocoder input features
-        vocoder_type (str): type of vocoder (e.g., "world", "pwg", "usfgan")
-        logger (Logger | None, optional): logger instance. Defaults to None.
-
-    Returns:
-        waveform (np.ndarray): generated waveform
-    """
-    logger = logging.getLogger(__name__) if logger is None else logger
-
-    # npzファイルを読み込む
-    npz_data = np.load(npz_path)
-    # 特徴量をそれぞれ取り出す
-    f0 = npz_data['f0']
-    spectrogram = npz_data['spectrogram']
-    aperiodicity = npz_data['aperiodicity']
-
-    # WORLD特徴量からwavを生成する
-    wav = world2waveform(
-        f0=f0,
-        spectrogram=spectrogram,
-        aperiodicity=aperiodicity,
-        sample_rate=sample_rate,
-        vocoder=vocoder,
-        vocoder_config=vocoder_config,
-        vocoder_in_scaler=vocoder_in_scaler,
-        vocoder_type=vocoder_type,
-        logger=logger,
-    )
-    return wav
-
-
-def world2waveform(
+def nnsvs_world_to_waveform(
     f0: np.ndarray,
     spectrogram: np.ndarray,
     aperiodicity: np.ndarray,
@@ -411,82 +363,107 @@ def world2waveform(
     return wav
 
 
-def render_wav_from_ust(path_ust_in, path_wav_out) -> None:
-    """全体の処理を行う。"""
+def main_as_resampler() -> None:
+    """resampler (伸縮器) として各ノートの wav 加工を行う。
+
+    Args
+    """
     logger = setup_logger()
-    # utaupyでUSTを読み取る
-    ust_utaupy = utaupy.ust.load(path_ust_in)
-    voice_dir = ust_utaupy.voicedir
-    # ust_path = ust.setting.get('Project')  # noqa: F841
-    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
-    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
 
-    # 一時フォルダにustを出力してPyUtauCliで読み直す
-    with TemporaryDirectory() as temp_dir:
-        # utaupyでプラグインをustファイルとして保存する
-        path_temp_ust = join(temp_dir, 'temp.ust')
-        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
-            ust_utaupy.as_ust().write(path_temp_ust)
-        else:
-            ust_utaupy.write(path_temp_ust)
-        # pyutaucliでustを読み込みなおす
-        ust = Ust(path_temp_ust)
-        ust.load()
-
-    # PyUtauCli でレンダリング
-    render = WorldFeatureRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
-        export_wav=True,
-        export_features=True,
+    parser = ArgumentParser(description='This module is Resampler for UTAU powered by world')
+    parser.add_argument('input_path', help='原音のファイル名', type=str)
+    parser.add_argument('output_path', help='wavファイルの出力先パス', type=str)
+    parser.add_argument(
+        'target_tone',
+        help='音高名(A4=440Hz)。'
+        + '半角上げは#もしくは♯'
+        + '半角下げはbもしくは♭で与えられます。',
+        type=str,
     )
-    render.clean()
-    render.resamp(force=True)
-
-    # render.append()
-
-
-def main_as_normal_resampler(path_ust_in, path_wav_out) -> None:
-    """全体の処理を行う。"""
-    logger = setup_logger()
-    # utaupyでUSTを読み取る
-    ust_utaupy = utaupy.ust.load(path_ust_in)
-    voice_dir = ust_utaupy.voicedir
-    # ust_path = ust.setting.get('Project')  # noqa: F841
-    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
-    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
-
-    # 一時フォルダにustを出力してPyUtauCliで読み直す
-    with TemporaryDirectory() as temp_dir:
-        # utaupyでプラグインをustファイルとして保存する
-        path_temp_ust = join(temp_dir, 'temp.ust')
-        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
-            ust_utaupy.as_ust().write(path_temp_ust)
-        else:
-            ust_utaupy.write(path_temp_ust)
-        # pyutaucliでustを読み込みなおす
-        ust = Ust(path_temp_ust)
-        ust.load()
-
-    # PyUtauCli でレンダリング
-    render = WorldFeatureRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
-        export_wav=True,
-        export_features=True,
+    parser.add_argument('velocity', help='子音速度', type=int)
+    parser.add_argument(
+        'flags',
+        help='フラグ(省略可 default:"")。詳細は--show-flags参照',
+        nargs='?',
+        default='',
     )
-    # キャッシュ削除
-    render.clean()
-    # 各ノートのキャッシュファイルを生成
-    render.resamp(force=True)
-    # キャッシュファイルを結合して全体wavを出力
-    render.append()
+    parser.add_argument(
+        'offset',
+        help='入力ファイルの読み込み開始位置(ms)(省略可 default:0)',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'target_ms',
+        help='出力ファイルの長さ(ms)(省略可 default:0)'
+        + 'UTAUでは通常50ms単位に丸めた値が渡される。',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'fixed_ms', help='offsetからみて通常伸縮しない長さ(ms)', nargs='?', default=0
+    )
+    parser.add_argument(
+        'end_ms',
+        help='入力ファイルの読み込み終了位置(ms)(省略可 default:0)'
+        + '正の数の場合、ファイル末尾からの時間'
+        + '負の数の場合、offsetからの時間',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument('volume', help='音量。0～200(省略可 default:100)', nargs='?', default=100)
+    parser.add_argument(
+        'modulation',
+        help='モジュレーション。0～200(省略可 default:0)',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'tempo',
+        help='ピッチのテンポ。数字の頭に!がついた文字列(省略可 default:"!120")',
+        nargs='?',
+        default='!120',
+    )
+    parser.add_argument(
+        'pitchbend',
+        help='ピッチベンド。(省略可 default:"")'
+        + '-2048～2047までの12bitの2進数をbase64で2文字の文字列に変換し、'
+        + '同じ数字が続く場合ランレングス圧縮したもの',
+        nargs='?',
+        default='',
+    )
+    parser.add_argument('--show-flag', action=pyrwu.ShowFlagAction)
+    args = parser.parse_args()
+
+    if args.pitchbend == '':  # flagsに値がないとき、引数がずれてしまうので補正する。
+        args.pitchbend = args.tempo
+        args.tempo = args.modulation
+        args.modulation = args.volume
+        args.volume = args.end_ms
+        args.end_ms = args.fixed_ms
+        args.fixed_ms = args.target_ms
+        args.target_ms = args.offset
+        args.offset = args.flags
+        args.flags = ''
+
+    WorldFeatureResamp(
+        args.input_path,
+        args.output_path,
+        args.target_tone,
+        args.velocity,
+        args.flags,
+        float(args.offset),
+        int(args.target_ms),
+        float(args.fixed_ms),
+        float(args.end_ms),
+        int(args.volume),
+        int(args.modulation),
+        args.tempo,
+        args.pitchbend,
+        logger=logger,
+        export_features=True,
+        export_wav=True,
+    ).resamp()
 
 
 def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
@@ -546,8 +523,46 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
     return wav
 
 
+def main_as_standalone(path_ust_in, path_wav_out) -> None:
+    """全体の処理を行う。"""
+    logger = setup_logger()
+    # utaupyでUSTを読み取る
+    ust_utaupy = utaupy.ust.load(path_ust_in)
+    voice_dir = ust_utaupy.voicedir
+    # ust_path = ust.setting.get('Project')  # noqa: F841
+    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
+    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
+
+    # 一時フォルダにustを出力してPyUtauCliで読み直す
+    with TemporaryDirectory() as temp_dir:
+        # utaupyでプラグインをustファイルとして保存する
+        path_temp_ust = join(temp_dir, 'temp.ust')
+        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
+            ust_utaupy.as_ust().write(path_temp_ust)
+        else:
+            ust_utaupy.write(path_temp_ust)
+        # pyutaucliでustを読み込みなおす
+        ust = Ust(path_temp_ust)
+        ust.load()
+
+    # PyUtauCli でレンダリング
+    render = WorldFeatureRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+        export_wav=True,
+        export_features=True,
+    )
+    render.clean()
+    render.resamp(force=True)
+
+    # render.append()
+
+
 if __name__ == '__main__':
-    main_as_normal_resampler(
+    main_as_standalone(
         join(dirname(__file__), 'test.ust'),
         join(dirname(__file__), 'output.wav'),
     )
