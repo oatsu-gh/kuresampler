@@ -7,6 +7,7 @@ PyRwu の形式と NNSVS の形式に変換してみる。
 相互変換できるか調査して kuresampler の開発につなげる。
 """
 
+from os.path import isfile
 from pathlib import Path
 
 import librosa
@@ -189,18 +190,18 @@ def read_wav_nnsvs(
     return waveform, spectrogram, mgc, lf0, vuv, bap
 
 
-def main() -> None:
+def test() -> None:
     """全体の処理をする。"""
     path_wav = '_ああんいあうあ.wav'
 
-    wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
-    print('NNSVS reader result ----------------------------------')
-    print('- wave.shape        :', wave.shape)
-    print('- spectrogram.shape :', spectrogram.shape)
-    print('- mgc.shape         :', mgc.shape)
-    print('- lf0.shape         :', lf0.shape)
-    print('- vuv.shape         :', vuv.shape)
-    print('- bap.shape         :', bap.shape)
+    # wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
+    # print('NNSVS reader result ----------------------------------')
+    # print('- wave.shape        :', wave.shape)
+    # print('- spectrogram.shape :', spectrogram.shape)
+    # print('- mgc.shape         :', mgc.shape)
+    # print('- lf0.shape         :', lf0.shape)
+    # print('- vuv.shape         :', vuv.shape)
+    # print('- bap.shape         :', bap.shape)
 
     print('Converter result -------------------------------------')
     sample_rate = 48000
@@ -219,5 +220,77 @@ def main() -> None:
     print('- bap2.shape       :', bap2.shape)
 
 
+def test_performance(wav_path: str, n_iter: int = 100) -> None:
+    """実行時間の計測をする。
+
+    ボトルネックになりそうな関数
+    - waveform_to_world: resample_type = ['soxr_vhq', 'soxr_hq', 'kaiser_best']
+    """
+    from time import time
+
+    def measure_time(_func, _n_iter, *_args, **_kwargs) -> any:
+        """関数の実行速度を評価する。
+        Args:
+            func: 評価したい関数
+            n_iter: 実行回数
+            *args: 関数に渡す位置引数
+            **kwargs: 関数に渡すキーワード引数
+        """
+        print('---------------------------------------------')
+        print(f'{_func.__name__} (x{_n_iter})')
+        print('args:', _args)
+        print('kwargs:', _kwargs)
+        t_start = time()
+        for _ in range(_n_iter):
+            result = _func(*_args, **_kwargs)
+        t_end = time()
+        process_time = round((t_end - t_start) * 1000, 1)
+        print('process_time:', process_time, 'ms')
+        return result
+
+    original_sample_rate = 44100
+    target_sample_rate = 48000
+    n_iter = 10
+    resample_types = [
+        'soxr_vhq',
+        'soxr_hq',
+        'soxr_mq',
+        'soxr_lq',
+        'kaiser_best',
+        'kaiser_fast',
+        'scipy',
+    ]
+    # WAV読み取り_サンプルレート変換なし
+    waveform = measure_time(
+        wavfile_to_waveform,
+        n_iter,
+        wav_path=wav_path,
+        target_sample_rate=original_sample_rate,
+    )
+    # WAV読み取り_サンプルレート変換あり
+    for res_type in resample_types:
+        waveform = measure_time(
+            wavfile_to_waveform,
+            n_iter,
+            wav_path=wav_path,
+            target_sample_rate=target_sample_rate,
+            resample_type=res_type,
+        )
+    # 特徴量抽出
+    f0_extractor = ['dio', 'harvest']
+    for extractor in f0_extractor:
+        f0, sp, ap = measure_time(
+            waveform_to_world,
+            n_iter,
+            waveform=waveform,
+            sample_rate=target_sample_rate,
+            frame_period=5.0,
+            f0_extractor=extractor,
+        )
+
+
 if __name__ == '__main__':
-    main()
+    # test(_a_a_n_i_a_u_a_44100.wav)
+    if not isfile('./data/_a_a_n_i_a_u_a_44100.wav'):
+        raise FileNotFoundError('Test WAV file not found.')
+    test_performance('./data/_a_a_n_i_a_u_a_44100.wav')
