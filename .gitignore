@@ -1,6 +1,9 @@
 # Directories
 /*.cache
 
+# ENUNU cache dir
+/*enutemp
+
 # Files
 *.code-workspace
 *.pyc
@@ -9,3 +12,4 @@
 *.zip
 *.npz
 log.txt
+
