@@ -31,41 +31,42 @@ DEFAULT_FFT_SIZE = 512
 
 
 def wavfile_to_waveform(
-    wav_path: Path,
-    target_sample_rate: int,
+    wav_path: Path | str,
+    out_sample_rate: int,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
     dtype: type = DEFAULT_WAV_DTYPE,
-) -> np.ndarray:
+) -> tuple[np.ndarray, int, int]:
     """Convert a WAV file to a waveform (numpy array).
 
     Args:
-        wav_path           (Path)    : The path to the WAV file.
-        target_sample_rate (int)     : Sample rate for the output waveform.
+        wav_path           (Path)    : Path to the WAV file.
+        out_sample_rate    (int)     : Sample rate for the output waveform.
         dtype              (np.dtype): dtype for the output waveform.
         resample_type      (str)     : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
 
     Returns:
-        waveform    (np.ndarray): The waveform as a numpy array.
-        sample_rate (int): The sample rate of the audio.
+        waveform    (np.ndarray): Waveform as a numpy array.
+        in_sample_rate (int): Sample rate of the original audio.
+        out_sample_rate   (int): Target sample rate of the returning waveform.
     """
-    waveform, original_sample_rate = sf.read(wav_path, dtype=dtype)
-    if original_sample_rate != target_sample_rate:
+    waveform, in_sample_rate = sf.read(wav_path, dtype=dtype)
+    if in_sample_rate != out_sample_rate:
         waveform = librosa.resample(
             waveform,
-            orig_sr=original_sample_rate,
-            target_sr=target_sample_rate,
+            orig_sr=in_sample_rate,
+            target_sr=out_sample_rate,
             res_type=resample_type,
         )
-    return waveform
+    return waveform, in_sample_rate, out_sample_rate
 
 
 def waveform_to_wavfile(
     waveform: np.ndarray,
-    wav_path: Path,
+    wav_path: Path | str,
+    in_sample_rate: int,
+    out_sample_rate: int,
     *,
-    original_sample_rate: int,
-    target_sample_rate: int,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
     dtype: type = DEFAULT_WAV_DTYPE,
 ) -> None:
@@ -77,14 +78,14 @@ def waveform_to_wavfile(
         target_sample_rate   (int)       : The target sample rate for the output WAV file.
         wav_path             (Path)      : The path to the output WAV file.
     """
-    if original_sample_rate != target_sample_rate:
+    if in_sample_rate != out_sample_rate:
         waveform = librosa.resample(
             waveform,
-            orig_sr=original_sample_rate,
-            target_sr=target_sample_rate,
+            orig_sr=in_sample_rate,
+            target_sr=out_sample_rate,
             res_type=resample_type,
         )
-    sf.write(wav_path, waveform.astype(dtype), target_sample_rate)
+    sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
 
 
 def waveform_to_world(
@@ -108,6 +109,7 @@ def waveform_to_world(
         world (tuple): The WORLD features (f0, sp, ap).
 
     NOTE: CREPE はとても重いらしいので注意。GPUリソースも必要。
+    TODO: harvestのf0推定がとても重い。frq ファイルがあれば読むようにする。なければ logger で警告を出す。独自に krq ファイルを出力する?
     """
     # F0
     if f0_extractor == 'harvest':
@@ -167,7 +169,7 @@ def world_to_waveform(
 
 
 def world_to_npzfile(
-    f0: np.ndarray, spectrogram: np.ndarray, aperiodicity: np.ndarray, npz_path: Path
+    f0: np.ndarray, spectrogram: np.ndarray, aperiodicity: np.ndarray, npz_path: Path | str
 ) -> None:
     """Save WORLD features to a NPZ file.
 
@@ -183,7 +185,7 @@ def world_to_npzfile(
     np.savez(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
 
 
-def npzfile_to_world(npz_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Load WORLD features from a NPZ file.
 
     Args:
@@ -256,14 +258,14 @@ def nnsvs_to_world(
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
-    f0 = np.exp(lf0, where=(lf0 > 0))
+    f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: VUV使う？
     # bap -> aperiodicity
     aperiodicity = pyworld.decode_aperiodicity(bap, sample_rate, fft_size)
     return f0, spectrogram, aperiodicity
 
 
 def nnsvs_to_npzfile(
-    mgc: np.ndarray, lf0: np.ndarray, vuv: np.ndarray, bap: np.ndarray, npz_path: Path
+    mgc: np.ndarray, lf0: np.ndarray, vuv: np.ndarray, bap: np.ndarray, npz_path: Path | str
 ) -> None:
     """Save NNSVS features to a NPZ file.
 
@@ -280,7 +282,9 @@ def nnsvs_to_npzfile(
     np.savez(npz_path, mgc=mgc, lf0=lf0, vuv=vuv, bap=bap)
 
 
-def npzfile_to_nnsvs(npz_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def npzfile_to_nnsvs(
+    npz_path: Path | str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Load NNSVS features from a NPZ file.
 
     Args:
