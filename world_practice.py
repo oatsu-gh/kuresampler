@@ -18,11 +18,6 @@ from nnmnkwii.preprocessing.f0 import interp1d
 from nnmnkwii.util import apply_delta_windows
 from nnsvs.multistream import get_windows
 
-F0_FLOOR = 150
-F0_CEIL = 700
-FRAME_PERIOD = 5.0
-SAMPLE_RATE = 48000
-
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,
     nnsvs_to_world,
@@ -35,6 +30,11 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
+
+F0_FLOOR = 150
+F0_CEIL = 700
+FRAME_PERIOD = 5.0
+SAMPLE_RATE = 48000
 
 
 def read_wav_nnsvs(
