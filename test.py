@@ -190,12 +190,15 @@ def read_wav_nnsvs(
     return waveform, spectrogram, mgc, lf0, vuv, bap
 
 
-def test() -> None:
+def test(
+    path_wav_in: Path | str,
+    path_wav_out: Path | str,
+    path_world_npz: Path | str,
+    path_nnsvs_npz: Path | str,
+) -> None:
     """全体の処理をする。"""
-    path_wav = '_ああんいあうあ.wav'
-
     # wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
-    # print('NNSVS reader result ----------------------------------')
+    # print('read_wav_nnsvs ----------------------------------')
     # print('- wave.shape        :', wave.shape)
     # print('- spectrogram.shape :', spectrogram.shape)
     # print('- mgc.shape         :', mgc.shape)
@@ -203,24 +206,74 @@ def test() -> None:
     # print('- vuv.shape         :', vuv.shape)
     # print('- bap.shape         :', bap.shape)
 
-    print('Converter result -------------------------------------')
-    sample_rate = 48000
-    waveform = wavfile_to_waveform(path_wav, target_sample_rate=sample_rate)
+    print('wavefile_to_waveform ---------------------------------------------------------')
+    # read WAV and convert from 44100 -> 48000 Hz
+    inprocess_sample_rate = 48000
+    waveform, original_sample_rate, _ = wavfile_to_waveform(path_wav_in, inprocess_sample_rate)
+    assert original_sample_rate == 44100
     print('waveform.shape:', waveform.shape)
+    print()
 
-    f0, sp, ap = waveform_to_world(waveform, sample_rate, frame_period=5.0)  # type: ignore
-    print('- f0.shape :', f0.shape)
-    print('- sp.shape :', sp.shape)
-    print('- ap.shape :', ap.shape)
+    print('waveform_to_wavfile ----------------------------------------------------------')
+    # write WAV in 44100 Hz
+    waveform_to_wavfile(waveform, path_wav_out, inprocess_sample_rate, original_sample_rate)
+    print('output wavfile:', path_wav_out.resolve())
+    print()
 
-    mgc2, lf02, vuv2, bap2 = world_to_nnsvs(f0, sp, ap, sample_rate)
-    print('- mgc2.shape       :', mgc2.shape)
-    print('- lf02.shape       :', lf02.shape)
-    print('- vuv2.shape       :', vuv2.shape)
-    print('- bap2.shape       :', bap2.shape)
+    print('waveform_to_world ------------------------------------------------------------')
+    f0, sp, ap = waveform_to_world(waveform, inprocess_sample_rate, frame_period=5.0)  # type: ignore
+    print('f0.shape :', f0.shape)
+    print('sp.shape :', sp.shape)
+    print('ap.shape :', ap.shape)
+    print()
+
+    print('world_to_waveform ------------------------------------------------------------')
+    waveform = world_to_waveform(f0, sp, ap, inprocess_sample_rate)
+    print('waveform.shape:', waveform.shape)
+    print()
+
+    print('world_to_nnsvs ---------------------------------------------------------------')
+    mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, inprocess_sample_rate)
+    print('mgc.shape :', mgc.shape)
+    print('lf0.shape :', lf0.shape)
+    print('vuv.shape :', vuv.shape)
+    print('bap.shape :', bap.shape)
+    print()
+
+    print('nnsvs_to_world ---------------------------------------------------------------')
+    f0, sp, ap = nnsvs_to_world(mgc, lf0, vuv, bap, inprocess_sample_rate)
+    print('f0.shape :', f0.shape)
+    print('sp.shape :', sp.shape)
+    print('ap.shape :', ap.shape)
+    print()
+
+    print('world_to_npzfile ------------------------------------------------------------')
+    world_to_npzfile(f0, sp, ap, path_world_npz)
+    print('output npzfile:', path_world_npz.resolve())
+    print()
+
+    print('npzfile_to_world ------------------------------------------------------------')
+    f0, sp, ap = npzfile_to_world(path_world_npz)
+    print('f0.shape :', f0.shape)
+    print('sp.shape :', sp.shape)
+    print('ap.shape :', ap.shape)
+    print()
+
+    print('nnsvs_to_npzfile ------------------------------------------------------------')
+    nnsvs_to_npzfile(mgc, lf0, vuv, bap, path_nnsvs_npz)
+    print('output npzfile:', path_nnsvs_npz.resolve())
+    print()
+
+    print('npzfile_to_nnsvs ------------------------------------------------------------')
+    mgc, lf0, vuv, bap = npzfile_to_nnsvs(path_nnsvs_npz)
+    print('mgc.shape :', mgc.shape)
+    print('lf0.shape :', lf0.shape)
+    print('vuv.shape :', vuv.shape)
+    print('bap.shape :', bap.shape)
+    print()
 
 
-def test_performance(wav_path: str, n_iter: int = 100) -> None:
+def test_performance(wav_path: Path | str, n_iter: int) -> None:
     """実行時間の計測をする。
 
     ボトルネックになりそうな関数
@@ -249,8 +302,7 @@ def test_performance(wav_path: str, n_iter: int = 100) -> None:
         return result
 
     original_sample_rate = 44100
-    target_sample_rate = 48000
-    n_iter = 10
+    inprocess_sample_rate = 48000
     resample_types = [
         'soxr_vhq',
         'soxr_hq',
@@ -261,19 +313,19 @@ def test_performance(wav_path: str, n_iter: int = 100) -> None:
         'scipy',
     ]
     # WAV読み取り_サンプルレート変換なし
-    waveform = measure_time(
+    waveform, _, _ = measure_time(
         wavfile_to_waveform,
         n_iter,
-        wav_path=wav_path,
-        target_sample_rate=original_sample_rate,
+        wav_path,
+        original_sample_rate,
     )
     # WAV読み取り_サンプルレート変換あり
     for res_type in resample_types:
-        waveform = measure_time(
+        waveform, _, _ = measure_time(
             wavfile_to_waveform,
             n_iter,
-            wav_path=wav_path,
-            target_sample_rate=target_sample_rate,
+            wav_path,
+            inprocess_sample_rate,
             resample_type=res_type,
         )
     # 特徴量抽出
@@ -283,7 +335,7 @@ def test_performance(wav_path: str, n_iter: int = 100) -> None:
             waveform_to_world,
             n_iter,
             waveform=waveform,
-            sample_rate=target_sample_rate,
+            sample_rate=inprocess_sample_rate,
             frame_period=5.0,
             f0_extractor=extractor,
         )
@@ -293,4 +345,15 @@ if __name__ == '__main__':
     # test(_a_a_n_i_a_u_a_44100.wav)
     if not isfile('./data/_a_a_n_i_a_u_a_44100.wav'):
         raise FileNotFoundError('Test WAV file not found.')
-    test_performance('./data/_a_a_n_i_a_u_a_44100.wav')
+    # general function test
+    test(
+        Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+        Path('./data/test_out.wav'),
+        Path('./data/test_out_worldfeatures.npz'),
+        Path('./data/test_out_nnsvsfeatures.npz'),
+    )
+    # function performance test
+    test_performance(
+        Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+        n_iter=10,
+    )
