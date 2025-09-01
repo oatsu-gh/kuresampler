@@ -233,7 +233,7 @@ def world_to_nnsvs(
     # aperiodicity -> bap
     bap = pyworld.code_aperiodicity(aperiodicity, sample_rate)
     # nnsvs 向けの world 特徴量を返す
-    return mgc.reshape(1, -1).T, lf0.reshape(1, -1).T, vuv.reshape(1, -1).T, bap
+    return mgc, lf0.reshape(1, -1).T, vuv.reshape(1, -1).T, bap
 
 
 def nnsvs_to_world(
