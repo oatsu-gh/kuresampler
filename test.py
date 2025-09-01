@@ -39,7 +39,7 @@ SAMPLE_RATE = 48000
 
 
 def read_wav_nnsvs(
-    wav_path: Path | str,
+    wav_path: str | Path,
     f0_extractor: str = 'harvest',
     f0_floor: float = F0_FLOOR,
     f0_ceil: float = F0_CEIL,
