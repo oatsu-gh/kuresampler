@@ -22,6 +22,7 @@ import sys
 from argparse import ArgumentParser
 from logging import Logger
 from os.path import dirname, join, splitext
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
@@ -31,9 +32,13 @@ import PyWavTool as pywavetool
 import torch
 import utaupy
 from nnsvs.gen import predict_waveform
+from nnsvs.usfgan import USFGANWrapper
+from nnsvs.util import StandardScaler
+from nnsvs.util import load_vocoder as nnsvs_load_vocoder
+from omegaconf import OmegaConf
+from omegaconf.dictconfig import DictConfig
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
-from sklearn.preprocessing import StandardScaler
 from tqdm.auto import tqdm
 
 from convert import (  # noqa: F401
@@ -59,6 +64,13 @@ def setup_logger() -> Logger:
         level=logging.DEBUG,
     )
     return logging.getLogger(__name__)
+
+
+def get_device() -> torch.device:
+    """PyTorch デバイスを取得する。"""
+    if torch.accelerator.is_available():
+        return torch.accelerator.current_accelerator()
+    return torch.device('cpu')
 
 
 class WorldFeatureResamp(pyrwu.Resamp):
@@ -302,16 +314,50 @@ class WorldFeatureRender(Render):
         self.logger.debug('------------------------------------------------')
 
 
-def nnsvs_world_to_waveform(
-    f0: np.ndarray,
-    spectrogram: np.ndarray,
-    aperiodicity: np.ndarray,
+def load_vocoder_model(
+    model_dir: Path | str, device: torch.device | None = None
+) -> tuple[USFGANWrapper, StandardScaler, DictConfig]:
+    """Load NNSVS vocoder model
+
+    Supports only packed models.
+    # NOTE:
+    # If you want to load non-packed ParallelWaveGAN models or non-packed uSFGAN models, please refer `nnsvs.util.load_vocoder()`.
+    # Simple process step is prioritized in this function.
+
+    Args:
+        model_dir (Path|str): Path to the model directory
+        device (torch.device | None): Device to load the model on
+    """
+    model_dir = Path(model_dir)
+    # get device
+    if device is None:
+        device = get_device()
+    # load configs
+    model_dir = Path(model_dir)
+    vocoder_model_path = model_dir / 'vocoder_model.pth'
+    vocoder_config_path = model_dir / 'vocoder_model.yaml'
+    acoustic_config_path = model_dir / 'acoustic_model.yaml'
+    _vocoder_config = OmegaConf.load(vocoder_config_path)
+    acoustic_config = OmegaConf.load(acoustic_config_path)
+
+    vocoder, vocoder_in_scaler, vocoder_config = nnsvs_load_vocoder(
+        vocoder_model_path, device, acoustic_config
+    )
+    return vocoder, vocoder_in_scaler, vocoder_config
+
+
+def nnsvs_to_waveform(
+    mgc: np.ndarray,
+    lf0: np.ndarray,
+    vuv: np.ndarray,
+    bap: np.ndarray,
+    vocoder_model_dir: Path | str,
     sample_rate: int,
-    vocoder: torch.nn.Module | None,
-    vocoder_config: dict | None,
-    vocoder_in_scaler: StandardScaler | None,
-    vocoder_type: str,
     *,
+    vocoder_type: str = 'usfgan',
+    feature_type: str = 'world',
+    vuv_threshold: float = 0.5,
+    frame_period: int = 5,
     logger: Logger | None = None,
 ) -> np.ndarray:
     """world (original) の特徴量から wav を生成する。
@@ -331,33 +377,24 @@ def nnsvs_world_to_waveform(
         wav (np.ndarray): wavform. shape: (n_samples,)
     """
     logger = logging.getLogger(__name__) if logger is None else logger
-
-    # WORLD特徴量をNNSVS用に前処理する
-    mgc, lf0, vuv, bap = world_to_nnsvs(f0, spectrogram, aperiodicity)
-    # 関数に渡すために形式を整える
+    # モデルに渡す用に特徴量をまとめる
     multistream_features = (mgc, lf0, vuv, bap)
-
-    # auto detect device
-    device = (
-        torch.accelerator.current_accelerator()
-        if torch.accelerator.is_available()
-        else torch.device('cpu')
-    )
-    logger.debug(f'Using device: {device}')
-
+    # モデルを読み込む
+    vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(vocoder_model_dir)
     # predict waveform with nnsvs-usfgan model
+    device = get_device()
     wav = predict_waveform(
         device=device,
         multistream_features=multistream_features,
-        vocoder=vocoder,
+        vocoder=vocoder_model,
         vocoder_config=vocoder_config,
         vocoder_in_scaler=vocoder_in_scaler,
         sample_rate=sample_rate,
-        frame_period=5,
+        frame_period=frame_period,
         use_world_codec=True,
-        feature_type='world',
+        feature_type=feature_type,
         vocoder_type=vocoder_type,
-        vuv_threshold=0.5,  # vuv 閾値設定はするけど使われないはず
+        vuv_threshold=vuv_threshold,  # vuv 閾値設定はするけど使われないはず
     )
     # 生成した waveform を返す
     return wav
