@@ -115,8 +115,8 @@ def test_convert(
 
 def test_vocoder_model(vocoder_model_dir: Path, path_wav_in: Path, path_wav_out: Path) -> None:
     """Vocoderモデルを読み取れるか、特徴量からのWAV合成ができるかをテストする。"""
-    print('Loading vocoder model...')
     print('test_vocoder_model ---------------------------------------------------------')
+    print('Loading vocoder model...')
     vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(vocoder_model_dir)
     print('type(vocoder_model):', type(vocoder_model))
     print('type(vocoder_in_scaler):', type(vocoder_in_scaler))
