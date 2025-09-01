@@ -31,6 +31,9 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
+from kuresampler import (
+    load_vocoder_model,
+)
 
 F0_FLOOR = 150
 F0_CEIL = 700
@@ -190,7 +193,7 @@ def read_wav_nnsvs(
     return waveform, spectrogram, mgc, lf0, vuv, bap
 
 
-def test(
+def test_convert(
     path_wav_in: Path | str,
     path_wav_out: Path | str,
     path_world_npz: Path | str,
@@ -273,6 +276,15 @@ def test(
     print()
 
 
+def test_vocoder_model(vocoder_model_dir: Path | str) -> None:
+    """Vocoderモデルを読み取れるか、特徴量からのWAV合成ができるかをテストする。"""
+    print('test_vocoder_model ---------------------------------------------------------')
+    vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(vocoder_model_dir)
+    print('type(vocoder_model):', type(vocoder_model))
+    print('type(vocoder_in_scaler):', type(vocoder_in_scaler))
+    print('type(vocoder_config):', type(vocoder_config))
+
+
 def test_performance(wav_path: Path | str, n_iter: int) -> None:
     """実行時間の計測をする。
 
@@ -346,14 +358,17 @@ if __name__ == '__main__':
     if not isfile('./data/_a_a_n_i_a_u_a_44100.wav'):
         raise FileNotFoundError('Test WAV file not found.')
     # general function test
-    test(
+    test_convert(
         Path('./data/_a_a_n_i_a_u_a_44100.wav'),
         Path('./data/test_out.wav'),
         Path('./data/test_out_worldfeatures.npz'),
         Path('./data/test_out_nnsvsfeatures.npz'),
     )
     # function performance test
-    test_performance(
-        Path('./data/_a_a_n_i_a_u_a_44100.wav'),
-        n_iter=10,
-    )
+    # test_performance(
+    #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+    #     n_iter=10,
+    # )
+
+    # test_vocoder_model
+    test_vocoder_model(Path('./models/usfGAN_EnunuKodoku_0826'))
