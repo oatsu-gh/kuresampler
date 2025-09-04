@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) 2025 oatsu
+# NOTE: pyworld が型チェックエラーを出すので無視する
+# pyright: reportAttributeAccessIssue=none
+
 """
 音声まわりのファイルや特徴量を相互変換する。
 
@@ -19,14 +22,14 @@ import pyworld
 import soundfile as sf
 
 # WAV settings ---------------------
-DEFAULT_WAV_DTYPE = np.float64
-DEFAULT_RESAMPLE_TYPE = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
+DEFAULT_WAV_DTYPE: str = 'float64'
+DEFAULT_RESAMPLE_TYPE: str = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
 # WORLD settings -------------------
-DEFAULT_FRAME_PERIOD = 5.0  # ms
-DEFAULT_F0_FLOOR = 50.0
-DEFAULT_F0_CEIL = 2000
-DEFAULT_D4C_THRESHOLD = 0.85
-DEFAULT_FFT_SIZE = 512
+DEFAULT_FRAME_PERIOD: int = 5  # ms
+DEFAULT_F0_FLOOR: float = 50.0
+DEFAULT_F0_CEIL: float = 2000.0
+DEFAULT_D4C_THRESHOLD: float = 0.85
+DEFAULT_FFT_SIZE: int = 512
 # ----------------------------------
 
 
@@ -35,7 +38,7 @@ def wavfile_to_waveform(
     out_sample_rate: int,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
-    dtype: type = DEFAULT_WAV_DTYPE,
+    dtype: str = DEFAULT_WAV_DTYPE,
 ) -> tuple[np.ndarray, int, int]:
     """Convert a WAV file to a waveform (numpy array).
 
@@ -50,6 +53,7 @@ def wavfile_to_waveform(
         in_sample_rate (int): Sample rate of the original audio.
         out_sample_rate   (int): Target sample rate of the returning waveform.
     """
+    wav_path = Path(wav_path)
     waveform, in_sample_rate = sf.read(wav_path, dtype=dtype)
     if in_sample_rate != out_sample_rate:
         waveform = librosa.resample(
@@ -68,7 +72,7 @@ def waveform_to_wavfile(
     out_sample_rate: int,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
-    dtype: type = DEFAULT_WAV_DTYPE,
+    dtype: str = DEFAULT_WAV_DTYPE,
 ) -> None:
     """Convert a waveform (numpy array) to a WAV file.
 
@@ -92,7 +96,7 @@ def waveform_to_world(
     waveform: np.ndarray,
     sample_rate: int,
     *,
-    frame_period: float = DEFAULT_FRAME_PERIOD,
+    frame_period: int = DEFAULT_FRAME_PERIOD,
     f0_extractor: str = 'harvest',
     f0_floor: float = DEFAULT_F0_FLOOR,
     f0_ceil: float = DEFAULT_F0_CEIL,
@@ -179,6 +183,7 @@ def world_to_npzfile(
         aperiodicity (np.ndarray)
         npz_path     (Path): Output NPZ file path.
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Output path must be a .npz file.'
     # 書き出し
@@ -194,6 +199,7 @@ def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.n
     Returns:
         tuple: The loaded WORLD features (f0, spectrogram, aperiodicity).
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Input path must be a .npz file.'
     # 読み取り
@@ -276,6 +282,7 @@ def nnsvs_to_npzfile(
         bap (np.ndarray): Band aperiodicity
         npz_path (Path): Output NPZ file path.
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Output path must be a .npz file.'
     # 書き出し
@@ -293,6 +300,7 @@ def npzfile_to_nnsvs(
     Returns:
         tuple: The loaded NNSVS features (mgc, lf0, vuv, bap).
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Input path must be a .npz file.'
     # 読み取り
