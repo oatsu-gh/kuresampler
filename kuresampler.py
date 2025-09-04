@@ -316,7 +316,7 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self.logger.debug(f'  sp.shape    : {self.sp.shape}')
         self.logger.debug(f'  ap.shape    : {self.ap.shape}')
         # ------------------------------------------------------
-        # NOTE: synthesize はオーバーライドされていえるので nnsvs を使って waveform 生成していることに注意
+        # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
         # UST の音量を waveform に反映する。wav 出力しない場合は無駄な処理なのでskip。
         if self.export_wav:
