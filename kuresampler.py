@@ -19,7 +19,7 @@ UTAU engine for smooth crossfades
 import logging
 import os
 import sys
-from argparse import Action, ArgumentParser
+from argparse import ArgumentParser
 from copy import copy
 from logging import Logger
 from os.path import splitext
@@ -698,7 +698,7 @@ def main_as_resampler() -> None:
         nargs='?',
         default='',
     )
-    parser.add_argument('--show-flag', action=Action)
+    parser.add_argument('--show-flag', action=pyrwu.ShowFlagAction)
     args = parser.parse_args()
 
     if args.pitchbend == '':  # flagsに値がないとき、引数がずれてしまうので補正する。
