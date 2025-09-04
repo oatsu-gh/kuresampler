@@ -471,6 +471,7 @@ class NeuralNetworkRender(WorldFeatureRender):
     """ニューラルボコーダーを使ってWAVレンダリングする。
 
     # TODO: resampler 部分と wavtool 部分それぞれ vocoder model を使うか選択できるようにクラス指定できるようにする。
+    # TODO: model_dir ではなく load 済みのモデルを渡しても良いようにする。高速化のため。
     """
 
     def __init__(
@@ -742,8 +743,6 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
     - エンベロープおよびゲイン反映を独自実装する必要あり。
     - 音量ノーマライズを独自実装する必要あり。いっそ world で wav を内部生成して音量係数を取得してしまう？
     - 一度にボコーダーに渡すサイズが大きいので WAV 生成に時間がかかり、VRAM 消費も激しい。
-
-
     """
     # TODO: 実装
     pass
