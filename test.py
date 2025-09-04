@@ -7,8 +7,15 @@ PyRwu の形式と NNSVS の形式に変換してみる。
 相互変換できるか調査して kuresampler の開発につなげる。
 """
 
-from os.path import isfile
+from os import chdir
+from os.path import dirname, isfile, join
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Any
+
+import colored_traceback.auto  # noqa: F401
+import utaupy
+from PyUtauCli.projects.Ust import Ust
 
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,
@@ -23,8 +30,11 @@ from convert import (  # noqa: F401
     world_to_waveform,
 )
 from kuresampler import (
+    NeuralNetworkRender,
+    WorldFeatureRender,
     load_vocoder_model,
     nnsvs_to_waveform,
+    setup_logger,
 )
 
 F0_FLOOR = 150
@@ -33,8 +43,20 @@ FRAME_PERIOD = 5.0
 SAMPLE_RATE = 48000
 
 
+TEST_WAV_IN = Path('./test/_a_a_n_i_a_u_a_44100.wav')
+TEST_WAV_OUT = Path('./test/test_out.wav')
+TEST_NPZ_WORLD = Path('./test/test_out_worldfeatures.npz')
+TEST_NPZ_NNSVS = Path('./test/test_out_nnsvsfeatures.npz')
+TEST_N_ITER = 10
+TEST_UST_IN = Path('./test/test.ust')
+TEST_VOCODER_MODEL_DIR = Path('./models/usfGAN_EnunuKodoku_0826')
+
+
 def test_convert(
-    path_wav_in: Path, path_wav_out: Path, path_world_npz: Path, path_nnsvs_npz: Path
+    path_wav_in: Path = TEST_WAV_IN,
+    path_wav_out: Path = TEST_WAV_OUT,
+    path_world_npz: Path = TEST_NPZ_WORLD,
+    path_nnsvs_npz: Path = TEST_NPZ_NNSVS,
 ) -> None:
     """全体の処理をする。"""
     # wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
@@ -113,7 +135,11 @@ def test_convert(
     print()
 
 
-def test_vocoder_model(vocoder_model_dir: Path, path_wav_in: Path, path_wav_out: Path) -> None:
+def test_vocoder_model(
+    vocoder_model_dir: Path = TEST_VOCODER_MODEL_DIR,
+    path_wav_in: Path = TEST_WAV_IN,
+    path_wav_out: Path = TEST_WAV_OUT,
+) -> None:
     """Vocoderモデルを読み取れるか、特徴量からのWAV合成ができるかをテストする。"""
     print('test_vocoder_model ---------------------------------------------------------')
     print('Loading vocoder model...')
@@ -129,7 +155,7 @@ def test_vocoder_model(vocoder_model_dir: Path, path_wav_in: Path, path_wav_out:
     f0, sp, ap = waveform_to_world(waveform_in, inprocess_sample_rate)
     mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, inprocess_sample_rate)
     print('Rendering waveform with vocoder model...')
-    waveform_out = nnsvs_to_waveform(mgc, lf0, vuv, bap, vocoder_model_dir, inprocess_sample_rate)
+    waveform_out = nnsvs_to_waveform(mgc, lf0, vuv, bap, vocoder_model_dir)
     print('Exporting wavefile...')
     output_sample_rate = 48000
     waveform_to_wavfile(waveform_out, path_wav_out, inprocess_sample_rate, output_sample_rate)
@@ -138,7 +164,7 @@ def test_vocoder_model(vocoder_model_dir: Path, path_wav_in: Path, path_wav_out:
     print()
 
 
-def test_performance(wav_path: Path | str, n_iter: int) -> None:
+def test_performance(path_wav_in: Path | str = TEST_WAV_IN, n_iter: int = TEST_N_ITER) -> None:
     """実行時間の計測をする。
 
     ボトルネックになりそうな関数
@@ -146,7 +172,7 @@ def test_performance(wav_path: Path | str, n_iter: int) -> None:
     """
     from time import time
 
-    def measure_time(_func, _n_iter, *_args, **_kwargs) -> any:
+    def measure_time(_func, _n_iter, *_args, **_kwargs) -> Any:
         """関数の実行速度を評価する。
         Args:
             func: 評価したい関数
@@ -159,6 +185,7 @@ def test_performance(wav_path: Path | str, n_iter: int) -> None:
         print('args:', _args)
         print('kwargs:', _kwargs)
         t_start = time()
+        result = None
         for _ in range(_n_iter):
             result = _func(*_args, **_kwargs)
         t_end = time()
@@ -181,7 +208,7 @@ def test_performance(wav_path: Path | str, n_iter: int) -> None:
     waveform, _, _ = measure_time(
         wavfile_to_waveform,
         n_iter,
-        wav_path,
+        path_wav_in,
         original_sample_rate,
     )
     # WAV読み取り_サンプルレート変換あり
@@ -189,7 +216,7 @@ def test_performance(wav_path: Path | str, n_iter: int) -> None:
         waveform, _, _ = measure_time(
             wavfile_to_waveform,
             n_iter,
-            wav_path,
+            path_wav_in,
             inprocess_sample_rate,
             resample_type=res_type,
         )
@@ -206,7 +233,65 @@ def test_performance(wav_path: Path | str, n_iter: int) -> None:
         )
 
 
+def test_resampler(
+    path_ust_in: Path | str = TEST_UST_IN,
+    path_wav_out: Path | str = TEST_WAV_OUT,
+    model_dir: Path | str = TEST_VOCODER_MODEL_DIR,
+    use_neural_resampler: bool = False,
+    use_neural_wavtool: bool = False,
+) -> None:
+    """NeuralNetworkResampler で UST から WAV を生成するテストを行う。"""
+    logger = setup_logger()
+    # utaupyでUSTを読み取る
+    ust_utaupy = utaupy.ust.load(path_ust_in)
+    voice_dir = ust_utaupy.voicedir
+    # ust_path = ust.setting.get('Project')  # noqa: F841
+    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
+    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
+
+    # 一時フォルダにustを出力してPyUtauCliで読み直す
+    with TemporaryDirectory() as temp_dir:
+        # utaupyでプラグインをustファイルとして保存する
+        path_temp_ust = join(temp_dir, 'temp.ust')
+        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
+            ust_utaupy.as_ust().write(path_temp_ust)
+        else:
+            ust_utaupy.write(path_temp_ust)
+        # pyutaucliでustを読み込みなおす
+        ust = Ust(path_temp_ust)
+        ust.load()
+
+    # ニューラルボコーダーを使う場合、ResampとWavToolのクラスを差し替える
+    if use_neural_resampler:
+        render = NeuralNetworkRender(
+            ust,
+            logger=logger,
+            voice_dir=str(voice_dir),
+            cache_dir=str(cache_dir),
+            output_file=str(path_wav_out),
+            export_wav=True,
+            export_features=False,
+            vocoder_model_dir=model_dir,
+        )
+    else:
+        render = WorldFeatureRender(
+            ust,
+            logger=logger,
+            voice_dir=str(voice_dir),
+            cache_dir=str(cache_dir),
+            output_file=str(path_wav_out),
+            export_wav=True,
+            export_features=False,
+        )
+    # PyUtauCli でレンダリング
+    render.clean()
+    render.resamp(force=True)
+    # 通常のクロスフェード処理で結合
+    render.append()
+
+
 if __name__ == '__main__':
+    chdir(dirname(__file__))  # カレントディレクトリをこのファイルのある場所に変更する
     # test(_a_a_n_i_a_u_a_44100.wav)
     if not isfile('./data/_a_a_n_i_a_u_a_44100.wav'):
         raise FileNotFoundError('Test WAV file not found.')
@@ -223,9 +308,17 @@ if __name__ == '__main__':
     #     n_iter=10,
     # )
 
-    # test_vocoder_model
+    # test vocoder model
     test_vocoder_model(
         Path('./models/usfGAN_EnunuKodoku_0826'),
         Path('./data/_a_a_n_i_a_u_a_44100.wav'),
         Path('./data/test_vocoder_out.wav'),
+    )
+    # test resampler
+    test_resampler(
+        Path('./test/test.ust'),
+        Path('./test/test_resampler_out.wav'),
+        Path('./models/usfGAN_EnunuKodoku_0826'),
+        use_neural_resampler=True,
+        use_neural_wavtool=False,
     )
