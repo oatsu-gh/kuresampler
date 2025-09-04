@@ -19,24 +19,25 @@ UTAU engine for smooth crossfades
 import logging
 import os
 import sys
-from argparse import ArgumentParser
+from argparse import Action, ArgumentParser
+from copy import copy
 from logging import Logger
-from os.path import dirname, join, splitext
+from os.path import splitext
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
+import librosa
 import numpy as np
 import PyRwu as pyrwu
-import PyWavTool as pywavetool
+import PyWavTool as pywavtool
 import torch
-import utaupy
 from nnsvs.gen import predict_waveform
 from nnsvs.usfgan import USFGANWrapper
 from nnsvs.util import StandardScaler
 from nnsvs.util import load_vocoder as nnsvs_load_vocoder
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
+from omegaconf.listconfig import ListConfig
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 from tqdm.auto import tqdm
@@ -61,16 +62,15 @@ def setup_logger() -> Logger:
     logging.basicConfig(
         stream=sys.stdout,
         format='[%(filename)s][%(levelname)s] %(message)s',
-        level=logging.DEBUG,
+        level=logging.INFO,
     )
     return logging.getLogger(__name__)
 
 
 def get_device() -> torch.device:
     """PyTorch デバイスを取得する。"""
-    if torch.accelerator.is_available():
-        return torch.accelerator.current_accelerator()
-    return torch.device('cpu')
+    device = torch.accelerator.current_accelerator(check_available=True) or torch.device('cpu')
+    return device
 
 
 class WorldFeatureResamp(pyrwu.Resamp):
@@ -143,7 +143,15 @@ class WorldFeatureResamp(pyrwu.Resamp):
     def export_features(self, value: bool) -> None:
         self._export_features = value
 
-    def resamp(self) -> tuple:
+    def return_features(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """WORLD特徴量を返す。resamp() より後に実行する想定。"""
+        return copy(self.f0), copy(self.sp), copy(self.ap)
+
+    def return_waveform(self) -> np.ndarray:
+        """waveform を返す。resamp() より後に実行する想定"""
+        return copy(self._output_data)
+
+    def resamp(self) -> None:
         """
         WAVファイルの代わりにWORLDの特徴量をファイルに出力する。
         """
@@ -175,11 +183,156 @@ class WorldFeatureResamp(pyrwu.Resamp):
             npz_path = splitext(self.output_path)[0] + '.npz'
             np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
             self.logger.info(f'Exported WORLD features (f0, sp, ap): {npz_path}')
-        # WORLD 特徴量を返す。
-        return self.f0, self.sp, self.ap
 
 
-class WorldFeatureWavTool(pywavetool.WavTool):
+class NeuralNetworkResamp(WorldFeatureResamp):
+    """Neural NetworkによるWORLD特徴量のリサンプリングを行う。
+
+    Args:
+        vocoder_model_dir: The directory containing the vocoder model files.
+    """
+
+    _vocoder_model: torch.nn.Module
+    _vocoder_model_dir: Path | str
+    _vocoder_in_scaler: StandardScaler
+    _vocoder_config: DictConfig | ListConfig
+    _vocoder_type: str
+    _vocoder_feature_type: str
+    _vocoder_vuv_threshold: float
+    _vocoder_frame_period: int
+    _device: torch.device
+    _resample_type: str
+
+    def __init__(
+        self,
+        *args,
+        vocoder_model_dir: Path | str,
+        vocoder_type: str = 'usfgan',
+        vocoder_feature_type: str = 'world',
+        vocoder_vuv_threshold: float = 0.5,
+        vocoder_frame_period: int = 5,
+        resample_type: str = 'soxr_vhq',
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._vocoder_model_dir = vocoder_model_dir
+        self._device = get_device()
+        self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = load_vocoder_model(
+            vocoder_model_dir,
+            device=self._device,
+        )
+        self._vocoder_type = vocoder_type
+        self._vocoder_feature_type = vocoder_feature_type
+        self._vocoder_vuv_threshold = vocoder_vuv_threshold
+        self._vocoder_frame_period = vocoder_frame_period
+        self._resample_type = resample_type
+
+    @property
+    def vocoder_model(self) -> torch.nn.Module:
+        """ボコーダーモデル"""
+        return self._vocoder_model
+
+    @property
+    def vocoder_sample_rate(self) -> int:
+        """ボコーダーモデルのwav出力サンプリング周波数"""
+        return self._vocoder_config.data.sample_rate
+
+    def synthesize(self) -> None:
+        """pyworld の代わりに vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
+
+        for effect in pyrwu.settings.F0_EFFECTS:
+            self._f0 = effect.apply(self)
+
+        for effect in pyrwu.settings.SP_EFFECTS:
+            self._sp = effect.apply(self)
+
+        for effect in pyrwu.settings.AP_EFFECTS:
+            self._ap = effect.apply(self)
+
+        for effect in pyrwu.settings.WORLD_EFFECTS:
+            self._f0, self._sp, self._ap = effect.apply(self)
+
+        assert self._vocoder_model is not None  # 念のため確認
+
+        # WORLD 特徴量を NNSVS 用に変換
+        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.vocoder_sample_rate)
+        # モデルに渡す用に特徴量をまとめる
+        multistream_features = (mgc, lf0, vuv, bap)
+        # print(mgc.shape, lf0.shape, vuv.shape, bap.shape)
+        # waveformを生成
+        wav = predict_waveform(
+            device=self._device,
+            multistream_features=multistream_features,
+            vocoder=self._vocoder_model,
+            vocoder_config=self._vocoder_config,
+            vocoder_in_scaler=self._vocoder_in_scaler,
+            sample_rate=self.vocoder_sample_rate,
+            frame_period=self._vocoder_frame_period,
+            use_world_codec=True,
+            feature_type=self._vocoder_feature_type,
+            vocoder_type=self._vocoder_type,
+            vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+        )
+        # サンプリング周波数が異なる場合、UTAUの原音と同じになるようにリサンプリングする。
+        if self.vocoder_sample_rate != self.framerate:
+            wav = librosa.resample(
+                wav,
+                orig_sr=self.vocoder_sample_rate,  # ボコーダモデルが出力するサンプルレート
+                target_sr=self.framerate,  # UTAUの原音のサンプルレート
+                res_type=self._resample_type,
+            )
+        # 生成した波形を _output_data に代入
+        self._output_data = wav
+
+    def output(self) -> None:
+        """生成した波形を出力する。"""
+        if self._output_data is not None:
+            pyrwu.wave_io.write(
+                self.output_path,
+                self._output_data,
+                self.vocoder_sample_rate,
+                pyrwu.settings.OUTPUT_BITDEPTH // 8,
+            )
+
+    def resamp(self) -> None:
+        """
+        Neural Networkを用いてWORLD特徴量をリサンプリングする。
+        """
+        self.logger.info(
+            f'Resample using vocoder model: {self._vocoder_model_dir} ({type(self._vocoder_model)})'
+        )
+        self.parseFlags()  # フラグを取得
+        self.getInputData()  # 原音WAVからWORLD特徴量を抽出
+        self.stretch()  # 時間伸縮
+        self.pitchShift()  # ピッチシフト
+        self.applyPitch()  # ピッチベンド適用
+
+        # パラメータ確認 ---------------------------------------
+        self.logger.debug(f'  input_path  : {self.input_path}')
+        self.logger.debug(f'  output_path : {self.output_path}')
+        self.logger.debug(f'  framerate   : {self.framerate}')
+        self.logger.debug(f'  t.shape     : {self.t.shape}')
+        self.logger.debug(f'  f0.shape    : {self.f0.shape}')
+        self.logger.debug(f'  sp.shape    : {self.sp.shape}')
+        self.logger.debug(f'  ap.shape    : {self.ap.shape}')
+        # ------------------------------------------------------
+        # NOTE: synthesize はオーバーライドされていえるので nnsvs を使って waveform 生成していることに注意
+        self.synthesize()
+        # UST の音量を waveform に反映する。wav 出力しない場合は無駄な処理なのでskip。
+        if self.export_wav:
+            self.adjustVolume()
+        # WAVファイル出力は必須ではないがテスト用に出力可能。
+        if self.export_wav:
+            self.output()
+            self.logger.info(f'Exported WAV file: {self.output_path}')
+        # WORLD 特徴量を npz ファイル出力する。
+        if self.export_features:
+            npz_path = splitext(self.output_path)[0] + '.npz'
+            np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
+            self.logger.info(f'Exported WORLD features (f0, sp, ap): {npz_path}')
+
+
+class WorldFeatureWavTool(pywavtool.WavTool):
     """WAV出力の代わりに WORLD の特徴量を出力するのに用いる。"""
 
     _export_wav: bool
@@ -195,8 +348,8 @@ class WorldFeatureWavTool(pywavetool.WavTool):
         self._error = False
         if os.path.split(output)[0] != '':
             os.makedirs(os.path.split(output)[0], exist_ok=True)
-        self._header = pywavetool.whd.Whd(output + '.whd')
-        self._dat = pywavetool.dat.Dat(output + '.dat')
+        self._header = pywavtool.whd.Whd(output + '.whd')
+        self._dat = pywavtool.dat.Dat(output + '.dat')
         self._output = output
 
     @property
@@ -314,15 +467,91 @@ class WorldFeatureRender(Render):
         self.logger.debug('------------------------------------------------')
 
 
+class NeuralNetworkRender(WorldFeatureRender):
+    """ニューラルボコーダーを使ってWAVレンダリングする。
+
+    # TODO: resampler 部分と wavtool 部分それぞれ vocoder model を使うか選択できるようにクラス指定できるようにする。
+    """
+
+    def __init__(
+        self,
+        *args,
+        vocoder_model_dir: Path | str,
+        vocoder_type: str = 'usfgan',
+        vocoder_feature_type: str = 'world',
+        vocoder_vuv_threshold: float = 0.5,
+        vocoder_frame_period: int = 5,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._vocoder_model_dir = vocoder_model_dir
+        self._vocoder_type = vocoder_type
+        self._vocoder_feature_type = vocoder_feature_type
+        self._vocoder_vuv_threshold = vocoder_vuv_threshold
+        self._vocoder_frame_period = vocoder_frame_period
+
+    def resamp(self, *, force: bool = False) -> None:
+        """
+        PyRwu.Resamp の代わりに NeuralNetworkResamp を用いる。
+
+        PyRwu.Resampを使用してキャッシュファイルを生成する。
+        Parameters
+        ----------
+        force: bool, default False
+            Trueの場合、キャッシュファイルがあっても生成する。
+        """
+        os.makedirs(self._cache_dir, exist_ok=True)
+        for note in tqdm(self.notes, colour='cyan'):
+            self.logger.debug('------------------------------------------------')
+            if not note.require_resamp:
+                continue
+            if force or not os.path.isfile(note.cache_path):
+                self.logger.info(
+                    '{} {} {} {} {} {} {} {} {} {} {} {} {}'.format(  # noqa: UP032
+                        note.input_path,
+                        note.cache_path,
+                        note.target_tone,
+                        note.velocity,
+                        note.flags,
+                        note.offset,
+                        note.target_ms,
+                        note.fixed_ms,
+                        note.end_ms,
+                        note.intensity,
+                        note.modulation,
+                        note.tempo,
+                        note.pitchbend,
+                    )
+                )
+                resamp = NeuralNetworkResamp(
+                    input_path=note.input_path,
+                    output_path=note.cache_path,
+                    target_tone=note.target_tone,
+                    velocity=note.velocity,
+                    flag_value=note.flags,
+                    offset=note.offset,
+                    target_ms=note.target_ms,
+                    fixed_ms=note.fixed_ms,
+                    end_ms=note.end_ms,
+                    volume=note.intensity,
+                    modulation=note.modulation,
+                    tempo=note.tempo,
+                    pitchbend=note.pitchbend,
+                    logger=self.logger,
+                    export_wav=self.export_wav,
+                    export_features=self.export_features,
+                    vocoder_model_dir=self._vocoder_model_dir,
+                )
+                resamp.resamp()
+            else:
+                self.logger.info(f'Using cache ({note.cache_path})')
+        self.logger.debug('------------------------------------------------')
+
+
 def load_vocoder_model(
     model_dir: Path | str, device: torch.device | None = None
-) -> tuple[USFGANWrapper, StandardScaler, DictConfig]:
+) -> tuple[USFGANWrapper, StandardScaler, ListConfig | DictConfig]:
     """Load NNSVS vocoder model
-
-    Supports only packed models.
-    # NOTE:
-    # If you want to load non-packed ParallelWaveGAN models or non-packed uSFGAN models, please refer `nnsvs.util.load_vocoder()`.
-    # Simple process step is prioritized in this function.
 
     Args:
         model_dir (Path|str): Path to the model directory
@@ -333,11 +562,10 @@ def load_vocoder_model(
     if device is None:
         device = get_device()
     # load configs
-    model_dir = Path(model_dir)
     vocoder_model_path = model_dir / 'vocoder_model.pth'
-    vocoder_config_path = model_dir / 'vocoder_model.yaml'
+    # vocoder_config_path = model_dir / 'vocoder_model.yaml'
     acoustic_config_path = model_dir / 'acoustic_model.yaml'
-    _vocoder_config = OmegaConf.load(vocoder_config_path)
+    # vocoder_config = OmegaConf.load(vocoder_config_path)
     acoustic_config = OmegaConf.load(acoustic_config_path)
 
     vocoder, vocoder_in_scaler, vocoder_config = nnsvs_load_vocoder(
@@ -352,7 +580,6 @@ def nnsvs_to_waveform(
     vuv: np.ndarray,
     bap: np.ndarray,
     vocoder_model_dir: Path | str,
-    sample_rate: int,
     *,
     vocoder_type: str = 'usfgan',
     feature_type: str = 'world',
@@ -367,7 +594,6 @@ def nnsvs_to_waveform(
         f0 (np.ndarray): continuous F0
         spectrogram (np.ndarray):
         aperiodicity (np.ndarray): band aperiodicity
-        sample_rate (int): sample rate
         vocoder (nn.Module): Vocoder model
         vocoder_config (dict): Vocoder config
         vocoder_in_scaler (StandardScaler): Vocoder input scaler
@@ -381,7 +607,9 @@ def nnsvs_to_waveform(
     multistream_features = (mgc, lf0, vuv, bap)
     # モデルを読み込む
     vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(vocoder_model_dir)
-    # predict waveform with nnsvs-usfgan model
+    # サンプリング周波数を自動取得
+    sample_rate = vocoder_config.data.sample_rate
+    # waveform を生成
     device = get_device()
     wav = predict_waveform(
         device=device,
@@ -469,7 +697,7 @@ def main_as_resampler() -> None:
         nargs='?',
         default='',
     )
-    parser.add_argument('--show-flag', action=pyrwu.ShowFlagAction)
+    parser.add_argument('--show-flag', action=Action)
     args = parser.parse_args()
 
     if args.pitchbend == '':  # flagsに値がないとき、引数がずれてしまうので補正する。
@@ -517,89 +745,9 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
 
 
     """
-    logger = setup_logger()
-
-    # TODO: 特徴量取得を実装
-    f0 = None
-    spectrogram = None
-    aperiodicity = None
-    # TODO: モデルとconfig読み取りを実装
-    sample_rate = 48000
-    vocoder = None
-    vocoder_config = None
-    vocoder_in_scaler = None
-    vocoder_type = 'usfgan'
-
-    # WORLD特徴量をNNSVS用に前処理する
-    mgc, lf0, vuv, bap = world_to_nnsvs(f0, spectrogram, aperiodicity)
-    # 関数に渡すために形式を整える
-    multistream_features = (mgc, lf0, vuv, bap)
-
-    # Auto detect device
-    device = (
-        torch.accelerator.current_accelerator()
-        if torch.accelerator.is_available()
-        else torch.device('cpu')
-    )
-
-    # Predict waveform with nnsvs-usfgan model
-    wav = predict_waveform(
-        device=device,
-        multistream_features=multistream_features,
-        vocoder=vocoder,
-        vocoder_config=vocoder_config,
-        vocoder_in_scaler=vocoder_in_scaler,
-        sample_rate=sample_rate,
-        frame_period=5,
-        use_world_codec=True,
-        feature_type='world',
-        vocoder_type=vocoder_type,
-        vuv_threshold=0.5,  # vuv 閾値設定はするけど使われないはず
-    )
-    # 生成した waveform を返す
-    return wav
-
-
-def main_as_standalone(path_ust_in, path_wav_out) -> None:
-    """全体の処理を行う。"""
-    logger = setup_logger()
-    # utaupyでUSTを読み取る
-    ust_utaupy = utaupy.ust.load(path_ust_in)
-    voice_dir = ust_utaupy.voicedir
-    # ust_path = ust.setting.get('Project')  # noqa: F841
-    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
-    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
-
-    # 一時フォルダにustを出力してPyUtauCliで読み直す
-    with TemporaryDirectory() as temp_dir:
-        # utaupyでプラグインをustファイルとして保存する
-        path_temp_ust = join(temp_dir, 'temp.ust')
-        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
-            ust_utaupy.as_ust().write(path_temp_ust)
-        else:
-            ust_utaupy.write(path_temp_ust)
-        # pyutaucliでustを読み込みなおす
-        ust = Ust(path_temp_ust)
-        ust.load()
-
-    # PyUtauCli でレンダリング
-    render = WorldFeatureRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
-        export_wav=True,
-        export_features=True,
-    )
-    render.clean()
-    render.resamp(force=True)
-
-    # render.append()
+    # TODO: 実装
+    pass
 
 
 if __name__ == '__main__':
-    main_as_standalone(
-        join(dirname(__file__), 'test.ust'),
-        join(dirname(__file__), 'output.wav'),
-    )
+    pass
