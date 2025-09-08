@@ -350,34 +350,34 @@ def test_resampler_and_wavtool(
 if __name__ == '__main__':
     chdir(Path(__file__).parent)  # カレントディレクトリをこのファイルのある場所に変更する
     # test(_a_a_n_i_a_u_a_44100.wav)
-    if not Path('./data/_a_a_n_i_a_u_a_44100.wav').is_file():
+    if not Path('./../data/_a_a_n_i_a_u_a_44100.wav').is_file():
         error_msg = 'Test WAV file not found.'
         raise FileNotFoundError(error_msg)
 
     # general function test
     # test_convert(
-    #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
-    #     Path('./data/test_convert_world_out.wav'),
-    #     Path('./data/test_convert_out_worldfeatures.npz'),
-    #     Path('./data/test_convert_out_nnsvsfeatures.npz'),
+    #     Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
+    #     Path('./../data/test_convert_world_out.wav'),
+    #     Path('./../data/test_convert_out_worldfeatures.npz'),
+    #     Path('./../data/test_convert_out_nnsvsfeatures.npz'),
     # )
 
     # function performance test
     # test_performance(
-    #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+    #     Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
     #     n_iter=10,
     # )
 
     # test vocoder model
     test_vocoder_model(
-        Path('./models/usfGAN_EnunuKodoku_0826'),
-        Path('./data/_a_a_n_i_a_u_a_44100.wav'),
-        Path('./test/test_vocoder_out.wav'),
+        Path('./../models/usfGAN_EnunuKodoku_0826'),
+        Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
+        Path('./../test/test_vocoder_out.wav'),
     )
 
     # test resampler
     test_resampler_and_wavtool(
-        Path('./test/test.ust'),
-        Path('./test/test_resampler_out.wav'),
-        Path('./models/usfGAN_EnunuKodoku_0826'),
+        Path('./../test/test.ust'),
+        Path('./../test/test_resampler_out.wav'),
+        Path('./../models/usfGAN_EnunuKodoku_0826'),
     )
