@@ -134,7 +134,7 @@ def waveform_to_world(
         )
         f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
-        import crepe
+        import crepe  # noqa: PLC0415
 
         timeaxis, f0, _confidence, _activation = crepe.predict(
             waveform,
@@ -175,6 +175,9 @@ def world_to_waveform(
     Returns:
         waveform (np.ndarray): The reconstructed waveform.
     """
+    print('f0.dtype:', f0.dtype)
+    print('spectrogram.dtype:', spectrogram.dtype)
+    print('aperiodicity.dtype:', aperiodicity.dtype)
     waveform = pyworld.synthesize(f0, spectrogram, aperiodicity, sample_rate, frame_period)
 
     return waveform
@@ -253,7 +256,7 @@ def world_to_nnsvs(
 def nnsvs_to_world(
     mgc: np.ndarray,
     lf0: np.ndarray,
-    vuv: np.ndarray,
+    vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
     sample_rate: int,
     fft_size: int = DEFAULT_FFT_SIZE,
@@ -272,7 +275,7 @@ def nnsvs_to_world(
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
-    f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: VUV使う？
+    f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: lf0 のみで計算しているがvuvを使うこともできる。
     # bap -> aperiodicity
     aperiodicity = pyworld.decode_aperiodicity(bap, sample_rate, fft_size)
     return f0, spectrogram, aperiodicity
