@@ -8,16 +8,16 @@ PyRwu の形式と NNSVS の形式に変換してみる。
 """
 
 from os import chdir
-from os.path import dirname, isfile, join
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
 import colored_traceback.auto  # noqa: F401
 import utaupy
+from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 
-from convert import (  # noqa: F401
+from convert import (
     nnsvs_to_npzfile,
     nnsvs_to_world,
     npzfile_to_nnsvs,
@@ -31,7 +31,6 @@ from convert import (  # noqa: F401
 )
 from kuresampler import (
     NeuralNetworkRender,
-    WorldFeatureRender,
     load_vocoder_model,
     nnsvs_to_waveform,
     setup_logger,
@@ -59,15 +58,6 @@ def test_convert(
     path_nnsvs_npz: Path = TEST_NPZ_NNSVS,
 ) -> None:
     """全体の処理をする。"""
-    # wave, spectrogram, mgc, lf0, vuv, bap = read_wav_nnsvs(path_wav)
-    # print('read_wav_nnsvs ----------------------------------')
-    # print('- wave.shape        :', wave.shape)
-    # print('- spectrogram.shape :', spectrogram.shape)
-    # print('- mgc.shape         :', mgc.shape)
-    # print('- lf0.shape         :', lf0.shape)
-    # print('- vuv.shape         :', vuv.shape)
-    # print('- bap.shape         :', bap.shape)
-
     print('wavefile_to_waveform ---------------------------------------------------------')
     # read WAV and convert from 44100 -> 48000 Hz
     inprocess_sample_rate = 48000
@@ -83,7 +73,7 @@ def test_convert(
     print()
 
     print('waveform_to_world ------------------------------------------------------------')
-    f0, sp, ap = waveform_to_world(waveform, inprocess_sample_rate, frame_period=5.0)  # type: ignore
+    f0, sp, ap = waveform_to_world(waveform, inprocess_sample_rate, frame_period=5)
     print('f0.shape :', f0.shape)
     print('sp.shape :', sp.shape)
     print('ap.shape :', ap.shape)
@@ -170,7 +160,7 @@ def test_performance(path_wav_in: Path | str = TEST_WAV_IN, n_iter: int = TEST_N
     ボトルネックになりそうな関数
     - waveform_to_world: resample_type = ['soxr_vhq', 'soxr_hq', 'kaiser_best']
     """
-    from time import time
+    from time import time  # noqa: PLC0415
 
     def measure_time(_func, _n_iter, *_args, **_kwargs) -> Any:
         """関数の実行速度を評価する。
@@ -233,75 +223,145 @@ def test_performance(path_wav_in: Path | str = TEST_WAV_IN, n_iter: int = TEST_N
         )
 
 
-def test_resampler(
+def test_resampler_and_wavtool(
     path_ust_in: Path | str = TEST_UST_IN,
     path_wav_out: Path | str = TEST_WAV_OUT,
     model_dir: Path | str = TEST_VOCODER_MODEL_DIR,
-    use_neural_resampler: bool = False,
-    use_neural_wavtool: bool = False,
 ) -> None:
-    """NeuralNetworkResampler で UST から WAV を生成するテストを行う。"""
+    """NeuralNetworkResampler で UST から WAV を生成するテストを行う。
+
+    Args:
+        path_ust_in: UST ファイルのパス
+        path_wav_out: 出力する WAV ファイルのパス
+        model_dir: ニューラルボコーダーモデルのディレクトリ
+    """
     logger = setup_logger()
+    logger.setLevel('INFO')
     # utaupyでUSTを読み取る
     ust_utaupy = utaupy.ust.load(path_ust_in)
     voice_dir = ust_utaupy.voicedir
-    # ust_path = ust.setting.get('Project')  # noqa: F841
-    cache_dir = ust_utaupy.setting.get('CacheDir', join(dirname(__file__), 'kuresampler.cache'))
-    # path_wav_out = ust.setting.get('OutFile', 'output.wav')  # noqa: F841
+    # ust_path = ust.setting.get('Project')
+    cache_dir = ust_utaupy.setting.get(
+        'CacheDir',
+        Path(__file__).parent / 'kuresampler.cache',
+    )
+    # path_wav_out = ust.setting.get('OutFile', 'output.wav')
 
     # 一時フォルダにustを出力してPyUtauCliで読み直す
     with TemporaryDirectory() as temp_dir:
         # utaupyでプラグインをustファイルとして保存する
-        path_temp_ust = join(temp_dir, 'temp.ust')
+        path_temp_ust = Path(temp_dir) / 'temp.ust'
         if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
             ust_utaupy.as_ust().write(path_temp_ust)
         else:
             ust_utaupy.write(path_temp_ust)
         # pyutaucliでustを読み込みなおす
-        ust = Ust(path_temp_ust)
+        ust = Ust(str(path_temp_ust))
         ust.load()
 
     # ニューラルボコーダーを使う場合、ResampとWavToolのクラスを差し替える
-    if use_neural_resampler:
-        render = NeuralNetworkRender(
-            ust,
-            logger=logger,
-            voice_dir=str(voice_dir),
-            cache_dir=str(cache_dir),
-            output_file=str(path_wav_out),
-            export_wav=True,
-            export_features=False,
-            vocoder_model_dir=model_dir,
-        )
-    else:
-        render = WorldFeatureRender(
-            ust,
-            logger=logger,
-            voice_dir=str(voice_dir),
-            cache_dir=str(cache_dir),
-            output_file=str(path_wav_out),
-            export_wav=True,
-            export_features=False,
-        )
-    # PyUtauCli でレンダリング
+    print('------------------------------------------------------------')
+    print('PyRwu.Resamp (wav) + PyWavTool.WavTool')
+    print('------------------------------------------------------------')
+    """
+    PyUtauCli.projects.Render.Render のテスト
+    PyRwu.Resamp + PyWavTool.WavTool
+    - Renderの出力: wavのみ
+    - WavToolの入力: wavのみ
+    """
+    render = Render(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+    )
     render.clean()
     render.resamp(force=True)
-    # 通常のクロスフェード処理で結合
+    render.append()
+
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (wav) + PyWavTool.WavTool (wav crossfade)')
+    print('------------------------------------------------------------')
+    """
+    kersamp.NeuralNetworkRender のテスト
+    Case 1: NeuralNetworkResamp + PyWavTool.WavTool
+    - WorldFeatureResamp の出力: wav + npz
+    - WavToolの入力: wav
+    """
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+        export_wav=True,
+        export_features=False,
+        use_neural_resampler=True,
+        use_neural_wavtool=False,
+        vocoder_model_dir=model_dir,
+        force_wav_crossfade=True,
+    )
+    render.clean()
+    render.resamp(force=True)
+    render.append()
+
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (npz) + PyWavTool.NeuralNetworkWavTool (w/o vocoder-model)')
+    print('------------------------------------------------------------')
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+        export_wav=True,
+        export_features=True,
+        use_neural_resampler=False,
+        use_neural_wavtool=False,
+        vocoder_model_dir=None,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    render.resamp(force=True)
+    render.append()
+
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (npz) + PyWavTool.NeuralNetworkWavTool (w/ vocoder-model)')
+    print('------------------------------------------------------------')
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+        export_wav=True,
+        export_features=True,
+        use_neural_resampler=False,
+        use_neural_wavtool=True,
+        vocoder_model_dir=model_dir,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    render.resamp(force=True)
     render.append()
 
 
 if __name__ == '__main__':
-    chdir(dirname(__file__))  # カレントディレクトリをこのファイルのある場所に変更する
+    chdir(Path(__file__).parent)  # カレントディレクトリをこのファイルのある場所に変更する
     # test(_a_a_n_i_a_u_a_44100.wav)
-    if not isfile('./data/_a_a_n_i_a_u_a_44100.wav'):
-        raise FileNotFoundError('Test WAV file not found.')
+    if not Path('./data/_a_a_n_i_a_u_a_44100.wav').is_file():
+        error_msg = 'Test WAV file not found.'
+        raise FileNotFoundError(error_msg)
+
     # general function test
-    test_convert(
-        Path('./data/_a_a_n_i_a_u_a_44100.wav'),
-        Path('./data/test_convert_world_out.wav'),
-        Path('./data/test_convert_out_worldfeatures.npz'),
-        Path('./data/test_convert_out_nnsvsfeatures.npz'),
-    )
+    # test_convert(
+    #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+    #     Path('./data/test_convert_world_out.wav'),
+    #     Path('./data/test_convert_out_worldfeatures.npz'),
+    #     Path('./data/test_convert_out_nnsvsfeatures.npz'),
+    # )
+
     # function performance test
     # test_performance(
     #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
@@ -312,13 +372,12 @@ if __name__ == '__main__':
     test_vocoder_model(
         Path('./models/usfGAN_EnunuKodoku_0826'),
         Path('./data/_a_a_n_i_a_u_a_44100.wav'),
-        Path('./data/test_vocoder_out.wav'),
+        Path('./test/test_vocoder_out.wav'),
     )
+
     # test resampler
-    test_resampler(
+    test_resampler_and_wavtool(
         Path('./test/test.ust'),
         Path('./test/test_resampler_out.wav'),
         Path('./models/usfGAN_EnunuKodoku_0826'),
-        use_neural_resampler=True,
-        use_neural_wavtool=False,
     )
