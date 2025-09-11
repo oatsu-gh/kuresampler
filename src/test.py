@@ -29,12 +29,8 @@ from convert import (
     world_to_npzfile,
     world_to_waveform,
 )
-from kuresampler import (
-    NeuralNetworkRender,
-    load_vocoder_model,
-    nnsvs_to_waveform,
-    setup_logger,
-)
+from kuresampler import NeuralNetworkRender, nnsvs_to_waveform
+from util import load_vocoder_model, setup_logger
 
 F0_FLOOR = 150
 F0_CEIL = 700
@@ -236,7 +232,7 @@ def test_resampler_and_wavtool(
         model_dir: ニューラルボコーダーモデルのディレクトリ
     """
     logger = setup_logger()
-    logger.setLevel('INFO')
+    logger.setLevel('DEBUG')
     # utaupyでUSTを読み取る
     ust_utaupy = utaupy.ust.load(path_ust_in)
     voice_dir = ust_utaupy.voicedir
@@ -294,7 +290,7 @@ def test_resampler_and_wavtool(
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
+        output_file=str(path_wav_out).replace('.wav', '_pywavtool.wav'),
         export_wav=True,
         export_features=False,
         use_neural_resampler=True,
@@ -314,7 +310,7 @@ def test_resampler_and_wavtool(
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
+        output_file=str(path_wav_out).replace('.wav', '_wfwavtool.wav'),
         export_wav=True,
         export_features=True,
         use_neural_resampler=False,
@@ -326,25 +322,25 @@ def test_resampler_and_wavtool(
     render.resamp(force=True)
     render.append()
 
-    print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (npz) + PyWavTool.NeuralNetworkWavTool (w/ vocoder-model)')
-    print('------------------------------------------------------------')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
-        export_wav=True,
-        export_features=True,
-        use_neural_resampler=False,
-        use_neural_wavtool=True,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=False,
-    )
-    render.clean()
-    render.resamp(force=True)
-    render.append()
+    # print('------------------------------------------------------------')
+    # print('NeuralNetworkResamp (npz) + PyWavTool.NeuralNetworkWavTool (w/ vocoder-model)')
+    # print('------------------------------------------------------------')
+    # render = NeuralNetworkRender(
+    #     ust,
+    #     logger=logger,
+    #     voice_dir=str(voice_dir),
+    #     cache_dir=str(cache_dir),
+    #     output_file=str(path_wav_out),
+    #     export_wav=True,
+    #     export_features=True,
+    #     use_neural_resampler=False,
+    #     use_neural_wavtool=True,
+    #     vocoder_model_dir=model_dir,
+    #     force_wav_crossfade=False,
+    # )
+    # render.clean()
+    # render.resamp(force=True)
+    # render.append()
 
 
 if __name__ == '__main__':
@@ -369,11 +365,11 @@ if __name__ == '__main__':
     # )
 
     # test vocoder model
-    test_vocoder_model(
-        Path('./../models/usfGAN_EnunuKodoku_0826'),
-        Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
-        Path('./../test/test_vocoder_out.wav'),
-    )
+    # test_vocoder_model(
+    #     Path('./../models/usfGAN_EnunuKodoku_0826'),
+    #     Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
+    #     Path('./../test/test_vocoder_out.wav'),
+    # )
 
     # test resampler
     test_resampler_and_wavtool(

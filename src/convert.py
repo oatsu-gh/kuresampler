@@ -175,11 +175,7 @@ def world_to_waveform(
     Returns:
         waveform (np.ndarray): The reconstructed waveform.
     """
-    print('f0.dtype:', f0.dtype)
-    print('spectrogram.dtype:', spectrogram.dtype)
-    print('aperiodicity.dtype:', aperiodicity.dtype)
     waveform = pyworld.synthesize(f0, spectrogram, aperiodicity, sample_rate, frame_period)
-
     return waveform
 
 
