@@ -1,0 +1,8 @@
+-e git+https://github.com/oatsu/PyUtauCli.git@debug#egg=PyUtauCli
+-e git+https://github.com/oatsu/PyRwu.git@debug#egg=PyRwu
+-e git+https://github.com/oatsu/PyWavTool.git@debug#egg=PyWavTool
+-e git+https://github.com/oatsu/nnsvs.git@enunu-python312#egg=nnsvs
+utaupy
+numpy
+omegaconf
+# torch should be installed manually according to the environment
