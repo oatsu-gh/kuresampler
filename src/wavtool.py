@@ -237,7 +237,7 @@ class WorldFeatureWavTool:
     _output_npz: Path  # 出力npzのパス
     _stp: float  # 入力wavの先頭のオフセット [ms]
     _length: float  # 追記したい音声長さ [ms]
-    _frame_period: int  # WORLD特徴量のフレーム周期 [ms]
+    _frame_period: float  # WORLD特徴量のフレーム周期 [ms]
     _sample_rate: int  # 入出力wavのサンプルレート [Hz]
     _f0: np.ndarray  # f0 (WORLD特徴量 F0)
     _sp: np.ndarray  # sp (WORLD特徴量 Spectrogram)
