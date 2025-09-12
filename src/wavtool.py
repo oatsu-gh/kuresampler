@@ -338,16 +338,11 @@ class WorldFeatureWavTool:
         num_frames = self._f0.shape[0]
         x = np.arange(num_frames)
         # 時刻をフレーム単位に変換
-        print('self._envelope_p:', self._envelope_p)
-        print('self._envelope_v:', self._envelope_v)
         xp = [round(p / self._frame_period) for p in self._envelope_p]
         # 音量値を0-1に正規化 (余った v は無視)
         fp = [v / 100.0 for v in self._envelope_v[: len(xp)]]
-        print('xp:', xp)
-        print('fp:', fp)
         # 音量エンベロープを計算
         volume_envelope = np.interp(x, xp, fp)
-        print('volume_envelope:', volume_envelope)
         # sp, ap に音量エンベロープを適用する。f0 は何もしない(appendのときにクロスフェード処理する)。
         self._sp *= volume_envelope[:, np.newaxis]
         self._ap *= volume_envelope[:, np.newaxis]
@@ -404,7 +399,7 @@ class WorldFeatureWavTool:
             long_sp = overlap_world_feature(long_sp, self._sp, overlap_frames)
             long_ap = overlap_world_feature(long_ap, self._ap, overlap_frames)
         # npzファイルに書き出す
-        world_to_npzfile(long_f0, long_sp, long_ap, self._output_npz)
+        world_to_npzfile(long_f0, long_sp, long_ap, self._output_npz, compress=False)
         # wavファイルに書き出す
         sample_rate = self._sample_rate
         waveform = world_to_waveform(
