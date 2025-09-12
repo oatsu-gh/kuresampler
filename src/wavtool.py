@@ -22,6 +22,7 @@ wavtool の処理の流れ
 
 """
 
+import logging
 from pathlib import Path
 from warnings import warn
 
@@ -44,9 +45,8 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
-from util import (  # noqa: F401
+from util import (
     crossfade_world_feature,
-    load_vocoder_model,
     overlap_world_feature,
     setup_logger,
 )
@@ -248,6 +248,7 @@ class WorldFeatureWavTool:
     _vocoder_model: torch.nn.Module | None = None  # Vocoder model
     _vocoder_in_scaler: StandardScaler | None = None  # Vocoder input scaler
     _vocoder_config: ListConfig | DictConfig | None = None  # Vocoder config
+    _logger: logging.Logger
 
     def __init__(
         self,
@@ -258,6 +259,7 @@ class WorldFeatureWavTool:
         envelope: list[float],
         *,
         frame_period: int = 5,
+        logger: logging.Logger | None = None,
     ) -> None:
         self._input_wav = Path(input_wav)
         self._input_npz = Path(input_wav).with_suffix('.npz')
@@ -270,6 +272,8 @@ class WorldFeatureWavTool:
         self.__init_features()
         # envelope_p, envelope_v, overlap を初期化
         self.__init_envelope(envelope)
+        # logger を初期化
+        self._logger = logger or setup_logger(level=logging.INFO)
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
@@ -339,7 +343,7 @@ class WorldFeatureWavTool:
         x = np.arange(num_frames)
         # 時刻をフレーム単位に変換
         xp = [round(p / self._frame_period) for p in self._envelope_p]
-        # 音量値を0-1に正規化 (余った v は無視)
+        # 音量値(0-200)を0-2に正規化 (余った v は無視)
         fp = [v / 100.0 for v in self._envelope_v[: len(xp)]]
         # 音量エンベロープを計算
         volume_envelope = np.interp(x, xp, fp)
@@ -365,6 +369,11 @@ class WorldFeatureWavTool:
         # 音量エンベロープを適用する
         self._apply_envelope()
 
+    @property
+    def logger(self) -> logging.Logger:
+        """logger を返す。"""
+        return self._logger
+
     def append(self):
         """既存のnpzファイルを読み取って、それに書き込む。wav は全体を再計算して出力する。
 
@@ -380,8 +389,7 @@ class WorldFeatureWavTool:
         self._apply_all()
         # overlap をフレーム数に変換
         overlap_frames = round(self._overlap / self._frame_period)
-        print(f'self._overlap: {self._overlap}')
-        print(f'overlap_frames: {overlap_frames}')
+        self.logger.info('overlap_frames: %s', overlap_frames)
         # 既存の特徴量が空の場合はそのまま追加
         if long_f0.size == 0:
             long_f0 = self._f0
