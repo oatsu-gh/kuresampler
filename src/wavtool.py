@@ -409,12 +409,15 @@ class WorldFeatureWavTool:
         # npzファイルに書き出す
         world_to_npzfile(long_f0, long_sp, long_ap, self._output_npz, compress=False)
         # wavファイルに書き出す
-        sample_rate = self._sample_rate
+        # Use self._sample_rate for input (waveform) sample rate,
+        # and self._output_sample_rate for output sample rate.
+        input_sample_rate = self._sample_rate
+        output_sample_rate = getattr(self, "_output_sample_rate", self._sample_rate)
         waveform = world_to_waveform(
             long_f0,
             long_sp,
             long_ap,
-            sample_rate,
+            input_sample_rate,
             frame_period=self._frame_period,
         )
-        waveform_to_wavfile(waveform, self._output_wav, sample_rate, sample_rate)
+        waveform_to_wavfile(waveform, self._output_wav, input_sample_rate, output_sample_rate)
