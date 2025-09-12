@@ -146,7 +146,7 @@ def parse_envelope(
     # p_list が昇順になっていない場合はエラー
     if p_list != sorted(p_list):
         msg = f'p_list must be in ascending order, but got {p_list}.'
-        # raise ValueError(msg)
+        raise ValueError(msg)
     # TODO: p_list が昇順になっていない場合は自動修正する。昇順になるように並べ替えるかクリッピングする。
 
     return p_list, v_list, overlap
