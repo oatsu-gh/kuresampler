@@ -34,7 +34,7 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
-from util import get_device, load_vocoder_model
+from util import denoise_spike, get_device, load_vocoder_model
 
 
 # TODO: WorldFeatureResamp を NeuralNetworkRender に統合する。
@@ -117,13 +117,18 @@ class WorldFeatureResamp(pyrwu.Resamp):
         """waveform を返す。resamp() より後に実行する想定"""
         return copy(self._output_data)
 
+    def denoise_f0(self) -> None:
+        """f0 のスパイクノイズを除去する。"""
+        if self._f0 is not None:
+            self._f0 = denoise_spike(self._f0)
+
     def resamp(self) -> None:
         """WAVファイルの代わりにWORLDの特徴量をファイルに出力する。"""
         self.parseFlags()
         self.getInputData()
         self.stretch()
         self.pitchShift()
-        self.applyPitch()
+        self.applyPitch()  # FIXME: 最初のピッチ点のところで相対f0が0になる不具合を直す
         # パラメータ確認 ---------------------------------------
         self.logger.debug('  input_path  : %s', self.input_path)
         self.logger.debug('  output_path : %s', self.output_path)
@@ -133,6 +138,8 @@ class WorldFeatureResamp(pyrwu.Resamp):
         self.logger.debug('  sp.shape    : %s', self.sp.shape)
         self.logger.debug('  ap.shape    : %s', self.ap.shape)
         # ------------------------------------------------------
+        # f0 のスパイクノイズを除去
+        self.denoise_f0()
         # WORLD特徴量にフラグを適用したのち wavform を更新する。
         self.synthesize()
         # UST の音量を waveform に反映する。wav 出力しない場合は無駄な処理なのでskip。
