@@ -25,15 +25,16 @@ def get_device() -> torch.device:
     return device
 
 
-def setup_logger() -> logging.Logger:
+def setup_logger(level=logging.INFO) -> logging.Logger:
     """Loggerを作成する。"""
     # my_package.my_moduleのみに絞ってsys.stderrにlogを出す
     logging.basicConfig(
         stream=sys.stdout,
         format='[%(filename)s][%(levelname)s] %(message)s',
-        level=logging.INFO,
     )
-    return logging.getLogger(__name__)
+    _logger = logging.getLogger(__name__)
+    _logger.setLevel(level)
+    return _logger
 
 
 def easy_interpolate(y: list[float] | np.ndarray) -> float:
@@ -170,7 +171,6 @@ def crossfade_world_feature(
     else:
         msg = f'Invalid shape: {shape}. Choose from None, "linear", "cosine", or "cos".'
         raise ValueError(msg)
-    print('overlap_area.shape:', overlap_area.shape)
 
     # 前・クロスフェード部分・後ろを結合して返す
     result = np.concatenate(
