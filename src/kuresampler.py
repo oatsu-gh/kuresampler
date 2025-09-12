@@ -56,6 +56,7 @@ def nnsvs_to_waveform(
     logger: Logger | None = None,
 ) -> np.ndarray:
     """World (original) の特徴量から wav を生成する。
+
     2025-08-25 時点の nnsvs.gen.predict_waveform は vocoder_type は world, pwg, usfgan に対応している。
 
     Args:
@@ -195,7 +196,6 @@ class NeuralNetworkRender(Render):
         """
         Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
         for note in tqdm(self.notes, colour='cyan', desc='Resample', unit='note'):
-            self.logger.debug('------------------------------------------------')
             if not note.require_resamp:
                 continue
             if force or not Path(note.cache_path).is_file():
@@ -270,7 +270,7 @@ class NeuralNetworkRender(Render):
                 resamp.resamp()
             else:
                 self.logger.debug('Using cache (%s)', note.cache_path)
-        self.logger.debug('------------------------------------------------')
+            print('---------------')
 
     def append(self):
         """WorldFeatureWavToolを用いて各ノートのキャッシュWAVまたはWORLD特徴量を連結し、WAV出力する。"""
@@ -290,7 +290,9 @@ class NeuralNetworkRender(Render):
         out_wav_path.with_suffix('.wav.dat').unlink(missing_ok=True)
 
         # 特徴量クロスフェードを実施
-        for note in tqdm(self.notes, colour='magenta', desc='Append', unit='note'):
+        for note in tqdm(
+            self.notes, mininterval=0.02, colour='magenta', desc='Append', unit='note'
+        ):
             # direct=True の場合は原音WAVをそのままクロスフェードする
             if note.direct is True:
                 stp = note.stp + note.offset
@@ -310,6 +312,7 @@ class NeuralNetworkRender(Render):
             )
             # WAVと特徴量ファイル出力
             wavtool.append()
+            print('---------------')
 
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""
