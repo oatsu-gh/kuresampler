@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) 2025 oatsu
+# NOTE: pyworld が型チェックエラーを出すので無視する
+# pyright: reportAttributeAccessIssue=none
+
 """
 音声まわりのファイルや特徴量を相互変換する。
 
@@ -19,23 +22,23 @@ import pyworld
 import soundfile as sf
 
 # WAV settings ---------------------
-DEFAULT_WAV_DTYPE = np.float64
-DEFAULT_RESAMPLE_TYPE = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
+DEFAULT_WAV_DTYPE: str = 'float64'
+DEFAULT_RESAMPLE_TYPE: str = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
 # WORLD settings -------------------
-DEFAULT_FRAME_PERIOD = 5.0  # ms
-DEFAULT_F0_FLOOR = 50.0
-DEFAULT_F0_CEIL = 2000
-DEFAULT_D4C_THRESHOLD = 0.85
-DEFAULT_FFT_SIZE = 512
+DEFAULT_FRAME_PERIOD: int = 5  # ms
+DEFAULT_F0_FLOOR: float = 50.0
+DEFAULT_F0_CEIL: float = 2000.0
+DEFAULT_D4C_THRESHOLD: float = 0.50  # Default is 0.5 (NNSVS default), as this is the primary target system. PyRwu uses 0.85.
+DEFAULT_FFT_SIZE: int = 512
 # ----------------------------------
 
 
 def wavfile_to_waveform(
     wav_path: Path | str,
-    out_sample_rate: int,
+    out_sample_rate: int | None = None,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
-    dtype: type = DEFAULT_WAV_DTYPE,
+    dtype: str = DEFAULT_WAV_DTYPE,
 ) -> tuple[np.ndarray, int, int]:
     """Convert a WAV file to a waveform (numpy array).
 
@@ -50,7 +53,14 @@ def wavfile_to_waveform(
         in_sample_rate (int): Sample rate of the original audio.
         out_sample_rate   (int): Target sample rate of the returning waveform.
     """
+    wav_path = Path(wav_path)
     waveform, in_sample_rate = sf.read(wav_path, dtype=dtype)
+    # out_sample_rate が None の場合は in_sample_rate と同じにする
+    if out_sample_rate is None:
+        out_sample_rate = in_sample_rate
+    # 念のため型チェック
+    assert out_sample_rate is not None
+    # リサンプリング
     if in_sample_rate != out_sample_rate:
         waveform = librosa.resample(
             waveform,
@@ -68,7 +78,7 @@ def waveform_to_wavfile(
     out_sample_rate: int,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
-    dtype: type = DEFAULT_WAV_DTYPE,
+    dtype: str = DEFAULT_WAV_DTYPE,
 ) -> None:
     """Convert a waveform (numpy array) to a WAV file.
 
@@ -92,7 +102,7 @@ def waveform_to_world(
     waveform: np.ndarray,
     sample_rate: int,
     *,
-    frame_period: float = DEFAULT_FRAME_PERIOD,
+    frame_period: int = DEFAULT_FRAME_PERIOD,
     f0_extractor: str = 'harvest',
     f0_floor: float = DEFAULT_F0_FLOOR,
     f0_ceil: float = DEFAULT_F0_CEIL,
@@ -106,7 +116,9 @@ def waveform_to_world(
         frame_period (float)     : The frame period in milliseconds.
 
     Returns:
-        world (tuple): The WORLD features (f0, sp, ap).
+        f0           (np.ndarray): Fundamental frequency.
+        spectrogram  (np.ndarray): Spectrogram.
+        aperiodicity (np.ndarray): Aperiodicity.
 
     NOTE: CREPE はとても重いらしいので注意。GPUリソースも必要。
     TODO: harvestのf0推定がとても重い。frq ファイルがあれば読むようにする。なければ logger で警告を出す。独自に krq ファイルを出力する?
@@ -122,7 +134,7 @@ def waveform_to_world(
         )
         f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
-        import crepe
+        import crepe  # noqa: PLC0415
 
         timeaxis, f0, _confidence, _activation = crepe.predict(
             waveform,
@@ -164,12 +176,15 @@ def world_to_waveform(
         waveform (np.ndarray): The reconstructed waveform.
     """
     waveform = pyworld.synthesize(f0, spectrogram, aperiodicity, sample_rate, frame_period)
-
     return waveform
 
 
 def world_to_npzfile(
-    f0: np.ndarray, spectrogram: np.ndarray, aperiodicity: np.ndarray, npz_path: Path | str
+    f0: np.ndarray,
+    spectrogram: np.ndarray,
+    aperiodicity: np.ndarray,
+    npz_path: Path | str,
+    compress: bool = False,
 ) -> None:
     """Save WORLD features to a NPZ file.
 
@@ -179,10 +194,14 @@ def world_to_npzfile(
         aperiodicity (np.ndarray)
         npz_path     (Path): Output NPZ file path.
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Output path must be a .npz file.'
     # 書き出し
-    np.savez(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
+    if not compress:
+        np.savez(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
+    else:
+        np.savez_compressed(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
 
 
 def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -194,6 +213,7 @@ def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.n
     Returns:
         tuple: The loaded WORLD features (f0, spectrogram, aperiodicity).
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Input path must be a .npz file.'
     # 読み取り
@@ -239,7 +259,7 @@ def world_to_nnsvs(
 def nnsvs_to_world(
     mgc: np.ndarray,
     lf0: np.ndarray,
-    vuv: np.ndarray,
+    vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
     sample_rate: int,
     fft_size: int = DEFAULT_FFT_SIZE,
@@ -258,7 +278,7 @@ def nnsvs_to_world(
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
-    f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: VUV使う？
+    f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: lf0 のみで計算しているがvuvを使うこともできる。
     # bap -> aperiodicity
     aperiodicity = pyworld.decode_aperiodicity(bap, sample_rate, fft_size)
     return f0, spectrogram, aperiodicity
@@ -276,6 +296,7 @@ def nnsvs_to_npzfile(
         bap (np.ndarray): Band aperiodicity
         npz_path (Path): Output NPZ file path.
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Output path must be a .npz file.'
     # 書き出し
@@ -293,6 +314,7 @@ def npzfile_to_nnsvs(
     Returns:
         tuple: The loaded NNSVS features (mgc, lf0, vuv, bap).
     """
+    npz_path = Path(npz_path)
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Input path must be a .npz file.'
     # 読み取り

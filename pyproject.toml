@@ -1,8 +1,10 @@
 [tool.ruff]
-line-length = 99
+line-length    = 99
+target-version = 'py312'
 
 [tool.ruff.lint]
 select = ['ALL']
+ignore = ['N802', 'PT028', 'RUF', 'TD', 'FIX']
 
 # Configure single quotes
 [tool.ruff.format]
