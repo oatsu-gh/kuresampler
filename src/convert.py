@@ -180,7 +180,11 @@ def world_to_waveform(
 
 
 def world_to_npzfile(
-    f0: np.ndarray, spectrogram: np.ndarray, aperiodicity: np.ndarray, npz_path: Path | str
+    f0: np.ndarray,
+    spectrogram: np.ndarray,
+    aperiodicity: np.ndarray,
+    npz_path: Path | str,
+    compress: bool = False,
 ) -> None:
     """Save WORLD features to a NPZ file.
 
@@ -194,7 +198,10 @@ def world_to_npzfile(
     # 拡張子をチェック
     assert npz_path.suffix == '.npz', 'Output path must be a .npz file.'
     # 書き出し
-    np.savez(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
+    if not compress:
+        np.savez(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
+    else:
+        np.savez_compressed(npz_path, f0=f0, spectrogram=spectrogram, aperiodicity=aperiodicity)
 
 
 def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
