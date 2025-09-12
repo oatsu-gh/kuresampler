@@ -309,6 +309,7 @@ class NeuralNetworkRender(Render):
                 stp=stp,
                 length=note.output_ms,
                 envelope=[float(item) for item in note.envelope.split(' ')],
+                logger=self.logger,
             )
             # WAVと特徴量ファイル出力
             wavtool.append()
