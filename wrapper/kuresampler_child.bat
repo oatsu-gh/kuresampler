@@ -2,6 +2,6 @@
 echo ============================== kuresampler ==================================
 echo %0
 echo %*
-echo kureasmpler successfully launched!
+echo kuresampler successfully launched!
 echo =============================================================================
 TIMEOUT /T 2 /NOBREAK
