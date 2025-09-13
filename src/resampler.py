@@ -7,7 +7,7 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 クラス WorldFeatureResamp を定義する。
 """
 
-import logging
+import argparse
 from copy import copy
 from logging import Logger
 from pathlib import Path
@@ -34,7 +34,7 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
-from util import denoise_spike, get_device, load_vocoder_model
+from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
 
 # TODO: WorldFeatureResamp を NeuralNetworkRender に統合する。
@@ -87,7 +87,7 @@ class WorldFeatureResamp(pyrwu.Resamp):
             pitchbend=pitchbend,
             logger=logger,
         )
-        logger = logging.getLogger(__name__) if logger is None else logger
+        logger = setup_logger() if logger is None else logger
         # WAVファイルを出力するか否か
         self._export_wav = export_wav
         # WORLD特徴量をファイル出力するか否か
@@ -302,3 +302,101 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             npz_path = Path(self.output_path).with_suffix('.npz')
             np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
             self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
+
+
+def main() -> None:
+    """実行引数を展開して Resamp インスタンスを生成し、resamp() を実行する。
+
+    想定される引数の形式
+    resampler.exe <input wavfile> <output file> <pitch_percent> <velocity> [<flags> [<offset> <length_require> [<fixed length> [<end_blank> [<volume> [<modulation> [<pich bend>...]]]]]]]
+
+    """
+    logger = setup_logger()
+
+    # 引数を展開
+    parser = argparse.ArgumentParser(description='WORLD feature resampler')
+    # Positional arguments are inherently required; remove invalid required=True
+    parser.add_argument('input_path', help='原音のファイル名', type=str)
+    parser.add_argument('output_path', help='wavファイルの出力先パス', type=str)
+    parser.add_argument(
+        'target_tone',
+        help='音高名(A4=440Hz)。半角上げは#もしくは♯半角下げはbもしくは♭で与えられます。',
+        type=str,
+    )
+    parser.add_argument('velocity', help='子音速度', type=int)
+    parser.add_argument(
+        'flags',
+        help='フラグ(省略可 default:"")。詳細は--show-flags参照',
+        nargs='?',
+        default='',
+    )
+    parser.add_argument(
+        'offset',
+        help='入力ファイルの読み込み開始位置(ms)(省略可 default:0)',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'target_ms',
+        help='出力ファイルの長さ(ms)(省略可 default:0)UTAUでは通常50ms単位に丸めた値が渡される。',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'fixed_ms', help='offsetからみて通常伸縮しない長さ(ms)', nargs='?', default=0
+    )
+    parser.add_argument(
+        'end_ms',
+        help='入力ファイルの読み込み終了位置(ms)(省略可 default:0)'
+        '正の数の場合、ファイル末尾からの時間'
+        '負の数の場合、offsetからの時間',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument('volume', help='音量。0～200(省略可 default:100)', nargs='?', default=100)
+    parser.add_argument(
+        'modulation',
+        help='モジュレーション。0～200(省略可 default:0)',
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'tempo',
+        help='ピッチのテンポ。数字の頭に!がついた文字列(省略可 default:"!120")',
+        nargs='?',
+        default='!120',
+    )
+    parser.add_argument(
+        'pitchbend',
+        help='ピッチベンド。(省略可 default:"")'
+        '-2048～2047までの12bitの2進数をbase64で2文字の文字列に変換し、'
+        '同じ数字が続く場合ランレングス圧縮したもの',
+        nargs='?',
+        default='',
+    )
+    args = parser.parse_args()
+
+    # WorldFeatureResamp インスタンスを生成
+    resamp = WorldFeatureResamp(
+        input_path=args.input_path,
+        output_path=args.output_path,
+        target_tone=args.target_tone,
+        velocity=args.velocity,
+        flag_value=args.flags,
+        offset=args.offset,
+        target_ms=args.target_ms,
+        fixed_ms=args.fixed_ms,
+        end_ms=args.end_ms,
+        volume=args.volume,
+        modulation=args.modulation,
+        pitchbend=','.join(args.pitchbend),
+        logger=logger,
+        export_wav=True,
+        export_features=True,
+    )
+    # リサンプリングを実行
+    resamp.resamp()
+
+
+if __name__ == '__main__':
+    main()
