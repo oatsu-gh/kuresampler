@@ -28,7 +28,7 @@ DEFAULT_RESAMPLE_TYPE: str = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] ã‚ã
 DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
 DEFAULT_F0_CEIL: float = 2000.0
-DEFAULT_D4C_THRESHOLD: float = 0.50  # Default is 0.5 (NNSVS default), as this is the primary target system. PyRwu uses 0.85.
+DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu default is 0.85.)
 DEFAULT_FFT_SIZE: int = 512
 # ----------------------------------
 
@@ -184,6 +184,7 @@ def world_to_npzfile(
     spectrogram: np.ndarray,
     aperiodicity: np.ndarray,
     npz_path: Path | str,
+    *,
     compress: bool = False,
 ) -> None:
     """Save WORLD features to a NPZ file.

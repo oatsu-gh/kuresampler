@@ -237,7 +237,7 @@ class WorldFeatureWavTool:
     _output_npz: Path  # 出力npzのパス
     _stp: float  # 入力wavの先頭のオフセット [ms]
     _length: float  # 追記したい音声長さ [ms]
-    _frame_period: float  # WORLD特徴量のフレーム周期 [ms]
+    _frame_period: int  # WORLD特徴量のフレーム周期 [ms]
     _sample_rate: int  # 入出力wavのサンプルレート [Hz]
     _f0: np.ndarray  # f0 (WORLD特徴量 F0)
     _sp: np.ndarray  # sp (WORLD特徴量 Spectrogram)
@@ -277,35 +277,43 @@ class WorldFeatureWavTool:
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
-    def __init_features(self) -> None:
+    @property
+    def logger(self) -> logging.Logger:
+        """logger を返す。"""
+        return self._logger
+
+    def __init_features(self, default_sample_rate: int = 44100) -> None:
         """self._f0, self._sp, self._ap, self._sample_rate を初期化する。
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self._f0, self._sp, self._ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
         """
-        # まずは wav を読み込んで sample_rate と waveform を取得する。sample_rate は 必須。
+        # まずは wav を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
         if self._input_wav.exists():
             waveform, sample_rate, _ = wavfile_to_waveform(self._input_wav)
             self._sample_rate = sample_rate
-            # npz が存在する場合は優先的に読み込んで特徴量を取得する
-            if self._input_npz.exists():
-                self._f0, self._sp, self._ap = npzfile_to_world(self._input_npz)
-            # npz が存在しない場合は wav から特徴量を抽出する
-            elif self._input_wav.exists():
-                self._f0, self._sp, self._ap = waveform_to_world(
-                    waveform, self._sample_rate, frame_period=self._frame_period
-                )
-        # wav が存在しない場合は無音の特徴量で初期化する。
+        # wav が存在しない場合はサンプルレートを 44100 に設定する。
+        else:
+            self._sample_rate = default_sample_rate
+
+        # npz が存在する場合は優先的に読み込んで特徴量を取得する
+        if self._input_npz.exists():
+            self._f0, self._sp, self._ap = npzfile_to_world(self._input_npz)
+        # npz が存在しない場合は wav から特徴量を抽出する
+        elif self._input_wav.exists():
+            self._f0, self._sp, self._ap = waveform_to_world(
+                waveform, self._sample_rate, frame_period=self._frame_period
+            )
+        # wav と npz が両方とも存在しない場合は無音特徴量を登録する。
         else:
             msg = f'Input file not found: {self._input_wav} or {self._input_npz}'
             warn(msg, stacklevel=1)
-            self._sample_rate = 44100  # デフォルトのサンプルレート
-            num_frames = round(self._length / self._frame_period)
-            self._f0 = np.zeros((num_frames,), dtype=np.float64)
+            n_frames = round(self._length / self._frame_period)
+            self._f0 = np.zeros((n_frames,), dtype=np.float64)
             self._sp = np.full(
-                (num_frames, 1025), 1e-100, dtype=np.float64
-            )  # 1025 はデフォルトの次元数
-            self._ap = np.ones((num_frames, 1025), dtype=np.float64)
+                (n_frames, 1025), 1e-100, dtype=np.float64
+            )  # 1025 はデフォルト次元数
+            self._ap = np.ones((n_frames, 1025), dtype=np.float64)
 
     def __init_envelope(self, envelope: list[float]) -> None:
         """envelope を解析し、self._envelope_p, self._envelope_v, self._overlap を初期化する。
@@ -369,11 +377,6 @@ class WorldFeatureWavTool:
         # 音量エンベロープを適用する
         self._apply_envelope()
 
-    @property
-    def logger(self) -> logging.Logger:
-        """logger を返す。"""
-        return self._logger
-
     def append(self):
         """既存のnpzファイルを読み取って、それに書き込む。wav は全体を再計算して出力する。
 
@@ -412,7 +415,7 @@ class WorldFeatureWavTool:
         # Use self._sample_rate for input (waveform) sample rate,
         # and self._output_sample_rate for output sample rate.
         input_sample_rate = self._sample_rate
-        output_sample_rate = getattr(self, "_output_sample_rate", self._sample_rate)
+        output_sample_rate = getattr(self, '_output_sample_rate', self._sample_rate)
         waveform = world_to_waveform(
             long_f0,
             long_sp,

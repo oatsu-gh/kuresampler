@@ -173,7 +173,7 @@ class NeuralNetworkRender(Render):
             msg = (
                 '非推奨の組み合わせが検出されました。'
                 'use_neural_resampler=True かつ use_neural_wavtool=True は非推奨です。'
-                'use_neural_resampler=False に強制設定して処理を続行します (高速化のため)。'
+                'use_neural_resampler=False に強制設定して処理を続行します (レンダリング時間短縮のため)。'
             )
             logger.warning(msg)
             self._use_neural_resampler = False
