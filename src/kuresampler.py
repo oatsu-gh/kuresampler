@@ -10,14 +10,15 @@
 """
 
 import logging
-from argparse import ArgumentParser
 from logging import Logger
 from pathlib import Path
 from shutil import rmtree
+from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
 import numpy as np
-import PyRwu as pyrwu  # noqa: N813
+import torch
+import utaupy
 from nnsvs.gen import predict_waveform
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
@@ -36,8 +37,10 @@ from convert import (  # noqa: F401
     world_to_waveform,
 )
 from resampler import NeuralNetworkResamp, WorldFeatureResamp
+from resampler import main_resampler as _main_resampler
 from util import get_device, load_vocoder_model, setup_logger
 from wavtool import WorldFeatureWavTool
+from wavtool import main_wavtool as _main_wavtool
 
 # MARK: Utility functions
 
@@ -156,19 +159,21 @@ class NeuralNetworkRender(Render):
         if self._export_wav is False and self._export_features is False:
             msg = 'At least one of export_wav or export_features must be True.'
             raise ValueError(msg)
-        if self._use_neural_resampler and self._vocoder_model_dir is None:
+        if self._use_neural_resampler is True and self._vocoder_model_dir is None:
             msg = 'vocoder_model_dir must be specified when use_neural_resampler is True.'
             raise ValueError(msg)
-        if self._use_neural_wavtool and self._vocoder_model_dir is None:
+        if self._use_neural_wavtool is True and self._vocoder_model_dir is None:
             msg = 'vocoder_model_dir must be specified when use_neural_wavtool is True.'
             raise ValueError(msg)
-        if self._force_wav_crossfade and self._export_wav is False:
+        # 不成立の組み合わせを修正
+        if self._force_wav_crossfade is True and self._export_wav is False:
             msg = (
                 'force_wav_crossfade=True かつ export_wav=False は実施不可です。'
                 'export_wav=True に強制設定して処理を続行します。'
             )
             logger.warning(msg)
             self._export_wav = True
+        # 非推奨の組み合わせを修正
         if self._use_neural_resampler is True and self._use_neural_wavtool is True:
             msg = (
                 '非推奨の組み合わせが検出されました。'
@@ -177,14 +182,42 @@ class NeuralNetworkRender(Render):
             )
             logger.warning(msg)
             self._use_neural_resampler = False
-        if self._use_neural_wavtool and self._export_features is False:
-            msg = (
-                '非推奨の組み合わせが検出されました。'
-                'use_neural_wavtool=True かつ export_features=False は非推奨です。'
-                'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
-            )
+            # TODO: デバッグが終わったらコメントアウトを解除する。(ここから)--------------------------------------
+            # if self._use_neural_wavtool and self._export_features is False:
+            #     msg = (
+            #         '非推奨の組み合わせが検出されました。'
+            #         'use_neural_wavtool=True かつ export_features=False は非推奨です。'
+            #         'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
+            #     )
+            # TODO: デバッグが終わったらコメントアウトを解除する。(ここまで)--------------------------------------
             logger.warning(msg)
             self._export_features = True
+        # vocoder モデルを読み込む
+        if self._use_neural_resampler is True or self._use_neural_wavtool is True:
+            if self._vocoder_model_dir is None:
+                msg = 'vocoder_model_dir must be specified when use_neural_resampler or use_neural_wavtool is True.'
+                raise ValueError(msg)
+            logger.info('Using vocoder model: %s', self._vocoder_model_dir)
+            self.__init_vocoder()
+
+    def __init_vocoder(self) -> None:
+        """Vocoderモデルを読み込み、self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config にセットする。"""
+        if self._vocoder_model_dir is None:
+            msg = 'vocoder_model_dir is not specified.'
+            raise ValueError(msg)
+        self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = load_vocoder_model(
+            self._vocoder_model_dir
+        )
+
+    @property
+    def vocoder_model(self) -> torch.nn.Module:
+        """ボコーダーモデル"""
+        return self._vocoder_model
+
+    @property
+    def vocoder_sample_rate(self) -> int:
+        """ボコーダーモデルのwav出力サンプリング周波数"""
+        return self._vocoder_config.data.sample_rate
 
     def resamp(self, *, force: bool = False) -> None:
         """
@@ -195,7 +228,11 @@ class NeuralNetworkRender(Render):
 
         """
         Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
-        for note in tqdm(self.notes, colour='cyan', desc='Resample', unit='note'):
+
+        for note in tqdm(
+            self.notes, mininterval=0.02, colour='cyan', desc='Resample', unit='note'
+        ):
+            print('\n---------------')
             if not note.require_resamp:
                 continue
             if force or not Path(note.cache_path).is_file():
@@ -270,18 +307,16 @@ class NeuralNetworkRender(Render):
                 resamp.resamp()
             else:
                 self.logger.debug('Using cache (%s)', note.cache_path)
-            print('---------------')
 
-    def append(self):
+    def append(self) -> None:
         """WorldFeatureWavToolを用いて各ノートのキャッシュWAVまたはWORLD特徴量を連結し、WAV出力する。"""
         if self._force_wav_crossfade is True:
             self.logger.info('WAVでクロスフェードします (force_wav_crossfade=True)')
             super().append()
             return
-
+        # 出力フォルダを作成
         out_dir = Path(self._output_file).parent
-        if out_dir != Path():
-            out_dir.mkdir(exist_ok=True, parents=True)
+        out_dir.mkdir(exist_ok=True, parents=True)
         # wav, npz, whd, dat ファイルがすでに存在する場合は削除
         out_wav_path = Path(self._output_file)
         out_wav_path.unlink(missing_ok=True)
@@ -293,6 +328,7 @@ class NeuralNetworkRender(Render):
         for note in tqdm(
             self.notes, mininterval=0.02, colour='magenta', desc='Append', unit='note'
         ):
+            print('\n---------------')
             # direct=True の場合は原音WAVをそのままクロスフェードする
             if note.direct is True:
                 stp = note.stp + note.offset
@@ -301,7 +337,14 @@ class NeuralNetworkRender(Render):
             else:
                 stp = note.stp
                 in_wav_path = note.cache_path
-            self.logger.debug('%s %s %s %s', in_wav_path, note.envelope, stp, note.output_ms)
+            self.logger.debug(
+                '%s %s %s %s %s',
+                out_wav_path,
+                in_wav_path,
+                note.envelope,
+                stp,
+                note.output_ms,
+            )
             # WorldFeatureWavTool を用いて特徴量を連結
             wavtool = WorldFeatureWavTool(
                 output_wav=out_wav_path,
@@ -313,7 +356,42 @@ class NeuralNetworkRender(Render):
             )
             # WAVと特徴量ファイル出力
             wavtool.append()
+
+        # 必要に応じて vocoder を用いて wav を生成
+        if self._use_neural_wavtool is True:
             print('---------------')
+            self.logger.info('ニューラルボコーダーでWAVを生成します')
+            f0, sp, ap = npzfile_to_world(out_wav_path.with_suffix('.npz'))
+            # vocoder で wav を生成
+            # WORLD 特徴量を NNSVS 用に変換
+            mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, self.vocoder_sample_rate)
+            # モデルに渡す用に特徴量をまとめる
+            multistream_features = (mgc, lf0, vuv, bap)
+            # print(mgc.shape, lf0.shape, vuv.shape, bap.shape)
+            # waveformを生成
+            # NOTE: ここのsample_rate って vocoder のサンプルレートで大丈夫？
+            waveform = predict_waveform(
+                device=get_device(),
+                multistream_features=multistream_features,
+                vocoder=self._vocoder_model,
+                vocoder_config=self._vocoder_config,
+                vocoder_in_scaler=self._vocoder_in_scaler,
+                sample_rate=self.vocoder_sample_rate,
+                frame_period=self._vocoder_frame_period,
+                use_world_codec=True,
+                feature_type=self._vocoder_feature_type,
+                vocoder_type='usfgan',
+                vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+            )
+
+            # wav ファイルを書き出す
+            waveform_to_wavfile(
+                waveform,
+                out_wav_path,
+                in_sample_rate=self.vocoder_sample_rate,
+                out_sample_rate=self.vocoder_sample_rate,
+                resample_type='soxr_vhq',
+            )
 
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""
@@ -325,110 +403,16 @@ class NeuralNetworkRender(Render):
 
 # MARK: Main functions
 def main_as_resampler() -> None:
-    """Resampler (伸縮器) として各ノートの wav 加工を行う。
-
-    Args:
-
-    """
-    logger = setup_logger()
-
-    parser = ArgumentParser(description='This module is Resampler for UTAU powered by world')
-    parser.add_argument('input_path', help='原音のファイル名', type=str)
-    parser.add_argument('output_path', help='wavファイルの出力先パス', type=str)
-    parser.add_argument(
-        'target_tone',
-        help='音高名(A4=440Hz)。半角上げは#もしくは♯半角下げはbもしくは♭で与えられます。',
-        type=str,
-    )
-    parser.add_argument('velocity', help='子音速度', type=int)
-    parser.add_argument(
-        'flags',
-        help='フラグ(省略可 default:"")。詳細は--show-flags参照',
-        nargs='?',
-        default='',
-    )
-    parser.add_argument(
-        'offset',
-        help='入力ファイルの読み込み開始位置(ms)(省略可 default:0)',
-        nargs='?',
-        default=0,
-    )
-    parser.add_argument(
-        'target_ms',
-        help='出力ファイルの長さ(ms)(省略可 default:0)UTAUでは通常50ms単位に丸めた値が渡される。',
-        nargs='?',
-        default=0,
-    )
-    parser.add_argument(
-        'fixed_ms',
-        help='offsetからみて通常伸縮しない長さ(ms)',
-        nargs='?',
-        default=0,
-    )
-    parser.add_argument(
-        'end_ms',
-        help='入力ファイルの読み込み終了位置(ms)(省略可 default:0)'
-        '正の数の場合、ファイル末尾からの時間'
-        '負の数の場合、offsetからの時間',
-        nargs='?',
-        default=0,
-    )
-    parser.add_argument('volume', help='音量。0～200(省略可 default:100)', nargs='?', default=100)
-    parser.add_argument(
-        'modulation',
-        help='モジュレーション。0～200(省略可 default:0)',
-        nargs='?',
-        default=0,
-    )
-    parser.add_argument(
-        'tempo',
-        help='ピッチのテンポ。数字の頭に!がついた文字列(省略可 default:"!120")',
-        nargs='?',
-        default='!120',
-    )
-    parser.add_argument(
-        'pitchbend',
-        help='ピッチベンド。(省略可 default:"")'
-        '-2048～2047までの12bitの2進数をbase64で2文字の文字列に変換し、'
-        '同じ数字が続く場合ランレングス圧縮したもの',
-        nargs='?',
-        default='',
-    )
-    parser.add_argument('--show-flag', action=pyrwu.ShowFlagAction)
-    args = parser.parse_args()
-
-    if args.pitchbend == '':  # flagsに値がないとき、引数がずれてしまうので補正する。
-        args.pitchbend = args.tempo
-        args.tempo = args.modulation
-        args.modulation = args.volume
-        args.volume = args.end_ms
-        args.end_ms = args.fixed_ms
-        args.fixed_ms = args.target_ms
-        args.target_ms = args.offset
-        args.offset = args.flags
-        args.flags = ''
-
-    WorldFeatureResamp(
-        args.input_path,
-        args.output_path,
-        args.target_tone,
-        args.velocity,
-        args.flags,
-        float(args.offset),
-        int(args.target_ms),
-        float(args.fixed_ms),
-        float(args.end_ms),
-        int(args.volume),
-        int(args.modulation),
-        args.tempo,
-        args.pitchbend,
-        logger=logger,
-        export_features=True,
-        export_wav=True,
-    ).resamp()
+    """Resampler (伸縮器) として各ノートの wav 加工を行う。"""
+    _main_resampler()
 
 
-def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
+def main_as_wavtool() -> None:
+    """WavTool (結合器) として各ノートの wav 結合を行う。"""
+    _main_wavtool()
+
+
+def main_as_integrated_wavtool(path_ust_in: Path | str, path_wav_out: Path | str) -> None:
     """WavTool1 (Append) と WavTool2 (Resamp) を統合的に実行する。
 
     長所:
@@ -440,7 +424,46 @@ def main_as_integrated_wavtool(path_ust: str, path_wav: str) -> None:
     - 音量ノーマライズを独自実装する必要あり。いっそ world で wav を内部生成して音量係数を取得してしまう？
     - 一度にボコーダーに渡すサイズが大きいので WAV 生成に時間がかかり、VRAM 消費も激しい。
     """
-    # TODO: 実装
+    logger = setup_logger()
+    logger.setLevel('INFO')
+    # utaupyでUSTを読み取る
+    ust_utaupy = utaupy.ust.load(path_ust_in)
+    voice_dir = ust_utaupy.voicedir
+    cache_dir = ust_utaupy.setting.get(
+        'CacheDir',
+        Path(__file__).parent / 'kuresampler.cache',
+    )
+
+    # 一時フォルダにustを出力してPyUtauCliで読み直す
+    with TemporaryDirectory() as temp_dir:
+        # utaupyでプラグインをustファイルとして保存する
+        path_temp_ust = Path(temp_dir) / 'temp.ust'
+        if isinstance(ust_utaupy, utaupy.utauplugin.UtauPlugin):
+            ust_utaupy.as_ust().write(path_temp_ust)
+        else:
+            ust_utaupy.write(path_temp_ust)
+        # PyUtauCliでustを読み込みなおす
+        ust = Ust(str(path_temp_ust))
+        ust.load()
+    # WorldFeatureResampler + WorldFeatureWavTool + NeuralNetworkVocoder でレンダリング
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out),
+        export_wav=True,
+        export_features=False,
+        use_neural_resampler=False,
+        use_neural_wavtool=False,
+        vocoder_model_dir=None,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    render.resamp(force=True)
+    print('---------------')
+    render.append()
+    print('---------------')
 
 
 if __name__ == '__main__':
