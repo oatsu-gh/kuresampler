@@ -182,16 +182,16 @@ class NeuralNetworkRender(Render):
             )
             logger.warning(msg)
             self._use_neural_resampler = False
-            # TODO: デバッグが終わったらコメントアウトを解除する。(ここから)--------------------------------------
-            # if self._use_neural_wavtool and self._export_features is False:
-            #     msg = (
-            #         '非推奨の組み合わせが検出されました。'
-            #         'use_neural_wavtool=True かつ export_features=False は非推奨です。'
-            #         'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
-            #     )
-            # TODO: デバッグが終わったらコメントアウトを解除する。(ここまで)--------------------------------------
-            logger.warning(msg)
-            self._export_features = True
+        # TODO: デバッグが終わったらコメントアウトを解除する。(ここから)--------------------------------------
+        # if self._use_neural_wavtool and self._export_features is False:
+        #     msg = (
+        #         '非推奨の組み合わせが検出されました。'
+        #         'use_neural_wavtool=True かつ export_features=False は非推奨です。'
+        #         'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
+        #     )
+        #     logger.warning(msg)
+        #     self._export_features = True
+        # TODO: デバッグが終わったらコメントアウトを解除する。(ここまで)--------------------------------------
         # vocoder モデルを読み込む
         if self._use_neural_resampler is True or self._use_neural_wavtool is True:
             if self._vocoder_model_dir is None:
