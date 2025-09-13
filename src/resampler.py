@@ -288,6 +288,8 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self.logger.debug('  sp.shape    : %s', self.sp.shape)
         self.logger.debug('  ap.shape    : %s', self.ap.shape)
         # ------------------------------------------------------
+        # f0 のスパイクノイズを除去
+        self.denoise_f0()
         # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
         # WAVファイル出力は必須ではないがテスト用に出力可能。
@@ -304,7 +306,7 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
 
 
-def main() -> None:
+def main_resampler() -> None:
     """実行引数を展開して Resamp インスタンスを生成し、resamp() を実行する。
 
     想定される引数の形式
@@ -399,4 +401,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    main()
+    main_resampler()
