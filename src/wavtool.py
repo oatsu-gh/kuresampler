@@ -22,6 +22,7 @@ wavtool の処理の流れ
 
 """
 
+import argparse
 import logging
 from pathlib import Path
 from warnings import warn
@@ -282,6 +283,11 @@ class WorldFeatureWavTool:
         """logger を返す。"""
         return self._logger
 
+    @property
+    def sample_rate(self) -> int:
+        """サンプルレートを返す。"""
+        return self._sample_rate
+
     def __init_features(self, default_sample_rate: int = 44100) -> None:
         """self._f0, self._sp, self._ap, self._sample_rate を初期化する。
 
@@ -311,7 +317,7 @@ class WorldFeatureWavTool:
             n_frames = round(self._length / self._frame_period)
             self._f0 = np.zeros((n_frames,), dtype=np.float64)
             self._sp = np.full(
-                (n_frames, 1025), 1e-100, dtype=np.float64
+                (n_frames, 1025), 1e-12, dtype=np.float64
             )  # 1025 はデフォルト次元数
             self._ap = np.ones((n_frames, 1025), dtype=np.float64)
 
@@ -424,3 +430,32 @@ class WorldFeatureWavTool:
             frame_period=self._frame_period,
         )
         waveform_to_wavfile(waveform, self._output_wav, input_sample_rate, output_sample_rate)
+
+
+def main_wavtool() -> None:
+    """実行引数を展開して wavtool としてスタンドアロン動作させる"""
+    parser = argparse.ArgumentParser(description='UTAU wavtool crossfading WORLD features')
+    parser.add_argument('output', help='output wav path', type=str)
+    parser.add_argument('input', help='input wav path', type=str)
+    parser.add_argument('stp', help='start offset of wav', type=float)
+    parser.add_argument('length', help='append length(ms)')
+    parser.add_argument(
+        'envelope',
+        nargs='*',
+        type=float,
+        help='envelope patern '
+        "'p1 p2' or 'p1 p2 p3 v1 v2 v3 v4 ove'"
+        " or 'p1 p2 p3 v1 v2 v3 v4"
+        " or 'p1 p2 p3 v1 v2 v3 v4 ove p4"
+        " or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'",
+    )
+    args = parser.parse_args()
+    # length 文字列を float に変換
+    length = args.length if isinstance(args.length, float) else str2float(args.length)
+    wavtool = WorldFeatureWavTool(args.output, args.input, args.stp, length, args.envelope)
+    # wavtool で音声WORLD特徴量を結合
+    wavtool.append()
+
+
+if __name__ == '__main__':
+    main_wavtool()
