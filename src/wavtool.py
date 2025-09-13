@@ -451,7 +451,7 @@ def main_wavtool() -> None:
     )
     args = parser.parse_args()
     # length 文字列を float に変換
-    length = args.length if isinstance(args.length, float) else str2float(args.length)
+    length = str2float(args.length)
     wavtool = WorldFeatureWavTool(args.output, args.input, args.stp, length, args.envelope)
     # wavtool で音声WORLD特徴量を結合
     wavtool.append()
