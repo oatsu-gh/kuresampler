@@ -84,9 +84,11 @@ def waveform_to_wavfile(
 
     Args:
         waveform             (np.ndarray): The waveform as a numpy array.
-        original_sample_rate (int)       : The original sample rate of the audio.
-        target_sample_rate   (int)       : The target sample rate for the output WAV file.
         wav_path             (Path)      : The path to the output WAV file.
+        in_sample_rate       (int)       : The original sample rate of the audio.
+        out_sample_rate      (int)       : The target sample rate for the output WAV file.
+        resample_type       (str)       : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
+        dtype               (np.dtype)  : The dtype for the output WAV file.
     """
     if in_sample_rate != out_sample_rate:
         waveform = librosa.resample(
