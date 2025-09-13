@@ -4,12 +4,15 @@
 # ENUNU cache dir
 /*enutemp
 
-# Files
+# File extensions
 *.code-workspace
+*.exe
+*.npz
 *.pyc
 *.wav
 *.xlsx
 *.zip
-*.npz
+
+# Specific files
 log.txt
 desktop.ini
