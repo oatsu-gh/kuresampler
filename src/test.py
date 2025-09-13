@@ -310,9 +310,29 @@ def test_resampler_and_wavtool(
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace('.wav', '_wfwavtool.wav'),
-        export_wav=True,
+        output_file=str(path_wav_out).replace('.wav', '_wfwavtool_from_wav.wav'),
+        export_wav=False,
         export_features=True,
+        use_neural_resampler=False,
+        use_neural_wavtool=False,
+        vocoder_model_dir=None,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    render.resamp(force=True)
+    render.append()
+
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (wav) + PyWavTool.NeuralNetworkWavTool (w/o vocoder-model)')
+    print('------------------------------------------------------------')
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out).replace('.wav', '_wfwavtool_from_npz.wav'),
+        export_wav=True,
+        export_features=False,
         use_neural_resampler=False,
         use_neural_wavtool=False,
         vocoder_model_dir=None,
