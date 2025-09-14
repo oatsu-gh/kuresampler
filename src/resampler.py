@@ -8,7 +8,6 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 """
 
 import argparse
-import sys
 from copy import copy
 from logging import Logger
 from pathlib import Path
@@ -185,7 +184,7 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         vocoder_feature_type: str = 'world',
         vocoder_vuv_threshold: float = 0.5,
         vocoder_frame_period: int = 5,
-        resample_type: str = 'soxr_vhq',
+        resample_type: str = 'soxr_hq',
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -258,13 +257,17 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self._output_data = wav
 
     def output(self) -> None:
-        """生成した波形を出力する。"""
+        """生成した波形を出力する。
+        self._output_data は synthesize の段階で self.framerate になっている前提なので、
+        input と output 両方とも self.framerate を指定する。
+        """
         if self._output_data is not None:
-            pyrwu.wave_io.write(
-                self.output_path,
+            waveform_to_wavfile(
                 self._output_data,
-                self.vocoder_sample_rate,
-                pyrwu.settings.OUTPUT_BITDEPTH // 8,
+                self.output_path,
+                self.framerate,
+                self.framerate,
+                resample_type=self._resample_type,
             )
 
     def resamp(self) -> None:
@@ -290,7 +293,15 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self.logger.debug('  ap.shape    : %s', self.ap.shape)
         # ------------------------------------------------------
         # f0 のスパイクノイズを除去
+        print('sp.shape:', self.sp.shape)
+        print('ap.shape:', self.ap.shape)
+        print('f0.shape before denoise:', self.f0.shape)
+        f0_before_denoise = copy(self.f0[-10:])
         self.denoise_f0()
+        print('f0.shape after denoise:', self.f0.shape)
+        f0_after_denoise = copy(self.f0[-10:])
+        print(f0_before_denoise == f0_after_denoise)
+
         # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
         # WAVファイル出力は必須ではないがテスト用に出力可能。
@@ -315,12 +326,6 @@ def main_resampler() -> None:
 
     """
     logger = setup_logger()
-    # 空文字列の引数を残すため argv を再構築
-    from pprint import pprint
-
-    pprint(sys.argv)
-    sys.argv = [sys.argv[0]] + sys.argv[1].split(' ') + sys.argv[2:]
-    pprint(sys.argv)
 
     # 引数を展開
     parser = argparse.ArgumentParser(description='WORLD feature resampler')
@@ -402,7 +407,6 @@ def main_resampler() -> None:
         required=True,
     )
     args = parser.parse_args()
-    pprint(args.__dict__)
 
     # WorldFeatureResamp インスタンスを生成
     resamp = NeuralNetworkResamp(
@@ -423,6 +427,7 @@ def main_resampler() -> None:
         export_features=True,
         vocoder_model_dir=args.model_dir,
     )
+
     # リサンプリングを実行
     resamp.resamp()
 

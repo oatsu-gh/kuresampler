@@ -72,16 +72,8 @@ class Program
         }
     }
 
-    // クラスメソッドとして定義
     static string EscapeArg(string arg)
     {
-        if (arg.Contains(" ") || arg.Contains("\"") || arg.Contains("\t"))
-        {
-            return "\"" + arg.Replace("\"", "\\\"") + "\"";
-        }
-        else
-        {
-            return arg;
-        }
+        return "\"" + arg.Replace("\"", "\\\"") + "\"";
     }
 }
