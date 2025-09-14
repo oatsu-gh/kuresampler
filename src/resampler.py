@@ -8,6 +8,7 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 """
 
 import argparse
+import sys
 from copy import copy
 from logging import Logger
 from pathlib import Path
@@ -314,6 +315,12 @@ def main_resampler() -> None:
 
     """
     logger = setup_logger()
+    # 空文字列の引数を残すため argv を再構築
+    from pprint import pprint
+
+    pprint(sys.argv)
+    sys.argv = [sys.argv[0]] + sys.argv[1].split(' ') + sys.argv[2:]
+    pprint(sys.argv)
 
     # 引数を展開
     parser = argparse.ArgumentParser(description='WORLD feature resampler')
@@ -329,29 +336,37 @@ def main_resampler() -> None:
     parser.add_argument(
         'flags',
         help='フラグ(省略可 default:"")。詳細は--show-flags参照',
+        type=str,
         nargs='?',
         default='',
     )
     parser.add_argument(
         'offset',
         help='入力ファイルの読み込み開始位置(ms)(省略可 default:0)',
+        type=float,
         nargs='?',
         default=0,
     )
     parser.add_argument(
         'target_ms',
         help='出力ファイルの長さ(ms)(省略可 default:0)UTAUでは通常50ms単位に丸めた値が渡される。',
+        type=float,
         nargs='?',
         default=0,
     )
     parser.add_argument(
-        'fixed_ms', help='offsetからみて通常伸縮しない長さ(ms)', nargs='?', default=0
+        'fixed_ms',
+        help='offsetからみて通常伸縮しない長さ(ms)',
+        type=float,
+        nargs='?',
+        default=0,
     )
     parser.add_argument(
         'end_ms',
         help='入力ファイルの読み込み終了位置(ms)(省略可 default:0)'
         '正の数の場合、ファイル末尾からの時間'
         '負の数の場合、offsetからの時間',
+        type=float,
         nargs='?',
         default=0,
     )
@@ -359,12 +374,14 @@ def main_resampler() -> None:
     parser.add_argument(
         'modulation',
         help='モジュレーション。0～200(省略可 default:0)',
+        type=int,
         nargs='?',
         default=0,
     )
     parser.add_argument(
         'tempo',
         help='ピッチのテンポ。数字の頭に!がついた文字列(省略可 default:"!120")',
+        type=str,
         nargs='?',
         default='!120',
     )
@@ -373,28 +390,38 @@ def main_resampler() -> None:
         help='ピッチベンド。(省略可 default:"")'
         '-2048～2047までの12bitの2進数をbase64で2文字の文字列に変換し、'
         '同じ数字が続く場合ランレングス圧縮したもの',
+        type=str,
         nargs='?',
         default='',
     )
+    # モデルを指定
+    parser.add_argument(
+        '--model_dir',
+        help='Vocoder model directory',
+        type=str,
+        required=True,
+    )
     args = parser.parse_args()
+    pprint(args.__dict__)
 
     # WorldFeatureResamp インスタンスを生成
-    resamp = WorldFeatureResamp(
-        input_path=args.input_path,
-        output_path=args.output_path,
-        target_tone=args.target_tone,
-        velocity=args.velocity,
-        flag_value=args.flags,
-        offset=args.offset,
-        target_ms=args.target_ms,
-        fixed_ms=args.fixed_ms,
-        end_ms=args.end_ms,
-        volume=args.volume,
-        modulation=args.modulation,
-        pitchbend=','.join(args.pitchbend),
+    resamp = NeuralNetworkResamp(
+        input_path=str(args.input_path),
+        output_path=str(args.output_path),
+        target_tone=str(args.target_tone),
+        velocity=int(args.velocity),
+        flag_value=str(args.flags),
+        offset=float(args.offset),
+        target_ms=float(args.target_ms),
+        fixed_ms=float(args.fixed_ms),
+        end_ms=float(args.end_ms),
+        volume=int(args.volume),
+        modulation=int(args.modulation),
+        pitchbend=str(args.pitchbend),
         logger=logger,
         export_wav=True,
         export_features=True,
+        vocoder_model_dir=args.model_dir,
     )
     # リサンプリングを実行
     resamp.resamp()
