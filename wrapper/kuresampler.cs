@@ -40,14 +40,17 @@ class Program
 
             // 引数をエスケープ（スペースやダブルクォート対応）
             string arguments = string.Join(" ", args.Select(new Func<string, string>(EscapeArg)));
+            // Console.WriteLine(arguments); // デバッグ用: 必要なら有効化
 
-            // プロセス情報を準備
+            // プロセス情報を準備（パスにスペースが含まれていても良いように cmd.exe を経由せずバッチを直接呼ぶ）
             var startInfo = new ProcessStartInfo();
             startInfo.WorkingDirectory = Environment.CurrentDirectory; // 呼び出し元のCWDを維持
             startInfo.UseShellExecute = false;
             startInfo.CreateNoWindow = false;
-            startInfo.FileName = "cmd.exe";
-            startInfo.Arguments = string.Format("/c \"{0}\" {1}", childPath, arguments);
+            // startInfo.FileName = "cmd.exe"; // cmd.exe 経由で呼び出す場合
+            // startInfo.Arguments = string.Format("/c \"{0}\" {1}", childPath, arguments); // cmd.exe 経由で呼び出す場合
+            startInfo.FileName = childPath; // 直接呼び出しの場合
+            startInfo.Arguments = arguments; // 直接呼び出しの場合
 
             // 子プロセスを起動して完了を待機
             Process process = Process.Start(startInfo);
