@@ -90,14 +90,16 @@ def waveform_to_wavfile(
         resample_type       (str)       : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
         dtype               (np.dtype)  : The dtype for the output WAV file.
     """
-    if in_sample_rate != out_sample_rate:
-        waveform = librosa.resample(
+    if in_sample_rate == out_sample_rate:
+        sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
+    else:
+        waveform_resampled = librosa.resample(
             waveform,
             orig_sr=in_sample_rate,
             target_sr=out_sample_rate,
             res_type=resample_type,
         )
-    sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
+        sf.write(wav_path, waveform_resampled.astype(dtype), out_sample_rate)
 
 
 def waveform_to_world(
@@ -239,6 +241,7 @@ def world_to_nnsvs(
         f0           (np.ndarray): F0
         spectrogram  (np.ndarray): spectrogram
         aperiodicity (np.ndarray): aperiodicity
+        sample_rate  (int)       : Sample rate of the audio, for output features.
 
     Returns:
         mgc (np.ndarray): mel-generalized cepstral coefficients
