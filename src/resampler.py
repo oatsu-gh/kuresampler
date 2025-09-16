@@ -369,9 +369,9 @@ def main_resampler() -> None:
     # モデルを指定
     parser.add_argument(
         '--model_dir',
-        help='Vocoder model directory',
+        help='Vocoder model directory (optional; required for neural network vocoder)',
         type=str,
-        required=True,
+        default=None,
     )
     args = parser.parse_args()
 
