@@ -447,12 +447,13 @@ def main_wavtool() -> None:
         'envelope',
         nargs='*',
         type=float,
-        help='envelope patern '
-        "'p1 p2' or 'p1 p2 p3 v1 v2 v3 v4 ove'"
-        " or 'p1 p2 p3 v1 v2 v3 v4"
-        " or 'p1 p2 p3 v1 v2 v3 v4 ove p4"
-        " or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'",
-    )
+        help=(
+            "envelope pattern "
+            "'p1 p2' or 'p1 p2 p3 v1 v2 v3 v4 ove' "
+            "or 'p1 p2 p3 v1 v2 v3 v4' "
+            "or 'p1 p2 p3 v1 v2 v3 v4 ove p4' "
+            "or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'"
+        ),
     args = parser.parse_args()
     # length 文字列を float に変換
     length = str2float(args.length)
