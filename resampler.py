@@ -182,7 +182,6 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         resample_type: str = 'soxr_vhq',
         **kwargs,
     ) -> None:
-        print(vocoder_model_dir)
         super().__init__(*args, **kwargs)
         self._vocoder_model_dir = vocoder_model_dir
         self._device = get_device()
