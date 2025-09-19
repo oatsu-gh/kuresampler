@@ -7,7 +7,8 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 クラス WorldFeatureResamp を定義する。
 """
 
-import logging
+import argparse
+import sys
 from copy import copy
 from logging import Logger
 from pathlib import Path
@@ -22,19 +23,13 @@ from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
-from convert import (  # noqa: F401
-    nnsvs_to_npzfile,
-    nnsvs_to_world,
-    npzfile_to_nnsvs,
-    npzfile_to_world,
-    waveform_to_wavfile,
-    waveform_to_world,
-    wavfile_to_waveform,
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))  # for local import
+
+from convert import (
     world_to_nnsvs,
-    world_to_npzfile,
-    world_to_waveform,
 )
-from util import denoise_spike, get_device, load_vocoder_model
+from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
 
 # TODO: WorldFeatureResamp を NeuralNetworkRender に統合する。
@@ -64,13 +59,18 @@ class WorldFeatureResamp(pyrwu.Resamp):
         end_ms: float = 0,
         volume: int = 100,
         modulation: int = 0,
-        tempo: str = '!120',
+        tempo: str | None = None,
         pitchbend: str = '',
         *,
         logger: Logger | None = None,
         export_wav: bool,
         export_features: bool,
     ) -> None:
+        logger = setup_logger() if logger is None else logger
+        if tempo is None:
+            logger.warning('Tempo is None, set to "!120" by default')
+            tempo = '!120'
+
         super().__init__(
             input_path=input_path,
             output_path=output_path,
@@ -87,11 +87,12 @@ class WorldFeatureResamp(pyrwu.Resamp):
             pitchbend=pitchbend,
             logger=logger,
         )
-        logger = logging.getLogger(__name__) if logger is None else logger
         # WAVファイルを出力するか否か
         self._export_wav = export_wav
         # WORLD特徴量をファイル出力するか否か
         self._export_features = export_features
+        # フラグに 'e' (stretch) を追加して、原音WAVの伸縮をストレッチ式に強制する。
+        self.__force_stretch()
 
     @property
     def export_wav(self) -> bool:
@@ -108,6 +109,15 @@ class WorldFeatureResamp(pyrwu.Resamp):
     @export_features.setter
     def export_features(self, value: bool) -> None:
         self._export_features = value
+
+    def __force_stretch(self) -> None:
+        """原音WAVの伸縮をストレッチ式に強制する。
+
+        note.flags に `e` を追加する。
+        ただし、note.flags に `e` が既に存在する場合や、`l` (loop) が明示的に指定されている場合は skip。
+        """
+        if 'e' not in self._flag_value and 'l' not in self._flag_value:
+            self._flag_value += 'e'
 
     def return_features(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """WORLD特徴量を返す。resamp() より後に実行する想定。"""
@@ -128,28 +138,13 @@ class WorldFeatureResamp(pyrwu.Resamp):
         self.getInputData()
         self.stretch()
         self.pitchShift()
-        self.applyPitch()  # FIXME: 最初のピッチ点のところで相対f0が0になる不具合を直す
-        # パラメータ確認 ---------------------------------------
-        self.logger.debug('  input_path  : %s', self.input_path)
-        self.logger.debug('  output_path : %s', self.output_path)
-        self.logger.debug('  framerate   : %s', self.framerate)
-        self.logger.debug('  t.shape     : %s', self.t.shape)
-        self.logger.debug('  f0.shape    : %s', self.f0.shape)
-        self.logger.debug('  sp.shape    : %s', self.sp.shape)
-        self.logger.debug('  ap.shape    : %s', self.ap.shape)
-        # ------------------------------------------------------
-        # f0 のスパイクノイズを除去
+        self.applyPitch()
         self.denoise_f0()
-        # WORLD特徴量にフラグを適用したのち wavform を更新する。
         self.synthesize()
-        # UST の音量を waveform に反映する。wav 出力しない場合は無駄な処理なのでskip。
-        if self.export_wav:
-            self.adjustVolume()
-        # WAVファイル出力は必須ではないがテスト用に出力可能。
+        self.adjustVolume()
         if self.export_wav:
             self.output()
             self.logger.debug('Exported WAV file: %s', self.output_path)
-        # WORLD 特徴量を npz ファイル出力する。
         if self.export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
             np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
@@ -230,7 +225,6 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.vocoder_sample_rate)
         # モデルに渡す用に特徴量をまとめる
         multistream_features = (mgc, lf0, vuv, bap)
-        # print(mgc.shape, lf0.shape, vuv.shape, bap.shape)
         # waveformを生成
         wav = predict_waveform(
             device=self._device,
@@ -256,16 +250,6 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         # 生成した波形を _output_data に代入
         self._output_data = wav
 
-    def output(self) -> None:
-        """生成した波形を出力する。"""
-        if self._output_data is not None:
-            pyrwu.wave_io.write(
-                self.output_path,
-                self._output_data,
-                self.vocoder_sample_rate,
-                pyrwu.settings.OUTPUT_BITDEPTH // 8,
-            )
-
     def resamp(self) -> None:
         """Neural Networkを用いてWORLD特徴量をリサンプリングする。"""
         self.logger.info(
@@ -288,17 +272,135 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self.logger.debug('  sp.shape    : %s', self.sp.shape)
         self.logger.debug('  ap.shape    : %s', self.ap.shape)
         # ------------------------------------------------------
+        # f0 のスパイクノイズを除去
+        self.denoise_f0()
         # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
-        # WAVファイル出力は必須ではないがテスト用に出力可能。
-        if self.export_wav:
-            # UST の音量を waveform に反映
-            self.adjustVolume()  # TODO: npz にも反映できるようにする。
-            # WAV ファイル出力
-            self.output()
-            self.logger.debug('Exported WAV file: %s', self.output_path)
+        # UST の音量を waveform に反映
+        self.adjustVolume()  # TODO: npz にも反映できるようにする。
+        # WAV ファイル出力
+        self.output()
+        self.logger.debug('Exported WAV file: %s', self.output_path)
         # WORLD 特徴量を npz ファイル出力する。
         if self.export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
             np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
             self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
+
+
+def main_resampler() -> None:
+    """実行引数を展開して Resamp インスタンスを生成し、resamp() を実行する。
+
+    想定される引数の形式
+    resampler.exe <input wavfile> <output file> <pitch_percent> <velocity> [<flags> [<offset> <length_require> [<fixed length> [<end_blank> [<volume> [<modulation> [<pich bend>...]]]]]]]
+
+    """
+    logger = setup_logger()
+
+    # 引数を展開
+    parser = argparse.ArgumentParser(description='WORLD feature resampler')
+    parser.add_argument('input_path', help='原音のファイル名', type=str)
+    parser.add_argument('output_path', help='wavファイルの出力先パス', type=str)
+    parser.add_argument(
+        'target_tone',
+        help='音高名(A4=440Hz)。半角上げは#もしくは♯半角下げはbもしくは♭で与えられます。',
+        type=str,
+    )
+    parser.add_argument('velocity', help='子音速度', type=int)
+    parser.add_argument(
+        'flags',
+        help='フラグ(省略可 default:"")。詳細は--show-flags参照',
+        type=str,
+        nargs='?',
+        default='',
+    )
+    parser.add_argument(
+        'offset',
+        help='入力ファイルの読み込み開始位置(ms)(省略可 default:0)',
+        type=float,
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'target_ms',
+        help='出力ファイルの長さ(ms)(省略可 default:0)UTAUでは通常50ms単位に丸めた値が渡される。',
+        type=float,
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'fixed_ms',
+        help='offsetからみて通常伸縮しない長さ(ms)',
+        type=float,
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'end_ms',
+        help='入力ファイルの読み込み終了位置(ms)(省略可 default:0)'
+        '正の数の場合、ファイル末尾からの時間'
+        '負の数の場合、offsetからの時間',
+        type=float,
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument('volume', help='音量。0～200(省略可 default:100)', nargs='?', default=100)
+    parser.add_argument(
+        'modulation',
+        help='モジュレーション。0～200(省略可 default:0)',
+        type=int,
+        nargs='?',
+        default=0,
+    )
+    parser.add_argument(
+        'tempo',
+        help='ピッチのテンポ。数字の頭に!がついた文字列(省略可 default:"!120")',
+        type=str,
+        nargs='?',
+        default='!120',
+    )
+    parser.add_argument(
+        'pitchbend',
+        help='ピッチベンド。(省略可 default:"")'
+        '-2048～2047までの12bitの2進数をbase64で2文字の文字列に変換し、'
+        '同じ数字が続く場合ランレングス圧縮したもの',
+        type=str,
+        nargs='?',
+        default='',
+    )
+    # モデルを指定
+    parser.add_argument(
+        '--model_dir',
+        help='Vocoder model directory (optional; required for neural network vocoder)',
+        type=str,
+        default=None,
+    )
+    args = parser.parse_args()
+
+    # NeuralNetworkResamp インスタンスを生成
+    resamp = NeuralNetworkResamp(
+        input_path=str(args.input_path),
+        output_path=str(args.output_path),
+        target_tone=str(args.target_tone),
+        velocity=int(args.velocity),
+        flag_value=str(args.flags),
+        offset=float(args.offset),
+        target_ms=float(args.target_ms),
+        fixed_ms=float(args.fixed_ms),
+        end_ms=float(args.end_ms),
+        volume=int(args.volume),
+        modulation=int(args.modulation),
+        tempo=str(args.tempo),
+        pitchbend=str(args.pitchbend),
+        logger=logger,
+        export_wav=True,
+        export_features=True,
+        vocoder_type='usfgan',
+        vocoder_model_dir=args.model_dir,
+    )
+    # リサンプリングを実行
+    resamp.resamp()
+
+
+if __name__ == '__main__':
+    main_resampler()
