@@ -299,7 +299,6 @@ def main_resampler() -> None:
 
     # 引数を展開
     parser = argparse.ArgumentParser(description='WORLD feature resampler')
-    # Positional arguments are inherently required; remove invalid required=True
     parser.add_argument('input_path', help='原音のファイル名', type=str)
     parser.add_argument('output_path', help='wavファイルの出力先パス', type=str)
     parser.add_argument(
