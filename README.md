@@ -96,12 +96,9 @@ f0           -----------------------------------> vuv
 ### python-3.12.10-embed-amd64 での環境構築手順
 
 - pysptk をインストールするときに dll とか h ファイルとかが必要なので、インストール版の Python からコピーする。(2025/04/09)
-
   - python/include/  → python-embeddable/include/
   - python/libs/  → python-embeddable/libs/
-
 - pysptk をインストールするときと uSFGAN を使うときに tcl/tk が必要なので、インストール版の Python から下記内容でコピーして対処。(2025/04/09)
-
   - python/tcl/  → python-embeddable/tcl/
   - python/Lib/tkinter/ → python/tkinter/
   - python/DLLs/\_tkinter.pyd → python-embeddable/\_tkinter.pyd
@@ -117,11 +114,7 @@ f0           -----------------------------------> vuv
   ```
 
 - nnsvs をダウンロード (https://github.com/nnsvs/nnsvs)
-
 - uSFGAN は HN-UnifiedSourceFilterGAN-nnsvs を DL
-
 - ParallelWaveGAN は ParallelWaveGAN-nnsvs をDL (https://github.com/nnsvs/ParallelWaveGAN)
-
 - SiFiGAN は SiFiGAN-nnsvs を DL (https://github.com/nnsvs/SiFiGAN)
-
   - pip で python embeddable に SiFiGAN をインストールする場合は docopt が無いとエラーが出るので、インストール版の Python から docopt をコピーして対処。(2024/05/19)
