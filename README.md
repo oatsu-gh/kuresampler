@@ -15,7 +15,7 @@ WORLD と ニューラルボコーダーを利用した UTAU エンジンです�
 
 ## How to use
 
-UTAU エンジンの resampler の代わりに **kuresampler.exe** を指定してください。OpenUtau ではなく通常の UTAU を使う場合は
+UTAU エンジンの resampler の代わりに **kuresampler.exe** を指定してください。OpenUtau ではなく通常の UTAU を使う場合は **kuresampler_fast.exe** のほうが高速なのでおすすめです。
 
 ### Flags
 
