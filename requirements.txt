@@ -1,8 +1,10 @@
--e git+https://github.com/oatsu/PyUtauCli.git@debug#egg=PyUtauCli
--e git+https://github.com/oatsu/PyRwu.git@debug#egg=PyRwu
--e git+https://github.com/oatsu/PyWavTool.git@debug#egg=PyWavTool
--e git+https://github.com/oatsu/nnsvs.git@enunu-python312#egg=nnsvs
-utaupy
-numpy
+git+https://github.com/oatsu/nnsvs@kuresampler
+git+https://github.com/oatsu/PyUtauCli@kuresampler
+git+https://github.com/oatsu/PyRwu@kuresampler
+git+https://github.com/oatsu/PyWavTool@kuresampler
+git+https://github.com/oatsu-gh/ParallelWaveGAN@kuresampler
+git+https://github.com/oatsu-gh/HN-UnifiedSourceFilterGAN@kuresampler
+"numpy<2"
 omegaconf
+light-the-torch
 # torch should be installed manually according to the environment
