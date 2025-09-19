@@ -24,7 +24,7 @@ from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
 if __name__ == '__main__':
-    sys.path.append(str(Path(__file__).parent))  # for relative import
+    sys.path.append(str(Path(__file__).parent))  # for local import
 
 from convert import (
     world_to_nnsvs,

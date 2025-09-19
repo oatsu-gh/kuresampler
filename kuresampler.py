@@ -26,7 +26,7 @@ from PyUtauCli.projects.Ust import Ust
 from tqdm.auto import tqdm
 
 if __name__ == '__main__':
-    sys.path.append(str(Path(__file__).parent))  # for relative import
+    sys.path.append(str(Path(__file__).parent))  # for local import
 
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,
