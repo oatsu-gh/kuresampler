@@ -24,6 +24,7 @@ wavtool の処理の流れ
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 from warnings import warn
 
@@ -33,6 +34,9 @@ import torch
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
+
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))  # for relative import
 
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,

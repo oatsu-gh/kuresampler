@@ -10,6 +10,7 @@
 """
 
 import logging
+import sys
 from logging import Logger
 from pathlib import Path
 from shutil import rmtree
@@ -23,6 +24,9 @@ from nnsvs.gen import predict_waveform
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 from tqdm.auto import tqdm
+
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))  # for relative import
 
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,

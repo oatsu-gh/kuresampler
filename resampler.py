@@ -8,6 +8,7 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 """
 
 import argparse
+import sys
 from copy import copy
 from logging import Logger
 from pathlib import Path
@@ -21,6 +22,9 @@ from nnsvs.gen import predict_waveform
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
+
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))  # for relative import
 
 from convert import (
     world_to_nnsvs,
@@ -178,6 +182,7 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         resample_type: str = 'soxr_vhq',
         **kwargs,
     ) -> None:
+        print(vocoder_model_dir)
         super().__init__(*args, **kwargs)
         self._vocoder_model_dir = vocoder_model_dir
         self._device = get_device()
@@ -272,7 +277,6 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self.denoise_f0()
         # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
-        # WAVファイル出力は必須ではないがテスト用に出力可能。
         # UST の音量を waveform に反映
         self.adjustVolume()  # TODO: npz にも反映できるようにする。
         # WAV ファイル出力
