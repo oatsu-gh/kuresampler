@@ -59,7 +59,7 @@ def easy_interpolate(y: list[float] | np.ndarray) -> float:
     return sum([a * b for a, b in zip(y, weights, strict=True)]) / sum(weights)
 
 
-def denoise_spike(f0: np.ndarray) -> np.ndarray:
+def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
     """1次元配列の f0 のスパイクノイズを除去する。
 
     Args:
@@ -76,9 +76,10 @@ def denoise_spike(f0: np.ndarray) -> np.ndarray:
         window_data = f0_clean[i - half_window : i + half_window + 1]
         q1 = np.quantile(window_data, 0.25)
         a3 = np.quantile(window_data, 0.75)
-        iqr = a3 - q1
-        lower_bound = q1 - 1.5 * iqr
-        upper_bound = a3 + 1.5 * iqr
+        iqr = max(a3 - q1, 0.01)  # IQRが小さすぎると誤検知するので下限を設定
+        # 外れ値の閾値を計算
+        lower_bound = q1 - iqr_multiplier * iqr
+        upper_bound = a3 + iqr_multiplier * iqr
         # スパイクノイズを除去
         if f0_clean[i] < lower_bound or f0_clean[i] > upper_bound:
             warn(f'Spike noise detected at index {i}: {f0_clean[i]}', stacklevel=2)
