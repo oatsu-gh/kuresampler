@@ -239,6 +239,15 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             vocoder_type=self._vocoder_type,
             vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
         )
+        
+        # Check for non-finite values (NaN, inf) in the generated waveform and clean them
+        if not np.isfinite(wav).all():
+            self.logger.warning(
+                'Generated waveform contains non-finite values (NaN/inf). '
+                'Replacing with zeros to prevent resampling errors.'
+            )
+            wav = np.where(np.isfinite(wav), wav, 0.0)
+        
         # サンプリング周波数が異なる場合、UTAUの原音と同じになるようにリサンプリングする。
         if self.vocoder_sample_rate != self.framerate:
             wav = librosa.resample(
@@ -247,6 +256,14 @@ class NeuralNetworkResamp(WorldFeatureResamp):
                 target_sr=self.framerate,  # UTAUの原音のサンプルレート
                 res_type=self._resample_type,
             )
+            # Check for non-finite values after resampling as well
+            if not np.isfinite(wav).all():
+                self.logger.warning(
+                    'Resampled waveform contains non-finite values (NaN/inf). '
+                    'Replacing with zeros.'
+                )
+                wav = np.where(np.isfinite(wav), wav, 0.0)
+        
         # 生成した波形を _output_data に代入
         self._output_data = wav
 
