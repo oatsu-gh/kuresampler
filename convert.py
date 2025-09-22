@@ -29,7 +29,6 @@ DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
 DEFAULT_F0_CEIL: float = 2000.0
 DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu default is 0.85.)
-DEFAULT_FFT_SIZE: int = 512
 # ----------------------------------
 
 
@@ -261,6 +260,7 @@ def nnsvs_to_world(
     bap: np.ndarray,
     sample_rate: int,
     fft_size: int = DEFAULT_FFT_SIZE,
+=======
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
@@ -269,10 +269,13 @@ def nnsvs_to_world(
         lf0 (np.ndarray): Log F0
         vuv (np.ndarray): Voiced / unvoiced flag
         bap (np.ndarray): Band aperiodicity
+        sample_rate (int): Original sample rate of the audio, before feature extraction.
 
     Returns:
         tuple[np.ndarray, np.ndarray, np.ndarray]: WORLD features (f0, spectrogram, aperiodicity)
     """
+    # Automatically determine fft_size from sample_rate
+    fft_size = pyworld.get_cheaptrick_fft_size(sample_rate)
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
