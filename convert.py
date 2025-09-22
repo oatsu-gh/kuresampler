@@ -263,10 +263,10 @@ def nnsvs_to_world(
     """Convert NNSVS features to WORLD features.
 
     Args:
-        mgc (np.ndarray): Mel-generalized cepstral coefficients
-        lf0 (np.ndarray): Log F0
-        vuv (np.ndarray): Voiced / unvoiced flag
-        bap (np.ndarray): Band aperiodicity
+        mgc (np.ndarray) : Mel-generalized cepstral coefficients
+        lf0 (np.ndarray) : Log F0
+        vuv (np.ndarray) : Voiced / unvoiced flag
+        bap (np.ndarray) : Band aperiodicity
         sample_rate (int): Original sample rate of the audio, before feature extraction.
 
     Returns:
