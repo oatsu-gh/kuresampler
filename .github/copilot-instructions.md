@@ -11,6 +11,11 @@
 - **Target**: Windows with embedded Python 3.12.10
 - **Dependencies**: NNSVS, PyTorch, WORLD vocoder, librosa, numpy
 
+## About Language
+- The main maintainer is Japanese-native
+- PR descriptions should be in Japanese, not English.
+- PR summary should be both in Japanese and in English.
+
 ## Architecture & Project Layout
 
 ### Core Components
