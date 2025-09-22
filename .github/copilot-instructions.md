@@ -56,6 +56,7 @@
    ```bash
    pip install -r requirements.txt
    pip install torch torchaudio torchvision  # Install manually per environment
+   pip install ruff  # For linting - specified in pyproject.toml
    # Note: requirements.txt contains git+https:// dependencies that may take 5-10 minutes to install
    ```
 
@@ -87,7 +88,7 @@
    _compile.bat  # Compiles kuresampler.cs → kuresampler.exe
    ```
 
-2. **Linting**:
+2. **Linting** (uses Ruff linter):
    ```bash
    ruff check --config pyproject.toml .  # Many style warnings expected (D212, EXE001, etc.)
    ruff format --config pyproject.toml .
