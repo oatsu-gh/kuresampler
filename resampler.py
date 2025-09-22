@@ -17,6 +17,7 @@ import colored_traceback.auto  # noqa: F401
 import librosa
 import numpy as np
 import PyRwu as pyrwu  # noqa: N813
+import pyworld
 import torch
 from nnsvs.gen import predict_waveform
 from nnsvs.util import StandardScaler
@@ -32,19 +33,29 @@ from convert import (
 from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
 
-# TODO: WorldFeatureResamp を NeuralNetworkRender に統合する。
-# MARK: WorldFeatureResamp
-class WorldFeatureResamp(pyrwu.Resamp):
-    """WAVファイルの代わりにWORLDの特徴量をファイルに出力するResampler
+# MARK: NeuralNetworkResamp
+class NeuralNetworkResamp(pyrwu.Resamp):
+    """Neural NetworkによるWORLD特徴量のリサンプリングを行う。
 
-    PyRwu.resamp.Resamp からの変更点
-    - __init__ で logger を必須化
-    - export_features を追加
-    - export_wav を追加
+    Args:
+        vocoder_model_dir: The directory containing the vocoder model files.
+        use_vocoder_model: Whether to use vocoder model for waveform synthesis. If False, use WORLD.
+
     """
 
     _export_wav: bool
     _export_features: bool
+    _use_vocoder_model: bool
+    _vocoder_model: torch.nn.Module | None
+    _vocoder_model_dir: Path | str | None
+    _vocoder_in_scaler: StandardScaler | None
+    _vocoder_config: DictConfig | ListConfig | None
+    _vocoder_type: str
+    _vocoder_feature_type: str
+    _vocoder_vuv_threshold: float
+    _vocoder_frame_period: int
+    _device: torch.device
+    _resample_type: str
 
     def __init__(
         self,
@@ -65,10 +76,17 @@ class WorldFeatureResamp(pyrwu.Resamp):
         logger: Logger | None = None,
         export_wav: bool,
         export_features: bool,
+        use_vocoder_model: bool = True,
+        vocoder_model_dir: Path | str | None = None,
+        vocoder_type: str = 'usfgan',
+        vocoder_feature_type: str = 'world',
+        vocoder_vuv_threshold: float = 0.5,
+        vocoder_frame_period: int = 5,
+        resample_type: str = 'soxr_vhq',
     ) -> None:
-        logger = setup_logger() if logger is None else logger
+        self.logger = setup_logger() if logger is None else logger
         if tempo is None:
-            logger.warning('Tempo is None, set to "!120" by default')
+            self.logger.warning('Tempo is None, set to "!120" by default')
             tempo = '!120'
 
         super().__init__(
@@ -91,8 +109,37 @@ class WorldFeatureResamp(pyrwu.Resamp):
         self._export_wav = export_wav
         # WORLD特徴量をファイル出力するか否か
         self._export_features = export_features
+        # ボコーダーモデルを使用するか否か
+        self._use_vocoder_model = use_vocoder_model
         # フラグに 'e' (stretch) を追加して、原音WAVの伸縮をストレッチ式に強制する。
         self.__force_stretch()
+
+        # デバイス設定
+        self._device = get_device()
+
+        # ボコーダー関連の設定
+        self._vocoder_model_dir = vocoder_model_dir
+        self._vocoder_type = vocoder_type
+        self._vocoder_feature_type = vocoder_feature_type
+        self._vocoder_vuv_threshold = vocoder_vuv_threshold
+        self._vocoder_frame_period = vocoder_frame_period
+        self._resample_type = resample_type
+
+        # use_vocoder_model が True の時のみボコーダーモデルを読み込む
+        if self._use_vocoder_model:
+            if vocoder_model_dir is None:
+                msg = 'vocoder_model_dir is required when use_vocoder_model is True'
+                raise ValueError(msg)
+            self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = (
+                load_vocoder_model(
+                    vocoder_model_dir,
+                    device=self._device,
+                )
+            )
+        else:
+            self._vocoder_model = None
+            self._vocoder_in_scaler = None
+            self._vocoder_config = None
 
     @property
     def export_wav(self) -> bool:
@@ -109,6 +156,14 @@ class WorldFeatureResamp(pyrwu.Resamp):
     @export_features.setter
     def export_features(self, value: bool) -> None:
         self._export_features = value
+
+    @property
+    def use_vocoder_model(self) -> bool:
+        return self._use_vocoder_model
+
+    @use_vocoder_model.setter
+    def use_vocoder_model(self, value: bool) -> None:
+        self._use_vocoder_model = value
 
     def __force_stretch(self) -> None:
         """原音WAVの伸縮をストレッチ式に強制する。
@@ -132,81 +187,21 @@ class WorldFeatureResamp(pyrwu.Resamp):
         if self._f0 is not None:
             self._f0 = denoise_spike(self._f0)
 
-    def resamp(self) -> None:
-        """WAVファイルの代わりにWORLDの特徴量をファイルに出力する。"""
-        self.parseFlags()
-        self.getInputData()
-        self.stretch()
-        self.pitchShift()
-        self.applyPitch()
-        self.denoise_f0()
-        self.synthesize()
-        self.adjustVolume()
-        if self.export_wav:
-            self.output()
-            self.logger.debug('Exported WAV file: %s', self.output_path)
-        if self.export_features:
-            npz_path = Path(self.output_path).with_suffix('.npz')
-            np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
-            self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
-
-
-# MARK: NeuralNetworkResamp
-class NeuralNetworkResamp(WorldFeatureResamp):
-    """Neural NetworkによるWORLD特徴量のリサンプリングを行う。
-
-    Args:
-        vocoder_model_dir: The directory containing the vocoder model files.
-
-    """
-
-    _vocoder_model: torch.nn.Module
-    _vocoder_model_dir: Path | str
-    _vocoder_in_scaler: StandardScaler
-    _vocoder_config: DictConfig | ListConfig
-    _vocoder_type: str
-    _vocoder_feature_type: str
-    _vocoder_vuv_threshold: float
-    _vocoder_frame_period: int
-    _device: torch.device
-    _resample_type: str
-
-    def __init__(
-        self,
-        *args,
-        vocoder_model_dir: Path | str,
-        vocoder_type: str = 'usfgan',
-        vocoder_feature_type: str = 'world',
-        vocoder_vuv_threshold: float = 0.5,
-        vocoder_frame_period: int = 5,
-        resample_type: str = 'soxr_vhq',
-        **kwargs,
-    ) -> None:
-        super().__init__(*args, **kwargs)
-        self._vocoder_model_dir = vocoder_model_dir
-        self._device = get_device()
-        self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = load_vocoder_model(
-            vocoder_model_dir,
-            device=self._device,
-        )
-        self._vocoder_type = vocoder_type
-        self._vocoder_feature_type = vocoder_feature_type
-        self._vocoder_vuv_threshold = vocoder_vuv_threshold
-        self._vocoder_frame_period = vocoder_frame_period
-        self._resample_type = resample_type
-
     @property
-    def vocoder_model(self) -> torch.nn.Module:
+    def vocoder_model(self) -> torch.nn.Module | None:
         """ボコーダーモデル"""
         return self._vocoder_model
 
     @property
     def vocoder_sample_rate(self) -> int:
         """ボコーダーモデルのwav出力サンプリング周波数"""
+        if self._vocoder_config is None:
+            msg = 'vocoder_config is None. vocoder_model must be loaded first.'
+            raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
 
     def synthesize(self) -> None:
-        """Pyworld の代わりに vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
+        """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
         for effect in pyrwu.settings.F0_EFFECTS:
             self._f0 = effect.apply(self)
 
@@ -219,10 +214,39 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         for effect in pyrwu.settings.WORLD_EFFECTS:
             self._f0, self._sp, self._ap = effect.apply(self)
 
-        assert self._vocoder_model is not None  # 念のため確認
+        if self._use_vocoder_model:
+            # Neural Network Vocoderを使用してwaveformを生成
+            self._synthesize_with_vocoder_model()
+        else:
+            # WORLDを使用してwaveformを生成
+            self._synthesize_with_world()
 
+    def _synthesize_with_world(self) -> None:
+        """WORLDを用いてWORLD特徴量からwaveformを生成する。"""
+        # WORLDを使って直接waveformを合成
+        clipped_ap = np.clip(self.ap.astype(np.float64), 0.0, 1.0)
+        wav = pyworld.synthesize(  # pyright: ignore[reportAttributeAccessIssue]
+            self.f0.astype(np.float64),
+            self.sp.astype(np.float64),
+            clipped_ap,
+            self.framerate,
+            frame_period=pyrwu.settings.PYWORLD_PERIOD,
+        )
+
+        # 生成した波形を _output_data に代入
+        self._output_data = wav.astype(np.float32)
+
+    def _synthesize_with_vocoder_model(self) -> None:
+        """Vocoder modelを用いてWORLD特徴量からwaveformを生成する。"""
+        assert self._vocoder_model is not None, 'vocoder_model is None'
+        assert self._vocoder_config is not None, 'vocoder_config is None'
+        assert self._vocoder_in_scaler is not None, 'vocoder_in_scaler is None'
+        # ap を 0.0 ～ 1.0 の範囲にクリップ
+        clipped_ap = np.clip(self.ap.astype(np.float64), 0.0, 1.0)
         # WORLD 特徴量を NNSVS 用に変換
-        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.vocoder_sample_rate)
+        # sp, ap はもとの wav のサンプリング周波数に基づいて抽出されているので、
+        # nnsvs 向け特徴量への変換時はフレームレートは原音 wav のそれを渡す。
+        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, clipped_ap, self.framerate)
         # モデルに渡す用に特徴量をまとめる
         multistream_features = (mgc, lf0, vuv, bap)
         # waveformを生成
@@ -240,6 +264,11 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
         )
         # サンプリング周波数が異なる場合、UTAUの原音と同じになるようにリサンプリングする。
+        # DEBUG: --------------------------------------------------
+        # debug_path = Path('debug_nnsvs_waveform.txt')
+        # np.savetxt(debug_path, wav.reshape(-1, 1), delimiter=',')
+        # print(f'Saved {debug_path.resolve()}')
+        # DEBUG: --------------------------------------------------
         if self.vocoder_sample_rate != self.framerate:
             wav = librosa.resample(
                 wav,
@@ -251,12 +280,16 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         self._output_data = wav
 
     def resamp(self) -> None:
-        """Neural Networkを用いてWORLD特徴量をリサンプリングする。"""
-        self.logger.info(
-            'Resample using vocoder model: %s (%s)',
-            self._vocoder_model_dir,
-            type(self._vocoder_model),
-        )
+        """Neural Networkまたは WORLD を用いてWORLD特徴量をリサンプリングする。"""
+        if self._use_vocoder_model:
+            self.logger.info(
+                'Resample with WORLD and vocoder model: %s (%s)',
+                self._vocoder_model_dir,
+                type(self._vocoder_model),
+            )
+        else:
+            self.logger.info('Resample with WORLD')
+
         self.parseFlags()  # フラグを取得
         self.getInputData()  # 原音WAVからWORLD特徴量を抽出
         self.stretch()  # 時間伸縮
@@ -274,13 +307,16 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         # ------------------------------------------------------
         # f0 のスパイクノイズを除去
         self.denoise_f0()
-        # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
+        # synthesize はオーバーライドされているので vocoder または world を使って waveform 生成
         self.synthesize()
         # UST の音量を waveform に反映
         self.adjustVolume()  # TODO: npz にも反映できるようにする。
+
         # WAV ファイル出力
-        self.output()
-        self.logger.debug('Exported WAV file: %s', self.output_path)
+        if self.export_wav:
+            self.output()
+            self.logger.debug('Exported WAV file: %s', self.output_path)
+
         # WORLD 特徴量を npz ファイル出力する。
         if self.export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
@@ -375,6 +411,13 @@ def main_resampler() -> None:
         type=str,
         default=None,
     )
+    # ボコーダーモデルを使用するか否か
+    parser.add_argument(
+        '--use_vocoder_model',
+        help='Whether to use vocoder model for waveform synthesis. If False, use WORLD.',
+        action='store_true',
+        default=False,
+    )
     args = parser.parse_args()
 
     # NeuralNetworkResamp インスタンスを生成
@@ -395,6 +438,7 @@ def main_resampler() -> None:
         logger=logger,
         export_wav=True,
         export_features=True,
+        use_vocoder_model=args.use_vocoder_model,
         vocoder_type='usfgan',
         vocoder_model_dir=args.model_dir,
     )
