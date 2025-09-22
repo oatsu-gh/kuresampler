@@ -268,7 +268,7 @@ def nnsvs_to_world(
     vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
     sample_rate: int,
-    fft_size: int = DEFAULT_FFT_SIZE,
+    fft_size: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
@@ -277,10 +277,20 @@ def nnsvs_to_world(
         lf0 (np.ndarray): Log F0
         vuv (np.ndarray): Voiced / unvoiced flag
         bap (np.ndarray): Band aperiodicity
+        sample_rate (int): Sample rate
+        fft_size (int, optional): FFT size for spectral envelope decoding.
+                                 If None, automatically determined from bap dimensions.
 
     Returns:
         tuple[np.ndarray, np.ndarray, np.ndarray]: WORLD features (f0, spectrogram, aperiodicity)
     """
+    # Automatically determine fft_size from bap dimensions if not provided
+    # This ensures consistency between encoding and decoding
+    if fft_size is None:
+        # bap typically has shape (n_frames, n_bands) where n_bands = fft_size // 2 + 1
+        n_bands = bap.shape[-1]
+        fft_size = (n_bands - 1) * 2
+    
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
