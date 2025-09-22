@@ -62,6 +62,11 @@ def wavfile_to_waveform(
     assert out_sample_rate is not None
     # リサンプリング
     if in_sample_rate != out_sample_rate:
+        # Check for non-finite values before resampling
+        if not np.isfinite(waveform).all():
+            # Replace non-finite values with zeros
+            waveform = np.where(np.isfinite(waveform), waveform, 0.0)
+        
         waveform = librosa.resample(
             waveform,
             orig_sr=in_sample_rate,
@@ -93,6 +98,11 @@ def waveform_to_wavfile(
     if in_sample_rate == out_sample_rate:
         sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
     else:
+        # Check for non-finite values before resampling
+        if not np.isfinite(waveform).all():
+            # Replace non-finite values with zeros
+            waveform = np.where(np.isfinite(waveform), waveform, 0.0)
+        
         waveform_resampled = librosa.resample(
             waveform,
             orig_sr=in_sample_rate,
@@ -180,6 +190,12 @@ def world_to_waveform(
         waveform (np.ndarray): The reconstructed waveform.
     """
     waveform = pyworld.synthesize(f0, spectrogram, aperiodicity, sample_rate, frame_period)
+    
+    # Check for non-finite values in the synthesized waveform and clean them
+    if not np.isfinite(waveform).all():
+        # Replace non-finite values with zeros
+        waveform = np.where(np.isfinite(waveform), waveform, 0.0)
+    
     return waveform
 
 

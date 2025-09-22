@@ -101,6 +101,15 @@ def nnsvs_to_waveform(
         vocoder_type=vocoder_type,
         vuv_threshold=vuv_threshold,  # vuv 閾値設定はするけど使われないはず
     )
+    
+    # Check for non-finite values in the generated waveform and clean them
+    if not np.isfinite(wav).all():
+        logger.warning(
+            'Generated waveform contains non-finite values (NaN/inf). '
+            'Replacing with zeros to prevent audio errors.'
+        )
+        wav = np.where(np.isfinite(wav), wav, 0.0)
+    
     # 生成した waveform を返す
     return wav
 
@@ -387,6 +396,14 @@ class NeuralNetworkRender(Render):
                 vocoder_type='usfgan',
                 vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
             )
+            
+            # Check for non-finite values in the generated waveform and clean them
+            if not np.isfinite(waveform).all():
+                self.logger.warning(
+                    'Generated waveform contains non-finite values (NaN/inf). '
+                    'Replacing with zeros to prevent audio errors.'
+                )
+                waveform = np.where(np.isfinite(waveform), waveform, 0.0)
 
             # wav ファイルを書き出す
             waveform_to_wavfile(
