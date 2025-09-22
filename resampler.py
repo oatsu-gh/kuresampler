@@ -261,6 +261,53 @@ class NeuralNetworkResamp(WorldFeatureResamp):
                     # For other features, replace with zeros
                     feature[:] = np.where(np.isfinite(feature), feature, 0.0)
 
+    def _validate_processing_step(self, step_name: str) -> None:
+        """Validate WORLD features at each processing step to identify corruption source."""
+        if hasattr(self, '_f0') and self._f0 is not None:
+            f0_issues = []
+            if (self._f0 < 0).any():
+                neg_count = (self._f0 < 0).sum()
+                f0_issues.append(f"negative values: {neg_count}")
+            if not np.isfinite(self._f0).all():
+                nan_count = np.isnan(self._f0).sum()
+                inf_count = np.isinf(self._f0).sum()
+                f0_issues.append(f"NaN: {nan_count}, Inf: {inf_count}")
+            if (self._f0 > 2000).any():
+                extreme_count = (self._f0 > 2000).sum()
+                f0_issues.append(f"extreme values (>2000Hz): {extreme_count}")
+                
+            if f0_issues:
+                self.logger.error(
+                    f"F0 corruption detected {step_name}: {', '.join(f0_issues)}. "
+                    f"F0 range: [{self._f0.min():.2f}, {self._f0.max():.2f}] Hz. "
+                    "This indicates the fundamental issue in the processing pipeline."
+                )
+                # Fix the fundamental issues right here instead of later
+                self._fix_f0_fundamental_issues()
+
+    def _fix_f0_fundamental_issues(self) -> None:
+        """Fix F0 issues at the fundamental level where they occur."""
+        if hasattr(self, '_f0') and self._f0 is not None:
+            original_f0 = self._f0.copy()
+            
+            # Fix negative F0 values (impossible in real audio)
+            negative_mask = self._f0 < 0
+            if negative_mask.any():
+                self._f0[negative_mask] = 0.0
+                self.logger.warning(f"Fixed {negative_mask.sum()} negative F0 values")
+            
+            # Fix extreme F0 values (beyond human vocal range)
+            extreme_mask = self._f0 > 2000
+            if extreme_mask.any():
+                self._f0[extreme_mask] = np.clip(self._f0[extreme_mask], 0, 2000)
+                self.logger.warning(f"Clipped {extreme_mask.sum()} extreme F0 values")
+                
+            # Fix non-finite values
+            non_finite_mask = ~np.isfinite(self._f0)
+            if non_finite_mask.any():
+                self._f0[non_finite_mask] = 0.0
+                self.logger.warning(f"Fixed {non_finite_mask.sum()} non-finite F0 values")
+
     def synthesize(self) -> None:
         """Pyworld の代わりに vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
         for effect in pyrwu.settings.F0_EFFECTS:
@@ -344,9 +391,16 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         )
         self.parseFlags()  # フラグを取得
         self.getInputData()  # 原音WAVからWORLD特徴量を抽出
+        self._validate_processing_step("after getInputData()")
+        
         self.stretch()  # 時間伸縮
+        self._validate_processing_step("after stretch()")
+        
         self.pitchShift()  # ピッチシフト
+        self._validate_processing_step("after pitchShift()")
+        
         self.applyPitch()  # ピッチベンド適用
+        self._validate_processing_step("after applyPitch()")
 
         # パラメータ確認 ---------------------------------------
         self.logger.debug('  input_path  : %s', self.input_path)
@@ -359,6 +413,7 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         # ------------------------------------------------------
         # f0 のスパイクノイズを除去
         self.denoise_f0()
+        self._validate_processing_step("after denoise_f0()")
         # NOTE: synthesize はオーバーライドされているので nnsvs を使って waveform 生成していることに注意
         self.synthesize()
         # UST の音量を waveform に反映

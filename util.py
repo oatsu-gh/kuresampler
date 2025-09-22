@@ -56,7 +56,17 @@ def easy_interpolate(y: list[float] | np.ndarray) -> float:
     if weights is None:
         msg = 'y must be a list of length 2 or 4.'
         raise ValueError(msg)
-    return sum([a * b for a, b in zip(y, weights, strict=True)]) / sum(weights)
+    
+    interpolated_value = sum([a * b for a, b in zip(y, weights, strict=True)]) / sum(weights)
+    
+    # FUNDAMENTAL FIX: Ensure F0 interpolation never produces negative values
+    # F0 represents fundamental frequency and cannot be negative in real audio
+    if interpolated_value < 0:
+        # Fall back to mean of positive values, or 0 if all surrounding values are non-positive
+        positive_values = [val for val in y if val > 0]
+        interpolated_value = np.mean(positive_values) if positive_values else 0.0
+    
+    return interpolated_value
 
 
 def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
