@@ -259,8 +259,6 @@ def nnsvs_to_world(
     vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
     sample_rate: int,
-    fft_size: int = DEFAULT_FFT_SIZE,
-=======
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
