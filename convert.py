@@ -62,9 +62,9 @@ def wavfile_to_waveform(
     assert out_sample_rate is not None
     # リサンプリング
     if in_sample_rate != out_sample_rate:
-        # Check for non-finite values before resampling
+        # Check for non-finite values before resampling (could be from corrupted input file)
         if not np.isfinite(waveform).all():
-            # Replace non-finite values with zeros
+            # Replace non-finite values with zeros for robust file handling
             waveform = np.where(np.isfinite(waveform), waveform, 0.0)
         
         waveform = librosa.resample(
@@ -265,13 +265,25 @@ def world_to_nnsvs(
         vuv (np.ndarray): voiced / unvoiced flag
         bap (np.ndarray): band aperiodicity
     """
+    # Input validation: Ensure f0 values are valid before processing
+    f0_valid = f0.copy()
+    # Clip negative f0 values to zero to prevent log(negative) = NaN
+    f0_valid = np.where(f0_valid < 0, 0.0, f0_valid)
+    # Clip extremely high f0 values that could cause numerical instability
+    f0_valid = np.clip(f0_valid, 0.0, 2000.0)  # Reasonable human F0 range
+    
     # spectrogram -> mgc
     mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
-    # f0 -> lf0
-    lf0 = np.zeros_like(f0)
-    lf0[np.nonzero(f0)] = np.log(f0[np.nonzero(f0)])
-    # vuv を作成
-    vuv = (f0 > 0).astype(np.float32)
+    
+    # f0 -> lf0 (using validated f0)
+    lf0 = np.zeros_like(f0_valid)
+    # Only compute log for positive values to prevent NaN
+    positive_f0_mask = f0_valid > 0
+    lf0[positive_f0_mask] = np.log(f0_valid[positive_f0_mask])
+    
+    # vuv を作成 (using validated f0)
+    vuv = (f0_valid > 0).astype(np.float32)
+    
     # aperiodicity -> bap
     bap = pyworld.code_aperiodicity(aperiodicity, sample_rate)
     # nnsvs 向けの world 特徴量を返す

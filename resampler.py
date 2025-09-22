@@ -205,6 +205,62 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         """ボコーダーモデルのwav出力サンプリング周波数"""
         return self._vocoder_config.data.sample_rate
 
+    def _validate_world_features(self) -> None:
+        """Validate and sanitize WORLD features after effects processing to prevent NaN generation."""
+        # Validate F0: clip negative values and extreme values
+        if hasattr(self, '_f0') and self._f0 is not None:
+            original_f0_issues = not np.isfinite(self._f0).all() or (self._f0 < 0).any()
+            self._f0 = np.where(self._f0 < 0, 0.0, self._f0)  # Clip negative F0
+            self._f0 = np.clip(self._f0, 0.0, 2000.0)  # Clip extreme F0 values
+            if original_f0_issues:
+                self.logger.warning(
+                    'F0 contained invalid values after effects processing. '
+                    'Clipped negative/extreme values to prevent NaN generation.'
+                )
+
+        # Validate Spectrogram: ensure finite values
+        if hasattr(self, '_sp') and self._sp is not None:
+            if not np.isfinite(self._sp).all():
+                self.logger.warning(
+                    'Spectrogram contains non-finite values after effects processing. '
+                    'Replacing with minimum valid values.'
+                )
+                self._sp = np.where(np.isfinite(self._sp), self._sp, np.finfo(self._sp.dtype).tiny)
+
+        # Validate Aperiodicity: ensure finite values and proper range
+        if hasattr(self, '_ap') and self._ap is not None:
+            if not np.isfinite(self._ap).all():
+                self.logger.warning(
+                    'Aperiodicity contains non-finite values after effects processing. '
+                    'Replacing with zeros.'
+                )
+                self._ap = np.where(np.isfinite(self._ap), self._ap, 0.0)
+            # Aperiodicity should be in [0, 1] range
+            self._ap = np.clip(self._ap, 0.0, 1.0)
+
+    def _validate_nnsvs_features(self, mgc: np.ndarray, lf0: np.ndarray, vuv: np.ndarray, bap: np.ndarray) -> None:
+        """Validate NNSVS features before neural vocoder to prevent NaN propagation."""
+        feature_names = ['mgc', 'lf0', 'vuv', 'bap']
+        features = [mgc, lf0, vuv, bap]
+        
+        for name, feature in zip(feature_names, features):
+            if not np.isfinite(feature).all():
+                self.logger.error(
+                    f'NNSVS feature {name} contains non-finite values. '
+                    f'This indicates a problem in WORLD->NNSVS conversion. '
+                    f'Feature shape: {feature.shape}, '
+                    f'NaN count: {np.isnan(feature).sum()}, '
+                    f'Inf count: {np.isinf(feature).sum()}'
+                )
+                # This is a more serious issue that should be logged as an error
+                # but we still replace to prevent crash
+                if name == 'lf0':
+                    # For log F0, replace NaN with very low value (log of small F0)
+                    feature[:] = np.where(np.isfinite(feature), feature, np.log(80.0))
+                else:
+                    # For other features, replace with zeros
+                    feature[:] = np.where(np.isfinite(feature), feature, 0.0)
+
     def synthesize(self) -> None:
         """Pyworld の代わりに vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
         for effect in pyrwu.settings.F0_EFFECTS:
@@ -219,10 +275,17 @@ class NeuralNetworkResamp(WorldFeatureResamp):
         for effect in pyrwu.settings.WORLD_EFFECTS:
             self._f0, self._sp, self._ap = effect.apply(self)
 
+        # Validate WORLD features after effects processing to prevent downstream NaN
+        self._validate_world_features()
+
         assert self._vocoder_model is not None  # 念のため確認
 
         # WORLD 特徴量を NNSVS 用に変換
         mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.vocoder_sample_rate)
+        
+        # Validate NNSVS features before neural synthesis
+        self._validate_nnsvs_features(mgc, lf0, vuv, bap)
+        
         # モデルに渡す用に特徴量をまとめる
         multistream_features = (mgc, lf0, vuv, bap)
         # waveformを生成
@@ -240,11 +303,14 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
         )
         
-        # Check for non-finite values (NaN, inf) in the generated waveform and clean them
+        # Final check: if neural vocoder still produces NaN despite input validation,
+        # this indicates a model-level issue
         if not np.isfinite(wav).all():
-            self.logger.warning(
-                'Generated waveform contains non-finite values (NaN/inf). '
-                'Replacing with zeros to prevent resampling errors.'
+            self.logger.error(
+                'Neural vocoder produced non-finite values despite input validation. '
+                'This may indicate model instability or extreme input conditions. '
+                f'NaN count: {np.isnan(wav).sum()}, Inf count: {np.isinf(wav).sum()}, '
+                'Replacing with zeros to prevent crash.'
             )
             wav = np.where(np.isfinite(wav), wav, 0.0)
         
@@ -258,8 +324,10 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             )
             # Check for non-finite values after resampling as well
             if not np.isfinite(wav).all():
-                self.logger.warning(
-                    'Resampled waveform contains non-finite values (NaN/inf). '
+                self.logger.error(
+                    'Resampling introduced non-finite values despite valid input. '
+                    f'This indicates a librosa resampling issue. '
+                    f'NaN count: {np.isnan(wav).sum()}, Inf count: {np.isinf(wav).sum()}, '
                     'Replacing with zeros.'
                 )
                 wav = np.where(np.isfinite(wav), wav, 0.0)
