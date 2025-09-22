@@ -138,16 +138,8 @@ def waveform_to_world(
         )
         f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
-        import crepe  # noqa: PLC0415
-
-        timeaxis, f0, _confidence, _activation = crepe.predict(
-            waveform,
-            sample_rate,
-            model_capacity='full',
-            viterbi=False,
-            step_size=frame_period,
-            verbose=1,
-        )
+        msg = 'CREPE f0 extractor is not implemented yet.'
+        raise NotImplementedError(msg)
     # f0_extractor の指定が harvest, dio, crepe 以外の場合はエラー
     else:
         error_msg = f'Unknown f0 extractor ({f0_extractor}) is specified. Select from ["harvest", "dio", "crepe"].'
