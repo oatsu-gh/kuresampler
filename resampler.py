@@ -8,6 +8,7 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 """
 
 import argparse
+import re
 import sys
 from copy import copy
 from logging import Logger
@@ -243,7 +244,9 @@ class NeuralNetworkResamp(WorldFeatureResamp):
                 if hasattr(self, '_flags') and self._flags:
                     # B フラグが明示的に 0 に設定されているかチェック
                     flag_str = str(getattr(self, '_flag_value', ''))
-                    if 'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str:
+                    # より正確な B0 検出（B01, B02 等を除外）
+                    b_zero_pattern = r'(?:^|[^0-9])B0(?:[^0-9]|$)'
+                    if re.search(b_zero_pattern, flag_str):
                         is_b_zero_intended = True
                         self.logger.debug('B0 flag detected - ap=0 is intended behavior')
 
@@ -268,9 +271,9 @@ class NeuralNetworkResamp(WorldFeatureResamp):
 
                 # B flag が 0 の場合以外は復元
                 flag_str = str(getattr(self, '_flag_value', ''))
-                is_b_zero_intended = (
-                    'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str
-                )
+                # より正確な B0 検出（B01, B02 等を除外）
+                b_zero_pattern = r'(?:^|[^0-9])B0(?:[^0-9]|$)'
+                is_b_zero_intended = re.search(b_zero_pattern, flag_str) is not None
 
                 if not is_b_zero_intended and ap_before is not None:
                     self.logger.warning('Restoring previous ap values (not B0 case)')
@@ -290,7 +293,9 @@ class NeuralNetworkResamp(WorldFeatureResamp):
 
         # ap が全て 0 になった場合の最終チェックと復元（B0 フラグ以外）
         flag_str = str(getattr(self, '_flag_value', ''))
-        is_b_zero_intended = 'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str
+        # より正確な B0 検出（B01, B02 等を除外）
+        b_zero_pattern = r'(?:^|[^0-9])B0(?:[^0-9]|$)'
+        is_b_zero_intended = re.search(b_zero_pattern, flag_str) is not None
 
         if (
             self._ap is not None
