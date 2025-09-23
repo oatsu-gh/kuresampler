@@ -207,6 +207,16 @@ class NeuralNetworkResamp(WorldFeatureResamp):
 
     def synthesize(self) -> None:
         """Pyworld の代わりに vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
+        # effects 適用前の ap 値を記録
+        ap_before_effects = copy(self._ap) if self._ap is not None else None
+        ap_nonzero_count_before = np.count_nonzero(self._ap) if self._ap is not None else 0
+
+        self.logger.debug(
+            'Before effects - ap shape: %s, nonzero count: %d',
+            self._ap.shape if self._ap is not None else None,
+            ap_nonzero_count_before,
+        )
+
         for effect in pyrwu.settings.F0_EFFECTS:
             self._f0 = effect.apply(self)
 
@@ -214,10 +224,85 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             self._sp = effect.apply(self)
 
         for effect in pyrwu.settings.AP_EFFECTS:
+            ap_before_this_effect = copy(self._ap) if self._ap is not None else None
             self._ap = effect.apply(self)
 
+            # AP_EFFECTS の処理で ap が全て 0 になった場合の検出
+            if self._ap is not None and np.all(self._ap == 0):
+                effect_name = type(effect).__name__
+                self.logger.warning(
+                    'AP effect %s set all ap values to zero! Effect: %s', effect_name, effect
+                )
+
+                # B flag が 0 の場合は意図的に全て 0 にするので復元しない
+                # それ以外の場合は予期しない動作として復元する
+                b_flag_value = getattr(self, '_b_flag', None) if hasattr(self, '_b_flag') else None
+
+                # フラグパーサーから B フラグの値を確認
+                is_b_zero_intended = False
+                if hasattr(self, '_flags') and self._flags:
+                    # B フラグが明示的に 0 に設定されているかチェック
+                    flag_str = str(getattr(self, '_flag_value', ''))
+                    if 'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str:
+                        is_b_zero_intended = True
+                        self.logger.debug('B0 flag detected - ap=0 is intended behavior')
+
+                if not is_b_zero_intended and ap_before_this_effect is not None:
+                    self.logger.warning('Restoring previous ap values (not B0 case)')
+                    self._ap = ap_before_this_effect
+                elif is_b_zero_intended:
+                    self.logger.debug('B0 flag: keeping ap=0 as intended')
+                else:
+                    self.logger.error('Cannot restore ap values - no previous values available')
+
         for effect in pyrwu.settings.WORLD_EFFECTS:
+            f0_before, sp_before, ap_before = copy(self._f0), copy(self._sp), copy(self._ap)
             self._f0, self._sp, self._ap = effect.apply(self)
+
+            # WORLD_EFFECTS の処理で ap が全て 0 になった場合の検出
+            if self._ap is not None and np.all(self._ap == 0):
+                effect_name = type(effect).__name__
+                self.logger.warning(
+                    'WORLD effect %s set all ap values to zero! Effect: %s', effect_name, effect
+                )
+
+                # B flag が 0 の場合以外は復元
+                flag_str = str(getattr(self, '_flag_value', ''))
+                is_b_zero_intended = (
+                    'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str
+                )
+
+                if not is_b_zero_intended and ap_before is not None:
+                    self.logger.warning('Restoring previous ap values (not B0 case)')
+                    self._ap = ap_before
+                elif is_b_zero_intended:
+                    self.logger.debug('B0 flag: keeping ap=0 as intended')
+                else:
+                    self.logger.error('Cannot restore ap values - no previous values available')
+
+        # effects 適用後の ap 値を記録
+        ap_nonzero_count_after = np.count_nonzero(self._ap) if self._ap is not None else 0
+        self.logger.debug(
+            'After effects - ap shape: %s, nonzero count: %d',
+            self._ap.shape if self._ap is not None else None,
+            ap_nonzero_count_after,
+        )
+
+        # ap が全て 0 になった場合の最終チェックと復元（B0 フラグ以外）
+        flag_str = str(getattr(self, '_flag_value', ''))
+        is_b_zero_intended = 'B0' in flag_str or flag_str.startswith('B0') or 'B0,' in flag_str
+
+        if (
+            self._ap is not None
+            and np.all(self._ap == 0)
+            and ap_before_effects is not None
+            and not np.all(ap_before_effects == 0)
+            and not is_b_zero_intended
+        ):
+            self.logger.warning(
+                'All ap values are zero after effects processing (not B0)! Restoring original ap values.'
+            )
+            self._ap = ap_before_effects
 
         assert self._vocoder_model is not None  # 念のため確認
 
@@ -258,10 +343,33 @@ class NeuralNetworkResamp(WorldFeatureResamp):
             type(self._vocoder_model),
         )
         self.parseFlags()  # フラグを取得
+
+        # フラグの情報をログ出力
+        self.logger.debug('Parsed flags: %s', getattr(self, '_flag_value', 'Unknown'))
+
         self.getInputData()  # 原音WAVからWORLD特徴量を抽出
+
+        # getInputData後のap状態をチェック
+        ap_nonzero_after_input = np.count_nonzero(self._ap) if self._ap is not None else 0
+        self.logger.debug('After getInputData - ap nonzero count: %d', ap_nonzero_after_input)
+
         self.stretch()  # 時間伸縮
+
+        # stretch後のap状態をチェック
+        ap_nonzero_after_stretch = np.count_nonzero(self._ap) if self._ap is not None else 0
+        self.logger.debug('After stretch - ap nonzero count: %d', ap_nonzero_after_stretch)
+
         self.pitchShift()  # ピッチシフト
+
+        # pitchShift後のap状態をチェック
+        ap_nonzero_after_pitch_shift = np.count_nonzero(self._ap) if self._ap is not None else 0
+        self.logger.debug('After pitchShift - ap nonzero count: %d', ap_nonzero_after_pitch_shift)
+
         self.applyPitch()  # ピッチベンド適用
+
+        # applyPitch後のap状態をチェック
+        ap_nonzero_after_apply_pitch = np.count_nonzero(self._ap) if self._ap is not None else 0
+        self.logger.debug('After applyPitch - ap nonzero count: %d', ap_nonzero_after_apply_pitch)
 
         # パラメータ確認 ---------------------------------------
         self.logger.debug('  input_path  : %s', self.input_path)
