@@ -240,6 +240,8 @@ def world_to_nnsvs(
         vuv (np.ndarray): voiced / unvoiced flag
         bap (np.ndarray): band aperiodicity
     """
+    # ap に 0 が含まれていると bap の計算で nan になることがあるので、最小値を 1e-10 にする
+    aperiodicity = np.clip(aperiodicity, 0.001, 1.0)
     # spectrogram -> mgc
     mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
