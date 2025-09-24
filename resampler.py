@@ -27,9 +27,7 @@ from omegaconf.listconfig import ListConfig
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
 
-from convert import (
-    world_to_nnsvs,
-)
+from convert import world_to_nnsvs
 from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
 
@@ -202,17 +200,40 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     def synthesize(self) -> None:
         """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
+        # DEBUG: --------------------------------------------------
+        self.logger.debug('WORLD features before applying F0_EFFECTS-----------------------')
+        self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
+        self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
+        self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
         for effect in pyrwu.settings.F0_EFFECTS:
             self._f0 = effect.apply(self)
 
+        self.logger.debug('WORLD features after applying F0_EFFECTS-----------------------')
+        self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
+        self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
+        self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
+
         for effect in pyrwu.settings.SP_EFFECTS:
             self._sp = effect.apply(self)
+        self.logger.debug('WORLD features after applying SP_EFFECTS-----------------------')
+        self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
+        self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
+        self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
 
         for effect in pyrwu.settings.AP_EFFECTS:
             self._ap = effect.apply(self)
+        self.logger.debug('WORLD features after applying AP_EFFECTS-----------------------')
+        self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
+        self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
+        self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
 
         for effect in pyrwu.settings.WORLD_EFFECTS:
             self._f0, self._sp, self._ap = effect.apply(self)
+
+        self.logger.debug('WORLD features after applying WORLD_EFFECTS--------------------')
+        self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
+        self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
+        self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
 
         if self._use_vocoder_model:
             # Neural Network Vocoderを使用してwaveformを生成
@@ -224,7 +245,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     def _synthesize_with_world(self) -> None:
         """WORLDを用いてWORLD特徴量からwaveformを生成する。"""
         # WORLDを使って直接waveformを合成
-        clipped_ap = np.clip(self.ap.astype(np.float64), 0.0, 1.0)
+        clipped_ap = np.clip(self.ap.astype(np.float64), np.finfo(np.float64).tiny, 1.0)
         wav = pyworld.synthesize(  # pyright: ignore[reportAttributeAccessIssue]
             self.f0.astype(np.float64),
             self.sp.astype(np.float64),
@@ -241,14 +262,21 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         assert self._vocoder_model is not None, 'vocoder_model is None'
         assert self._vocoder_config is not None, 'vocoder_config is None'
         assert self._vocoder_in_scaler is not None, 'vocoder_in_scaler is None'
-        # ap を 0.0 ～ 1.0 の範囲にクリップ
-        clipped_ap = np.clip(self.ap.astype(np.float64), 0.0, 1.0)
         # WORLD 特徴量を NNSVS 用に変換
         # sp, ap はもとの wav のサンプリング周波数に基づいて抽出されているので、
         # nnsvs 向け特徴量への変換時はフレームレートは原音 wav のそれを渡す。
-        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, clipped_ap, self.framerate)
-        # モデルに渡す用に特徴量をまとめる
+        # ap に 0 が含まれていると bap の計算で nan になるので、最小値を 1e-10 にする
+        # DEBUG: --------------------------------------------------
+        # モデルに渡す用に特徴量を変換する
+        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.framerate)
         multistream_features = (mgc, lf0, vuv, bap)
+        # DEBUG: --------------------------------------------------
+        self.logger.debug('NNSVS features before waveform prediction -----------------------')
+        self.logger.debug('  mgc (min, max): (%s, %s)', mgc.min(), mgc.max())
+        self.logger.debug('  lf0 (min, max): (%s, %s)', lf0.min(), lf0.max())
+        self.logger.debug('  vuv (min, max): (%s, %s)', vuv.min(), vuv.max())
+        self.logger.debug('  bap (min, max): (%s, %s)', bap.min(), bap.max())
+        # DEBUG: --------------------------------------------------
         # waveformを生成
         wav = predict_waveform(
             device=self._device,
@@ -265,9 +293,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         )
         # サンプリング周波数が異なる場合、UTAUの原音と同じになるようにリサンプリングする。
         # DEBUG: --------------------------------------------------
-        # debug_path = Path('debug_nnsvs_waveform.txt')
-        # np.savetxt(debug_path, wav.reshape(-1, 1), delimiter=',')
-        # print(f'Saved {debug_path.resolve()}')
+        self.logger.debug('wav: %s', wav)
         # DEBUG: --------------------------------------------------
         if self.vocoder_sample_rate != self.framerate:
             wav = librosa.resample(
@@ -418,7 +444,19 @@ def main_resampler() -> None:
         action='store_true',
         default=False,
     )
+
+    # デバッグモード
+    parser.add_argument(
+        '--debug',
+        help='Enable debug mode logging',
+        action='store_true',
+        default=False,
+    )
     args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel('DEBUG')
+        logger.debug('Debug mode enabled')
 
     # NeuralNetworkResamp インスタンスを生成
     resamp = NeuralNetworkResamp(
@@ -437,7 +475,7 @@ def main_resampler() -> None:
         pitchbend=str(args.pitchbend),
         logger=logger,
         export_wav=True,
-        export_features=True,
+        export_features=False,
         use_vocoder_model=args.use_vocoder_model,
         vocoder_type='usfgan',
         vocoder_model_dir=args.model_dir,
