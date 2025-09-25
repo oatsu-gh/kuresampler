@@ -13,8 +13,9 @@
 
 ## About Language
 - The main maintainer is Japanese-native
-- PR or review summary should be both in Japanese and in English. Pull request やレビューの概要は日本語と英語の両方で説明してください。
-- Detail descriptions of PR, review or commit should be in Japanese, not English. プルリクエストやレビューやコミットの詳細は日本語で説明してください。
+- PR or review summary must be in both Japanese and in English. Pull request やレビューの概要は日本語と英語の両方で説明してください。
+- Detail descriptions of PR, review or commit must be in Japanese, not English. プルリクエストやレビューやコミットの詳細は日本語で説明してください。
+ PR descriptions should be in Japanese, not English.
 
 ## Architecture & Project Layout
 
@@ -184,4 +185,4 @@ These instructions are comprehensive and tested. Only perform additional searche
 - You encounter errors not covered in the "Common Issues" section
 - You need to modify core architecture or add new vocoder support
 
-The codebase is well-structured with clear separation between audio processing, neural inference, and UTAU integration layers. Most modifications should focus on the Python modules rather than the C#/batch wrapper system.
+he codebase is well-structured with clear separation between audio processing, neural inference, and UTAU integration layers. Most modifications should focus on the Python modules rather than the C#/batch wrapper system.
