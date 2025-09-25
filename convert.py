@@ -29,7 +29,8 @@ DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
 DEFAULT_F0_CEIL: float = 2000.0
 DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu default is 0.85.)
-DEFAULT_FFT_SIZE: int = 512
+MIN_APERIODICITY: float = 0.001  # ap <= 0 のとき bap が nan になってしまう
+MAX_APERIODICITY: float = 1.0  # ap の最大値 (1はNGで0.999...かもしれない)
 # ----------------------------------
 
 
@@ -138,16 +139,8 @@ def waveform_to_world(
         )
         f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
-        import crepe  # noqa: PLC0415
-
-        timeaxis, f0, _confidence, _activation = crepe.predict(
-            waveform,
-            sample_rate,
-            model_capacity='full',
-            viterbi=False,
-            step_size=frame_period,
-            verbose=1,
-        )
+        msg = 'CREPE f0 extractor is not implemented yet.'
+        raise NotImplementedError(msg)
     # f0_extractor の指定が harvest, dio, crepe 以外の場合はエラー
     else:
         error_msg = f'Unknown f0 extractor ({f0_extractor}) is specified. Select from ["harvest", "dio", "crepe"].'
@@ -249,6 +242,8 @@ def world_to_nnsvs(
         vuv (np.ndarray): voiced / unvoiced flag
         bap (np.ndarray): band aperiodicity
     """
+    # ap に0以下や1以上が含まれていると bap の計算で nan になることがあるのでクリッピングする
+    aperiodicity = np.clip(aperiodicity, MIN_APERIODICITY, MAX_APERIODICITY)
     # spectrogram -> mgc
     mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
@@ -268,19 +263,21 @@ def nnsvs_to_world(
     vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
     sample_rate: int,
-    fft_size: int = DEFAULT_FFT_SIZE,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
     Args:
-        mgc (np.ndarray): Mel-generalized cepstral coefficients
-        lf0 (np.ndarray): Log F0
-        vuv (np.ndarray): Voiced / unvoiced flag
-        bap (np.ndarray): Band aperiodicity
+        mgc (np.ndarray) : Mel-generalized cepstral coefficients
+        lf0 (np.ndarray) : Log F0
+        vuv (np.ndarray) : Voiced / unvoiced flag
+        bap (np.ndarray) : Band aperiodicity
+        sample_rate (int): Original sample rate of the audio, before feature extraction.
 
     Returns:
         tuple[np.ndarray, np.ndarray, np.ndarray]: WORLD features (f0, spectrogram, aperiodicity)
     """
+    # Automatically determine fft_size from sample_rate
+    fft_size = pyworld.get_cheaptrick_fft_size(sample_rate)
     # mgc -> spectrogram
     spectrogram = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
