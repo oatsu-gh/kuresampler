@@ -455,7 +455,7 @@ def main_resampler() -> None:
     args = parser.parse_args()
 
     if args.debug:
-        logger.setLevel('DEBUG')
+        logger.setLevel(40)  # logging.DEBUG
         logger.debug('Debug mode enabled')
 
     # NeuralNetworkResamp インスタンスを生成
