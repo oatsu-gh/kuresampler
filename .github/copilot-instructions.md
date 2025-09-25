@@ -13,8 +13,8 @@
 
 ## About Language
 - The main maintainer is Japanese-native
-- PR descriptions should be in Japanese, not English.
-- PR summary should be both in Japanese and in English.
+- PR or review summary should be both in Japanese and in English. Pull request やレビューの概要は日本語と英語の両方で説明してください。
+- Detail descriptions of PR, review or commit should be in Japanese, not English. プルリクエストやレビューやコミットの詳細は日本語で説明してください。
 
 ## Architecture & Project Layout
 
