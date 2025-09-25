@@ -29,6 +29,8 @@ DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
 DEFAULT_F0_CEIL: float = 2000.0
 DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu default is 0.85.)
+MIN_APERIODICITY: float = 0.001  # ap <= 0 のとき bap が nan になってしまう
+MAX_APERIODICITY: float = 1.0  # ap の最大値 (1はNGで0.999...かもしれない)
 # ----------------------------------
 
 
@@ -240,8 +242,8 @@ def world_to_nnsvs(
         vuv (np.ndarray): voiced / unvoiced flag
         bap (np.ndarray): band aperiodicity
     """
-    # ap に 0 が含まれていると bap の計算で nan になることがあるので、最小値を 1e-10 にする
-    aperiodicity = np.clip(aperiodicity, 0.001, 1.0)
+    # ap に0以下や1以上が含まれていると bap の計算で nan になることがあるのでクリッピングする
+    aperiodicity = np.clip(aperiodicity, MIN_APERIODICITY, MAX_APERIODICITY)
     # spectrogram -> mgc
     mgc = pyworld.code_spectral_envelope(spectrogram, sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
