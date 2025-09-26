@@ -20,7 +20,7 @@ WORLD と ニューラルボコーダーを利用した UTAU エンジンです�
 | kuresampler_R.exe | usfGAN_NamineRitsu#4310 | 「NNSVS/ENUNU 波音リツ #4139 CRISSCROSS 5スタイル」で使用されているモデルです。 | 低中～高音域の女声に適します。音域によらず一貫した声質が得られます。 | private                                          | https://www.canon-voice.com/terms/                                   | NO                   |
 
 
-```text
+```
  　　　＿＿＿
  　 .//⌒＿＿＿ ＼　　+　　　　。　　　　　+　　　　。　　　　　＊　 　　　。
  　//_／　　 ＼＼　＼ 　　　　+　　　　。　　　　　+　　　　。　　　　　＊　 　　　。
