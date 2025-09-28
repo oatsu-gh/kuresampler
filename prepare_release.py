@@ -45,7 +45,7 @@ PY_FILES = [
     'util.py',
 ]
 
-OTHRER_FILES = [
+OTHER_FILES = [
     'LICENSE',
     'README.md',
     'requirements.txt',
@@ -58,9 +58,9 @@ def install_torch_cpu():
     """
     python_exe = str(PYTHON_DIR / 'python.exe')
     uninstall_command = [python_exe, '-m', 'pip', 'uninstall', '-y', 'torch', 'torchvision', 'torchaudio', '--no-input']  # fmt: skip
-    subprocess.run(uninstall_command, check=True, shell=True)  # noqa: S603
+    subprocess.run(uninstall_command, check=True)  # noqa: S603
     install_command = [python_exe, '-m', 'pip', 'install', 'torch', 'torchvision', 'torchaudio', '--no-warn-script-location']  # fmt: skip
-    subprocess.run(install_command, check=True, shell=True)  # noqa: S603
+    subprocess.run(install_command, check=True)  # noqa: S603
 
 
 def remove_cache_files(path_dir: Path):
@@ -97,7 +97,7 @@ def prepare_release(version: str):
     print('──────────────────────────────────────────────')
 
     # 必要なファイルをコピーする
-    required_files = EXE_FILES + BAT_FILES + CS_FILES + PY_FILES + OTHRER_FILES
+    required_files = EXE_FILES + BAT_FILES + CS_FILES + PY_FILES + OTHER_FILES
     for fname in required_files:
         print(f'Copying file: {fname}')
         shutil.copy2(SOURCE_DIR / fname, release_dir / fname)
