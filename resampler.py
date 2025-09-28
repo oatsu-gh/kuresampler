@@ -132,7 +132,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # use_vocoder_model が False の場合
         else:
             # use_vocoder_model が False なのに vocoder が指定されているときは警告を出す
-            if vocoder_model is not None or vocoder_in_scaler is not None or vocoder_config is not None:
+            if (vocoder_model, vocoder_in_scaler, vocoder_config) != (None, None, None):
                 self.logger.warning(
                     'use_vocoder_model is False, but vocoder_model, vocoder_in_scaler, or vocoder_config is provided. They will be ignored.',
                 )
