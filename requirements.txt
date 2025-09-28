@@ -7,4 +7,5 @@ git+https://github.com/oatsu-gh/HN-UnifiedSourceFilterGAN@kuresampler
 numpy<2
 omegaconf
 light-the-torch
+colored-traceback
 # torch should be installed manually according to the environment
