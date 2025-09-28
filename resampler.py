@@ -123,7 +123,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # use_vocoder_model が True の時はボコーダーモデルを代入する
         if use_vocoder_model is True:
             # vocoder model 関連の引数が全て揃っていることを確認
-            if not all([vocoder_model, vocoder_in_scaler, vocoder_config]):
+            if vocoder_model is None or vocoder_in_scaler is None or vocoder_config is None:
                 msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
                 raise ValueError(msg)
             self._vocoder_model = vocoder_model
