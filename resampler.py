@@ -9,7 +9,6 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 
 import argparse
 import sys
-from copy import copy
 from logging import Logger
 from pathlib import Path
 
@@ -45,7 +44,6 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     _export_features: bool
     _use_vocoder_model: bool
     _vocoder_model: torch.nn.Module | None
-    _vocoder_model_dir: Path | str | None
     _vocoder_in_scaler: StandardScaler | None
     _vocoder_config: DictConfig | ListConfig | None
     _vocoder_type: str
@@ -75,7 +73,9 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         export_wav: bool,
         export_features: bool,
         use_vocoder_model: bool = True,
-        vocoder_model_dir: Path | str | None = None,
+        vocoder_model: torch.nn.Module | None = None,
+        vocoder_in_scaler: StandardScaler | None = None,
+        vocoder_config: DictConfig | ListConfig | None = None,
         vocoder_type: str = 'usfgan',
         vocoder_feature_type: str = 'world',
         vocoder_vuv_threshold: float = 0.5,
@@ -111,30 +111,31 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self._use_vocoder_model = use_vocoder_model
         # フラグに 'e' (stretch) を追加して、原音WAVの伸縮をストレッチ式に強制する。
         self.__force_stretch()
-
         # デバイス設定
         self._device = get_device()
-
         # ボコーダー関連の設定
-        self._vocoder_model_dir = vocoder_model_dir
         self._vocoder_type = vocoder_type
         self._vocoder_feature_type = vocoder_feature_type
         self._vocoder_vuv_threshold = vocoder_vuv_threshold
         self._vocoder_frame_period = vocoder_frame_period
         self._resample_type = resample_type
 
-        # use_vocoder_model が True の時のみボコーダーモデルを読み込む
-        if self._use_vocoder_model:
-            if vocoder_model_dir is None:
-                msg = 'vocoder_model_dir is required when use_vocoder_model is True'
+        # use_vocoder_model が True の時はボコーダーモデルを代入する
+        if use_vocoder_model is True:
+            # vocoder model 関連の引数が全て揃っていることを確認
+            if not all([vocoder_model, vocoder_in_scaler, vocoder_config]):
+                msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
                 raise ValueError(msg)
-            self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = (
-                load_vocoder_model(
-                    vocoder_model_dir,
-                    device=self._device,
-                )
-            )
+            self._vocoder_model = vocoder_model
+            self._vocoder_in_scaler = vocoder_in_scaler
+            self._vocoder_config = vocoder_config
+        # use_vocoder_model が False の場合
         else:
+            # use_vocoder_model が False なのに vocoder が指定されているときは警告を出す
+            if any([vocoder_model, vocoder_in_scaler, vocoder_config]):
+                self.logger.warning(
+                    'use_vocoder_model is False, but vocoder_model, vocoder_in_scaler, or vocoder_config is provided. They will be ignored.',
+                )
             self._vocoder_model = None
             self._vocoder_in_scaler = None
             self._vocoder_config = None
@@ -171,14 +172,6 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         """
         if 'e' not in self._flag_value and 'l' not in self._flag_value:
             self._flag_value += 'e'
-
-    def return_features(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """WORLD特徴量を返す。resamp() より後に実行する想定。"""
-        return copy(self.f0), copy(self.sp), copy(self.ap)
-
-    def return_waveform(self) -> np.ndarray:
-        """waveform を返す。resamp() より後に実行する想定"""
-        return copy(self._output_data)
 
     def denoise_f0(self) -> None:
         """f0 のスパイクノイズを除去する。"""
@@ -309,12 +302,11 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         """Neural Networkまたは WORLD を用いてWORLD特徴量をリサンプリングする。"""
         if self._use_vocoder_model:
             self.logger.info(
-                'Resample with WORLD and vocoder model: %s (%s)',
-                self._vocoder_model_dir,
+                'Synthesize WAV using Neural Vocoder (%s)',
                 type(self._vocoder_model),
             )
         else:
-            self.logger.info('Resample with WORLD')
+            self.logger.info('Synthesize WAV using WORLD Vocoder')
 
         self.parseFlags()  # フラグを取得
         self.getInputData()  # 原音WAVからWORLD特徴量を抽出
@@ -350,11 +342,26 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
 
 
-def main_resampler() -> None:
+def main_resampler(
+    arg_list: list | None = None,
+    *,
+    vocoder_model: torch.nn.Module | None = None,
+    vocoder_in_scaler: StandardScaler | None = None,
+    vocoder_config: DictConfig | ListConfig | None = None,
+) -> None:
     """実行引数を展開して Resamp インスタンスを生成し、resamp() を実行する。
 
-    想定される引数の形式
-    resampler.exe <input wavfile> <output file> <pitch_percent> <velocity> [<flags> [<offset> <length_require> [<fixed length> [<end_blank> [<volume> [<modulation> [<pich bend>...]]]]]]]
+    想定される sys.argv の形式
+    resampler.py <input_wavfile> <output_file> <pitch_percent> <velocity> <flags> <offset> <length_require> <fixed_length> <end_blank> <volume> <modulation> <pitch_bend>
+
+    Args:
+        arg_list          : 引数リスト。None の場合は sys.argv[1:] を使用する。
+        vocoder_model     : ボコーダーモデル。None の場合は WORLD を使用する。
+        vocoder_in_scaler : ボコーダーモデルの入力スケーラー。
+        vocoder_config    : ボコーダーモデルの設定。
+
+    Returns:
+        None
 
     """
     logger = setup_logger()
@@ -430,13 +437,6 @@ def main_resampler() -> None:
         nargs='?',
         default='',
     )
-    # モデルを指定
-    parser.add_argument(
-        '--model_dir',
-        help='Vocoder model directory (optional; required for neural network vocoder)',
-        type=str,
-        default=None,
-    )
     # ボコーダーモデルを使用するか否か
     parser.add_argument(
         '--use_vocoder_model',
@@ -445,18 +445,48 @@ def main_resampler() -> None:
         default=False,
     )
 
+    # モデルを指定
+    parser.add_argument(
+        '--model_dir',
+        help='Vocoder model directory (optional; required for neural network vocoder)',
+        type=str,
+        default=None,
+    )
+
     # デバッグモード
     parser.add_argument(
         '--debug',
-        help='Enable debug mode logging',
+        help='Enable debug logging',
         action='store_true',
         default=False,
     )
-    args = parser.parse_args()
 
-    if args.debug:
-        logger.setLevel(10)  # logging.DEBUG
-        logger.debug('Debug mode enabled')
+    # arg_list が None の場合は sys.argv[1:] を使用する
+    if arg_list is None:
+        arg_list = sys.argv[1:]
+        if '--debug' in arg_list:
+            logger.setLevel(10)  # logging.DEBUG
+            logger.debug('Debug mode enabled')
+        logger.debug('args from sys.argv: %s', arg_list)
+    else:
+        if '--debug' in arg_list:
+            logger.setLevel(10)  # logging.DEBUG
+            logger.debug('Debug mode enabled')
+        logger.debug('args from caller: %s', arg_list)
+
+    # 引数を解析
+    args = parser.parse_args(arg_list)
+
+    # model_dir が渡されている場合はモデルを読み込む
+    if args.model_dir is not None:
+        if not args.use_vocoder_model:
+            logger.warning(
+                '--model_dir is specified but --use_vocoder_model is not set. The model will be ignored.'
+            )
+        else:
+            # vocoder model 関連のファイルを読み込む
+            model_dir = Path(args.model_dir)
+            vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(model_dir)
 
     # NeuralNetworkResamp インスタンスを生成
     resamp = NeuralNetworkResamp(
@@ -477,8 +507,10 @@ def main_resampler() -> None:
         export_wav=True,
         export_features=False,
         use_vocoder_model=args.use_vocoder_model,
+        vocoder_model=vocoder_model,
+        vocoder_in_scaler=vocoder_in_scaler,
+        vocoder_config=vocoder_config,
         vocoder_type='usfgan',
-        vocoder_model_dir=args.model_dir,
     )
     # リサンプリングを実行
     resamp.resamp()
