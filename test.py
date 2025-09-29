@@ -339,9 +339,9 @@ def test_resampler_and_wavtool(
         output_file=str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_nomodel.wav'),
         export_wav=True,
         export_features=False,
-        use_neural_resampler=False,  # Resampler without neural vocoder
+        use_neural_resampler=True,  # Resampler with neural vocoder
         use_neural_wavtool=False,  # WavTool without neural vocoder
-        vocoder_model_dir=None,  # no vocoder model
+        vocoder_model_dir=model_dir,  # no vocoder model
         force_wav_crossfade=False,  # use NeuralNetworkWavTool
     )
     render.clean()
