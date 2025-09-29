@@ -9,6 +9,7 @@
 *.exe
 *.npz
 *.pyc
+*.rpp
 *.wav
 *.xlsx
 *.zip
