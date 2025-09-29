@@ -14,7 +14,7 @@ from typing import Any
 
 import colored_traceback.auto  # noqa: F401
 import utaupy
-from PyUtauCli.projects.Render import Render
+from PyUtauCli.projects.Render import Render as PyUtauCliRender
 from PyUtauCli.projects.Ust import Ust
 
 from convert import (
@@ -265,12 +265,12 @@ def test_resampler_and_wavtool(
     - Renderの出力: wavのみ
     - WavToolの入力: wavのみ
     """
-    render = Render(
+    render = PyUtauCliRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out),
+        output_file=str(path_wav_out).replace('.wav', '_pyrwu_wav_pywavtool.wav'),
     )
     render.clean()
     render.resamp(force=True)
@@ -290,33 +290,59 @@ def test_resampler_and_wavtool(
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace('.wav', '_nnresamp_pywavtool.wav'),
+        output_file=str(path_wav_out).replace('.wav', '_nnresamp_wav_pywavtool.wav'),
         export_wav=True,
         export_features=False,
         use_neural_resampler=True,
         use_neural_wavtool=False,
         vocoder_model_dir=model_dir,
-        force_wav_crossfade=True,
+        force_wav_crossfade=True,  # use PyWavTool.WavTool
     )
     render.clean()
     render.resamp(force=True)
     render.append()
 
     print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (wav) + WorldFeatureWavTool (w/o vocoder-model)')
+    print('NeuralNetworkResamp (wav) + PyWavTool.WavTool (wav crossfade)')
+    print('------------------------------------------------------------')
+    """
+    kersamp.NeuralNetworkRender のテスト
+    Case 1: NeuralNetworkResamp + PyWavTool.WavTool
+    - WorldFeatureResamp の出力: wav + npz
+    - WavToolの入力: wav
+    """
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir),
+        output_file=str(path_wav_out).replace('.wav', '_nnresamp_wav_pywavtool.wav'),
+        export_wav=True,
+        export_features=False,
+        use_neural_resampler=True,
+        use_neural_wavtool=False,
+        vocoder_model_dir=model_dir,
+        force_wav_crossfade=True,  # use PyWavTool.WavTool
+    )
+    render.clean()
+    render.resamp(force=True)
+    render.append()
+
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (wav) + NeuralNetworkRender (w/o vocoder-model)')
     print('------------------------------------------------------------')
     render = NeuralNetworkRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace('.wav', '_wfresamp_wav_wfwavtool.wav'),
+        output_file=str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_nomodel.wav'),
         export_wav=True,
         export_features=False,
-        use_neural_resampler=False,
-        use_neural_wavtool=False,
-        vocoder_model_dir=None,
-        force_wav_crossfade=False,
+        use_neural_resampler=False,  # Resampler without neural vocoder
+        use_neural_wavtool=False,  # WavTool without neural vocoder
+        vocoder_model_dir=None,  # no vocoder model
+        force_wav_crossfade=False,  # use NeuralNetworkWavTool
     )
     render.clean()
     render.resamp(force=True)
@@ -330,66 +356,67 @@ def test_resampler_and_wavtool(
         logger=logger,
         voice_dir=str(voice_dir),
         cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace('.wav', '_wfresamp_npz_wfwavtool.wav'),
+        output_file=str(path_wav_out).replace('.wav', '_nnresamp_npz_nnwavtool_nomodel.wav'),
         export_wav=False,
-        export_features=True,
-        use_neural_resampler=False,
-        use_neural_wavtool=False,
-        vocoder_model_dir=None,
-        force_wav_crossfade=False,
+        export_features=True,  # export npz
+        use_neural_resampler=False,  # Resampler without neural vocoder
+        use_neural_wavtool=False,  # WavTool without neural vocoder
+        vocoder_model_dir=None,  # no vocoder model
+        force_wav_crossfade=False,  # use NeuralNetworkWavTool
     )
     render.clean()
     render.resamp(force=True)
     render.append()
 
-    print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (wav) + WorldFeatureWavTool (w/ vocoder-model)')
-    print('------------------------------------------------------------')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace('.wav', '_wfresamp_wav_wfwavtool_withVocoder.wav'),
-        export_wav=True,
-        export_features=False,
-        use_neural_resampler=False,
-        use_neural_wavtool=True,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=False,
-    )
-    render.clean()
-    render.resamp(force=True)
-    render.append()
+    # print('------------------------------------------------------------')
+    # print('NeuralNetworkResamp (wav) + WorldFeatureWavTool (w/ vocoder-model)')
+    # print('------------------------------------------------------------')
+    # render = NeuralNetworkRender(
+    #     ust,
+    #     logger=logger,
+    #     voice_dir=str(voice_dir),
+    #     cache_dir=str(cache_dir),
+    #     output_file=str(path_wav_out).replace('.wav', '_wfresamp_wav_wfwavtool_withVocoder.wav'),
+    #     export_wav=True,
+    #     export_features=False,
+    #     use_neural_resampler=False,
+    #     use_neural_wavtool=True,
+    #     vocoder_model_dir=model_dir,
+    #     force_wav_crossfade=False,
+    # )
+    # render.clean()
+    # render.resamp(force=True)
+    # render.append()
 
-    print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (npz) + WorldFeatureWavTool (w/ vocoder-model)')
-    print('------------------------------------------------------------')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=str(path_wav_out).replace(
-            '.wav', '_wfresamp_npz_wfwavtool_from_npz_withVocoder.wav'
-        ),
-        export_wav=False,
-        export_features=True,
-        use_neural_resampler=False,
-        use_neural_wavtool=True,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=False,
-    )
-    render.clean()
-    render.resamp(force=True)
-    render.append()
+    # print('------------------------------------------------------------')
+    # print('NeuralNetworkResamp (npz) + WorldFeatureWavTool (w/ vocoder-model)')
+    # print('------------------------------------------------------------')
+    # render = NeuralNetworkRender(
+    #     ust,
+    #     logger=logger,
+    #     voice_dir=str(voice_dir),
+    #     cache_dir=str(cache_dir),
+    #     output_file=str(path_wav_out).replace(
+    #         '.wav', '_wfresamp_npz_wfwavtool_from_npz_withVocoder.wav'
+    #     ),
+    #     export_wav=False,
+    #     export_features=True,
+    #     use_neural_resampler=False,
+    #     use_neural_wavtool=True,
+    #     vocoder_model_dir=model_dir,
+    #     force_wav_crossfade=False,
+    # )
+    # render.clean()
+    # render.resamp(force=True)
+    # render.append()
 
 
 if __name__ == '__main__':
     chdir(Path(__file__).parent)  # カレントディレクトリをこのファイルのある場所に変更する
     # test(_a_a_n_i_a_u_a_44100.wav)
-    if not Path('./../data/_a_a_n_i_a_u_a_44100.wav').is_file():
-        error_msg = 'Test WAV file not found.'
+    test_wav = Path('./data/_a_a_n_i_a_u_a_44100.wav')
+    if not test_wav.is_file():
+        error_msg = f'Test WAV file ({test_wav}) not found.'
         raise FileNotFoundError(error_msg)
 
     # general function test
@@ -415,7 +442,7 @@ if __name__ == '__main__':
 
     # test resampler
     test_resampler_and_wavtool(
-        Path('./../test/test.ust'),
-        Path('./../test/test_resampler_out.wav'),
-        Path('./../models/usfGAN_EnunuKodoku_0826'),
+        Path('./test/test.ust'),
+        Path('./test/test_resampler_out.wav'),
+        Path('./models/usfGAN_EnunuKodoku_0826'),
     )
