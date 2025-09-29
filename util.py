@@ -104,14 +104,14 @@ def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
 def overlap_world_feature(
     feature_a: np.ndarray,
     feature_b: np.ndarray,
-    overlap_samples: int,
+    n_overlap: int,
 ) -> np.ndarray:
     """WORLD特徴量をオーバーラップさせる。
 
     Args:
         features_a (np.ndarray): The first set of WORLD features.
         features_b (np.ndarray): The second set of WORLD features.
-        fade_samples (int): The number of samples to fade.
+        n_overlap (int): The number of samples to fade.
 
     Returns:
         np.ndarray: The crossfaded WORLD features.
@@ -119,7 +119,7 @@ def overlap_world_feature(
     result = crossfade_world_feature(
         feature_a,
         feature_b,
-        overlap_samples,
+        n_overlap,
         shape=None,
     )
     return result
@@ -128,7 +128,7 @@ def overlap_world_feature(
 def crossfade_world_feature(
     feature_a: np.ndarray,
     feature_b: np.ndarray,
-    overlap_samples: int,
+    n_overlap: int,
     shape: str | None = 'linear',
     *,
     calc_in_log: bool = False,
@@ -138,56 +138,50 @@ def crossfade_world_feature(
     Args:
         features_a (np.ndarray): The first set of WORLD features.
         features_b (np.ndarray): The second set of WORLD features.
-        fade_samples (int): The number of samples to fade.
+        n_overlap (int): The number of samples to fade.
 
     Returns:
         np.ndarray: The crossfaded WORLD features.
     """
     # オーバーラップ区間が0の場合は単純結合して返す
-    if overlap_samples == 0:
+    if n_overlap == 0:
         return np.concatenate([feature_a, feature_b], axis=0)
     # オーバーラップ区間が長すぎる場合はエラーを返す
-    if overlap_samples > min(feature_a.shape[0], feature_b.shape[0]):
-        msg = f'Invalid overlap_samples: {overlap_samples}. Overlap must be less than the length of both existing feature ({feature_a.shape[0]}) and new feature ({feature_b.shape[0]}).'
+    if n_overlap > min(feature_a.shape[0], feature_b.shape[0]):
+        msg = f'Invalid n_overlap: {n_overlap}. Overlap must be less than the length of both existing feature ({feature_a.shape[0]}) and new feature ({feature_b.shape[0]}).'
         raise ValueError(msg)
 
     ## クロスフェード部分の計算
     if calc_in_log:
         # f0を対数に変換してからクロスフェード
-        feature_a = np.log(np.clip(feature_a, a_min=1, a_max=None))
-        feature_b = np.log(np.clip(feature_b, a_min=1, a_max=None))
+        feature_a = np.log1p(feature_a)
+        feature_b = np.log1p(feature_b)
 
     # クロスフェードなしで合算 (エンベロープ反映後の sp, ap で使う想定)
     if shape is None:
-        fade_out = np.ones((overlap_samples, 1))  # 不要だが後続バグ予防のためダミー
-        fade_in = np.ones((overlap_samples, 1))  # 不要だが後続バグ予防のためダミー
-        overlap_area = feature_a[-overlap_samples:] + feature_b[:overlap_samples]
+        fade_out = np.ones((n_overlap, 1))  # 不要だが後続バグ予防のためダミー
+        fade_in = np.ones((n_overlap, 1))  # 不要だが後続バグ予防のためダミー
+        overlap_area = feature_a[-n_overlap:] + feature_b[:n_overlap]
     # 線形クロスフェード (f0で使う想定)
     elif shape == 'linear':
-        fade_out = np.linspace(1, 0, overlap_samples)[:, np.newaxis]
-        fade_in = np.linspace(0, 1, overlap_samples)[:, np.newaxis]
-        overlap_area = (
-            feature_a[-overlap_samples:] * fade_out + feature_b[:overlap_samples] * fade_in
-        )
+        fade_out = np.linspace(1, 0, n_overlap)[:, np.newaxis]
+        fade_in = np.linspace(0, 1, n_overlap)[:, np.newaxis]
+        overlap_area = feature_a[-n_overlap:] * fade_out + feature_b[:n_overlap] * fade_in
     # cosineクロスフェード
     elif shape in ('cosine', 'cos'):
-        t = np.linspace(0, np.pi / 2, overlap_samples)[:, np.newaxis]
+        t = np.linspace(0, np.pi / 2, n_overlap)[:, np.newaxis]
         fade_out = np.cos(t)
         fade_in = np.sin(t)
-        overlap_area = (
-            feature_a[-overlap_samples:] * fade_out + feature_b[:overlap_samples] * fade_in
-        )
+        overlap_area = feature_a[-n_overlap:] * fade_out + feature_b[:n_overlap] * fade_in
     else:
         msg = f'Invalid shape: {shape}. Choose from None, "linear", "cosine", or "cos".'
         raise ValueError(msg)
 
     # 前・クロスフェード部分・後ろを結合して返す
-    result = np.concatenate(
-        [feature_a[:-overlap_samples], overlap_area, feature_b[overlap_samples:]]
-    )
+    result = np.concatenate([feature_a[:-n_overlap], overlap_area, feature_b[n_overlap:]])
     # 対数から元に戻す
     if calc_in_log:
-        result = np.exp(result)
+        result = np.expm1(result)
         result = np.where(result <= 1, 0, result)
     return result
 
