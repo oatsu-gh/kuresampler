@@ -28,6 +28,10 @@ from tqdm.auto import tqdm
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
 
+from nnsvs.util import StandardScaler
+from omegaconf.dictconfig import DictConfig
+from omegaconf.listconfig import ListConfig
+
 from convert import (  # noqa: F401
     nnsvs_to_npzfile,
     nnsvs_to_world,
@@ -40,10 +44,10 @@ from convert import (  # noqa: F401
     world_to_npzfile,
     world_to_waveform,
 )
-from resampler import NeuralNetworkResamp, WorldFeatureResamp
+from resampler import NeuralNetworkResamp
 from resampler import main_resampler as _main_resampler
 from util import get_device, load_vocoder_model, setup_logger
-from wavtool import WorldFeatureWavTool
+from wavtool import NeuralNetworkWavTool
 from wavtool import main_wavtool as _main_wavtool
 
 # MARK: Utility functions
@@ -113,12 +117,14 @@ class NeuralNetworkRender(Render):
     _export_features: bool
     _use_neural_resampler: bool
     _use_neural_wavtool: bool
-    _vocoder_model_dir: Path | str | None
     _vocoder_type: str
     _vocoder_feature_type: str
     _vocoder_vuv_threshold: float
     _vocoder_frame_period: int
     _force_wav_crossfade: bool
+    _vocoder_model: torch.nn.Module | None
+    _vocoder_in_scaler: StandardScaler | None
+    _vocoder_config: DictConfig | ListConfig | None
 
     def __init__(
         self,
@@ -148,79 +154,75 @@ class NeuralNetworkRender(Render):
             output_file=output_file,
             logger=logger,
         )
-        self._export_wav = export_wav
-        self._export_features = export_features
-        self._use_neural_resampler = use_neural_resampler
-        self._use_neural_wavtool = use_neural_wavtool
-        self._vocoder_model_dir = vocoder_model_dir
-        self._vocoder_type = vocoder_type
-        self._vocoder_feature_type = vocoder_feature_type
-        self._vocoder_vuv_threshold = vocoder_vuv_threshold
-        self._vocoder_frame_period = vocoder_frame_period
-        self._force_wav_crossfade = force_wav_crossfade
 
         # 引数の整合性をチェック
-        if self._export_wav is False and self._export_features is False:
+        if export_wav is False and export_features is False:
             msg = 'At least one of export_wav or export_features must be True.'
             raise ValueError(msg)
-        if self._use_neural_resampler is True and self._vocoder_model_dir is None:
+        if use_neural_resampler is True and vocoder_model_dir is None:
             msg = 'vocoder_model_dir must be specified when use_neural_resampler is True.'
             raise ValueError(msg)
-        if self._use_neural_wavtool is True and self._vocoder_model_dir is None:
+        if use_neural_wavtool is True and vocoder_model_dir is None:
             msg = 'vocoder_model_dir must be specified when use_neural_wavtool is True.'
             raise ValueError(msg)
         # 不成立の組み合わせを修正
-        if self._force_wav_crossfade is True and self._export_wav is False:
+        if force_wav_crossfade is True and export_wav is False:
             msg = (
                 'force_wav_crossfade=True かつ export_wav=False は実施不可です。'
                 'export_wav=True に強制設定して処理を続行します。'
             )
             logger.warning(msg)
-            self._export_wav = True
+            export_wav = True
         # 非推奨の組み合わせを修正
-        if self._use_neural_resampler is True and self._use_neural_wavtool is True:
+        if use_neural_resampler is True and use_neural_wavtool is True:
             msg = (
                 '非推奨の組み合わせが検出されました。'
                 'use_neural_resampler=True かつ use_neural_wavtool=True は非推奨です。'
                 'use_neural_resampler=False に強制設定して処理を続行します (レンダリング時間短縮のため)。'
             )
             logger.warning(msg)
-            self._use_neural_resampler = False
-        # TODO: デバッグが終わったらコメントアウトを解除する。(ここから)--------------------------------------
-        # if self._use_neural_wavtool and self._export_features is False:
-        #     msg = (
-        #         '非推奨の組み合わせが検出されました。'
-        #         'use_neural_wavtool=True かつ export_features=False は非推奨です。'
-        #         'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
-        #     )
-        #     logger.warning(msg)
-        #     self._export_features = True
-        # TODO: デバッグが終わったらコメントアウトを解除する。(ここまで)--------------------------------------
+            use_neural_resampler = False
+        # 非推奨の組み合わせを警告
+        if use_neural_wavtool and export_features is False:
+            msg = (
+                '非推奨の組み合わせが検出されました。'
+                'export_features=False かつ use_neural_wavtool=True は非推奨です。'
+                'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
+            )
+            logger.warning(msg)
+            export_features = True
         # vocoder モデルを読み込む
-        if self._use_neural_resampler is True or self._use_neural_wavtool is True:
-            if self._vocoder_model_dir is None:
+        if use_neural_resampler is True or use_neural_wavtool is True:
+            if vocoder_model_dir is None:
                 msg = 'vocoder_model_dir must be specified when use_neural_resampler or use_neural_wavtool is True.'
                 raise ValueError(msg)
-            logger.info('Using vocoder model: %s', self._vocoder_model_dir)
-            self.__init_vocoder()
+            logger.info('Loading vocoder model: %s', vocoder_model_dir)
+            self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = (
+                load_vocoder_model(vocoder_model_dir)
+            )
+            logger.info('Vocoder model loaded.')
+        else:
+            self._vocoder_model = None  # type: ignore[assignment]
+            self._vocoder_in_scaler = None  # type: ignore[assignment]
+            self._vocoder_config = None  # type: ignore[assignment]
 
-    def __init_vocoder(self) -> None:
-        """Vocoderモデルを読み込み、self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config にセットする。"""
-        if self._vocoder_model_dir is None:
-            msg = 'vocoder_model_dir is not specified.'
-            raise ValueError(msg)
-        self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = load_vocoder_model(
-            self._vocoder_model_dir
-        )
-
-    @property
-    def vocoder_model(self) -> torch.nn.Module:
-        """ボコーダーモデル"""
-        return self._vocoder_model
+        self._export_wav = export_wav
+        self._export_features = export_features
+        self._use_neural_resampler = use_neural_resampler
+        self._use_neural_wavtool = use_neural_wavtool
+        self._vocoder_type = vocoder_type
+        self._vocoder_feature_type = vocoder_feature_type
+        self._vocoder_vuv_threshold = vocoder_vuv_threshold
+        self._vocoder_frame_period = vocoder_frame_period
+        self._force_wav_crossfade = force_wav_crossfade
 
     @property
     def vocoder_sample_rate(self) -> int:
         """ボコーダーモデルのwav出力サンプリング周波数"""
+        if self._vocoder_config is None:
+            msg = 'Vocoder config is not loaded. Cannot get sample rate.'
+            self.logger.error(msg)
+            raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
 
     def resamp(self, *, force: bool = False) -> None:
@@ -256,58 +258,32 @@ class NeuralNetworkRender(Render):
                     note.tempo,
                     note.pitchbend,
                 )
-                # Resampler で vocoder モデルを使わない場合
-                if self._use_neural_resampler is False:
-                    resamp = WorldFeatureResamp(
-                        input_path=note.input_path,
-                        output_path=note.cache_path,
-                        target_tone=note.target_tone,
-                        velocity=note.velocity,
-                        flag_value=note.flags,
-                        offset=note.offset,
-                        target_ms=note.target_ms,
-                        fixed_ms=note.fixed_ms,
-                        end_ms=note.end_ms,
-                        volume=note.intensity,
-                        modulation=note.modulation,
-                        tempo=note.tempo,
-                        pitchbend=note.pitchbend,
-                        logger=self.logger,
-                        export_wav=self._export_wav,
-                        export_features=self._export_features,
-                    )
-                # Resampler で vocoder モデルを使う場合
-                elif self._use_neural_resampler is True:
-                    assert self._vocoder_model_dir is not None  # 念のため型チェック
-                    resamp = NeuralNetworkResamp(
-                        input_path=note.input_path,
-                        output_path=note.cache_path,
-                        target_tone=note.target_tone,
-                        velocity=note.velocity,
-                        flag_value=note.flags,
-                        offset=note.offset,
-                        target_ms=note.target_ms,
-                        fixed_ms=note.fixed_ms,
-                        end_ms=note.end_ms,
-                        volume=note.intensity,
-                        modulation=note.modulation,
-                        tempo=note.tempo,
-                        pitchbend=note.pitchbend,
-                        logger=self.logger,
-                        export_wav=self._export_wav,
-                        export_features=self._export_features,
-                        vocoder_model_dir=self._vocoder_model_dir,
-                        vocoder_type=self._vocoder_type,
-                        vocoder_feature_type=self._vocoder_feature_type,
-                        vocoder_vuv_threshold=self._vocoder_vuv_threshold,
-                        vocoder_frame_period=self._vocoder_frame_period,
-                    )
-                # _use_neural_resampler が True でも False でもない場合はエラー
-                else:
-                    error_msg = (
-                        f'Invalid _use_neural_resampler value: {self._use_neural_resampler}'
-                    )
-                    raise ValueError(error_msg)
+                resamp = NeuralNetworkResamp(
+                    input_path=note.input_path,
+                    output_path=note.cache_path,
+                    target_tone=note.target_tone,
+                    velocity=note.velocity,
+                    flag_value=note.flags,
+                    offset=note.offset,
+                    target_ms=note.target_ms,
+                    fixed_ms=note.fixed_ms,
+                    end_ms=note.end_ms,
+                    volume=note.intensity,
+                    modulation=note.modulation,
+                    tempo=note.tempo,
+                    pitchbend=note.pitchbend,
+                    logger=self.logger,
+                    export_wav=self._export_wav,
+                    export_features=self._export_features,
+                    use_vocoder_model=self._use_neural_resampler,
+                    vocoder_model=self._vocoder_model,
+                    vocoder_in_scaler=self._vocoder_in_scaler,
+                    vocoder_config=self._vocoder_config,
+                    vocoder_type=self._vocoder_type,
+                    vocoder_feature_type=self._vocoder_feature_type,
+                    vocoder_vuv_threshold=self._vocoder_vuv_threshold,
+                    vocoder_frame_period=self._vocoder_frame_period,
+                )
                 resamp.resamp()
             else:
                 self.logger.debug('Using cache (%s)', note.cache_path)
@@ -350,7 +326,7 @@ class NeuralNetworkRender(Render):
                 note.output_ms,
             )
             # WorldFeatureWavTool を用いて特徴量を連結
-            wavtool = WorldFeatureWavTool(
+            wavtool = NeuralNetworkWavTool(
                 output_wav=out_wav_path,
                 input_wav=in_wav_path,
                 stp=stp,
