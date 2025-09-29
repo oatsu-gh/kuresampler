@@ -206,8 +206,8 @@ def str2float(length: float | str) -> float:
     raise TypeError(msg)
 
 
-# MARK: WorldFeatureWavTool
-class WorldFeatureWavTool:
+# MARK: NeuralNetworkWavTool
+class NeuralNetworkWavTool:
     """WAV出力の代わりに WORLD の特徴量を出力するのに用いる。
 
     Args:
@@ -387,7 +387,7 @@ class WorldFeatureWavTool:
         # 音量エンベロープを適用する
         self._apply_envelope()
 
-    def append(self):
+    def append(self) -> None:
         """既存のnpzファイルを読み取って、それに書き込む。wav は全体を再計算して出力する。
 
         ノート数が多いほどWAV生成が重くなるので何とかしたい。
@@ -442,22 +442,45 @@ def main_wavtool() -> None:
     parser.add_argument('output', help='output wav path', type=str)
     parser.add_argument('input', help='input wav path', type=str)
     parser.add_argument('stp', help='start offset of wav', type=float)
-    parser.add_argument('length', help='append length(ms)')
+    parser.add_argument('length', help='append length(ms)', type=str)
     parser.add_argument(
         'envelope',
         nargs='*',
         type=float,
         help=(
-            "envelope pattern "
+            'envelope pattern '
             "'p1 p2' or 'p1 p2 p3 v1 v2 v3 v4 ove' "
             "or 'p1 p2 p3 v1 v2 v3 v4' "
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4' "
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'"
         ),
+    )
+    # ボコーダーモデルを使用するか否か
+    parser.add_argument(
+        '--use_vocoder_model',
+        help='Whether to use vocoder model for waveform synthesis. If False, use WORLD.',
+        action='store_true',
+        default=False,
+    )
+
+    # モデルを指定
+    parser.add_argument(
+        '--model_dir',
+        help='Vocoder model directory (optional; required for neural network vocoder)',
+        type=str,
+        default=None,
+    )
+    # デバッグモード
+    parser.add_argument(
+        '--debug',
+        help='Enable debug logging',
+        action='store_true',
+        default=False,
+    )
     args = parser.parse_args()
     # length 文字列を float に変換
     length = str2float(args.length)
-    wavtool = WorldFeatureWavTool(args.output, args.input, args.stp, length, args.envelope)
+    wavtool = NeuralNetworkWavTool(args.output, args.input, args.stp, length, args.envelope)
     # wavtool で音声WORLD特徴量を結合
     wavtool.append()
 
