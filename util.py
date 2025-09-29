@@ -1,16 +1,16 @@
 # Copyright (c) 2025 oatsu
 """
-Utility functions for audio processing
+Utility functions for kuresampler.
 """
 
 import logging
-import sys
 from pathlib import Path
 from warnings import warn
 
 import colored_traceback.auto  # noqa: F401
 import numpy as np
 import torch
+from colorlog import ColoredFormatter
 from nnsvs.usfgan import USFGANWrapper
 from nnsvs.util import StandardScaler
 from nnsvs.util import load_vocoder as nnsvs_load_vocoder
@@ -27,13 +27,21 @@ def get_device() -> torch.device:
 
 def setup_logger(level=logging.INFO) -> logging.Logger:
     """Loggerを作成する。"""
-    # my_package.my_moduleのみに絞ってsys.stderrにlogを出す
-    logging.basicConfig(
-        stream=sys.stdout,
-        format='[%(filename)s][%(levelname)s] %(message)s',
+    formatter = ColoredFormatter(
+        '[%(filename)s][%(log_color)s%(levelname)s%(reset)s] %(message)s',
+        log_colors={
+            'DEBUG': 'green',
+            'INFO': 'blue',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red,bg_white',
+        },
     )
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
     _logger = logging.getLogger(__name__)
     _logger.setLevel(level)
+    _logger.addHandler(handler)
     return _logger
 
 

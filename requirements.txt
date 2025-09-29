@@ -8,4 +8,5 @@ numpy<2
 omegaconf
 light-the-torch
 colored-traceback
+colorlog
 # torch should be installed manually according to the environment
