@@ -11,7 +11,7 @@ import argparse
 import sys
 from logging import Logger
 from pathlib import Path
-
+import logging
 import colored_traceback.auto  # noqa: F401
 import librosa
 import numpy as np
@@ -465,12 +465,12 @@ def main_resampler(
     if arg_list is None:
         arg_list = sys.argv[1:]
         if '--debug' in arg_list:
-            logger.setLevel(10)  # logging.DEBUG
+            logger.setLevel(logging.DEBUG)
             logger.debug('Debug mode enabled')
         logger.debug('args from sys.argv: %s', arg_list)
     else:
         if '--debug' in arg_list:
-            logger.setLevel(10)  # logging.DEBUG
+            logger.setLevel(logging.DEBUG)
             logger.debug('Debug mode enabled')
         logger.debug('args from caller: %s', arg_list)
 
