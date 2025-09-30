@@ -100,12 +100,10 @@ def parse_envelope(
     if len_envelope == 2:
         return [], [], 0
 
-    def _round_by_frame(x: float) -> float:
+    def round_by_frame(x: float) -> float:
         """frame_period に基づいて x を丸める。"""
         return round(x / frame_period) * frame_period
 
-    # 各値を frame_period に基づいて丸める (フェードインとフェードアウト時間をそろえるため)
-    envelope = list(map(_round_by_frame, envelope))
     # エンベロープが2点以外で想定される点数のとき
     p_list: list[float]
     v_list: list[float]
@@ -114,26 +112,29 @@ def parse_envelope(
     if len_envelope == 7:
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
-        p_list = [0, p1, p1 + p2, length - p3, length]
+        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p3), length]
         v_list = [0, v1, v2, v3, v4, 0]
         overlap = 0
     # 長さ8の時は overlap が追加される
     elif len_envelope == 8:
+        # [p1, p2, p3, v1, v2, v3, v4, ove]
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
-        p_list = [0, p1, p1 + p2, length - p3, length]
+        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p3), length]
         v_list = [0, v1, v2, v3, v4, 0]
         overlap = envelope[7]
     # 長さ9の時は p4 が追加される
     elif len_envelope == 9:
+        # [p1, p2, p3, v1, v2, v3, v4, ove, p4]
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
         overlap = envelope[7]
         p4 = envelope[8]
-        p_list = [0, p1, p1 + p2, length - p4 - p3, length - p4, length]
+        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p4 + p3), length - round_by_frame(p4), length]
         v_list = [0, v1, v2, v3, v4, 0]
     # 長さが11の時は p5, v5 が追加される
     elif len_envelope == 11:
+        # [p1, p2, p3, v1, v2, v3, v4, ove, p4, p5, v5]
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
         overlap = envelope[7]
@@ -141,7 +142,7 @@ def parse_envelope(
         p5 = envelope[9]
         v5 = envelope[10]
         # NOTE: p5 の位置は p2 と p3 の間であることに注意!
-        p_list = [0, p1, p1 + p2, p1 + p2 + p5, length - p4 - p3, length - p4, length]  # 絶対時刻
+        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), round_by_frame(p1 + p2 + p5), length - round_by_frame(p4 + p3), length - round_by_frame(p4), length]  # 絶対時刻
         v_list = [0, v1, v2, v5, v3, v4, 0]
     # それ以外の要素数はエラー
     else:
@@ -308,10 +309,10 @@ class NeuralNetworkWavTool:
             dtype = np.float64
             msg = f'Input file not found: {self.input_wav} or {self.input_npz}'
             warn(msg, stacklevel=1)
-                (n_frames, 1025), 1e-12, dtype=np.float64
             n_frames = round(self.length / self.frame_period)
             self.f0 = np.zeros((n_frames,), dtype=np.float64)
             self.sp = np.full(
+                (n_frames, 1025), np.finfo(dtype).tiny, dtype=dtype
             )  # 1025 はデフォルト次元数
             self.ap = np.ones((n_frames, 1025), dtype=dtype)
 
@@ -322,6 +323,10 @@ class NeuralNetworkWavTool:
             envelope (list[float]): エンベロープの値のリスト
         """
         p, v, ove = parse_envelope(envelope, self.length, self.frame_period)
+        self.logger.debug('Parsed envelope:')
+        self.logger.debug('  p  : %s', p)
+        self.logger.debug('  v  : %s', v)
+        self.logger.debug('  ove: %s', ove)
         self.envelope_p = p
         self.envelope_v = v
         self.overlap = ove
@@ -400,6 +405,13 @@ class NeuralNetworkWavTool:
             long_ap = self.ap
         # 既存の特徴量がある場合はオーバーラップさせる
         else:
+            self.logger.debug('Before crossfade:')
+            self.logger.debug('  long_f0.shape: %s', long_f0.shape)
+            self.logger.debug('  long_sp.shape: %s', long_sp.shape)
+            self.logger.debug('  long_ap.shape: %s', long_ap.shape)
+            self.logger.debug('  self.f0.shape: %s', self.f0.shape)
+            self.logger.debug('  self.sp.shape: %s', self.f0.shape)
+            self.logger.debug('  self.ap.shape: %s', self.f0.shape)
             long_f0 = crossfade_world_feature(
                 long_f0.reshape(-1, 1),
                 self.f0.reshape(-1, 1),
@@ -411,6 +423,10 @@ class NeuralNetworkWavTool:
             long_ap = crossfade_world_feature(
                 long_ap, self.ap, overlap_frames, crossfade_shape='linear'
             )
+            self.logger.debug('After crossfade:')
+            self.logger.debug('  long_f0.shape: %s', long_f0.shape)
+            self.logger.debug('  long_sp.shape: %s', long_sp.shape)
+            self.logger.debug('  long_ap.shape: %s', long_ap.shape)
         # npzファイルに書き出す
         world_to_npzfile(long_f0, long_sp, long_ap, self.output_npz, compress=False)
         # wavファイルに書き出す
