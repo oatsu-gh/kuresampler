@@ -120,7 +120,7 @@ def overlap_world_feature(
         feature_a,
         feature_b,
         n_overlap,
-        shape=None,
+        crossfade_shape=None,
     )
     return result
 
@@ -129,7 +129,7 @@ def crossfade_world_feature(
     feature_a: np.ndarray,
     feature_b: np.ndarray,
     n_overlap: int,
-    shape: str | None = 'linear',
+    crossfade_shape: str | None = 'linear',
     *,
     calc_in_log: bool = False,
 ) -> np.ndarray:
@@ -158,23 +158,23 @@ def crossfade_world_feature(
         feature_b = np.log1p(feature_b)
 
     # クロスフェードなしで合算 (エンベロープ反映後の sp, ap で使う想定)
-    if shape is None:
+    if crossfade_shape is None:
         fade_out = np.ones((n_overlap, 1))  # 不要だが後続バグ予防のためダミー
         fade_in = np.ones((n_overlap, 1))  # 不要だが後続バグ予防のためダミー
         overlap_area = feature_a[-n_overlap:] + feature_b[:n_overlap]
     # 線形クロスフェード (f0で使う想定)
-    elif shape == 'linear':
+    elif crossfade_shape == 'linear':
         fade_out = np.linspace(1, 0, n_overlap)[:, np.newaxis]
         fade_in = np.linspace(0, 1, n_overlap)[:, np.newaxis]
         overlap_area = feature_a[-n_overlap:] * fade_out + feature_b[:n_overlap] * fade_in
     # cosineクロスフェード
-    elif shape in ('cosine', 'cos'):
+    elif crossfade_shape in ('cosine', 'cos'):
         t = np.linspace(0, np.pi / 2, n_overlap)[:, np.newaxis]
         fade_out = np.cos(t)
         fade_in = np.sin(t)
         overlap_area = feature_a[-n_overlap:] * fade_out + feature_b[:n_overlap] * fade_in
     else:
-        msg = f'Invalid shape: {shape}. Choose from None, "linear", "cosine", or "cos".'
+        msg = f'Invalid shape: {crossfade_shape}. Choose from None, "linear", "cosine", or "cos".'
         raise ValueError(msg)
 
     # 前・クロスフェード部分・後ろを結合して返す

@@ -236,24 +236,24 @@ class NeuralNetworkWavTool:
     TODO: 音量ノーマライズの際に WORLD 特徴量にノーマライズをかける方法を検討する。いったんWAVに変換して係数を算出する?
     """
 
-    _input_wav: Path  # 入力wavのパス
-    _input_npz: Path  # 入力npzのパス
-    _output_wav: Path  # 出力wavのパス
-    _output_npz: Path  # 出力npzのパス
-    _stp: float  # 入力wavの先頭のオフセット [ms]
-    _length: float  # 追記したい音声長さ [ms]
-    _frame_period: int  # WORLD特徴量のフレーム周期 [ms]
-    _sample_rate: int  # 入出力wavのサンプルレート [Hz]
-    _f0: np.ndarray  # f0 (WORLD特徴量 F0)
-    _sp: np.ndarray  # sp (WORLD特徴量 Spectrogram)
-    _ap: np.ndarray  # ap (WORLD特徴量 Aperiodicity)
-    _envelope_p: list[float]  # 音量エンベロープの時刻のリスト [ms]
-    _envelope_v: list[int]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
-    _overlap: float  # クロスフェード時間 [ms]
-    _vocoder_model: torch.nn.Module | None = None  # Vocoder model
-    _vocoder_in_scaler: StandardScaler | None = None  # Vocoder input scaler
-    _vocoder_config: ListConfig | DictConfig | None = None  # Vocoder config
-    _logger: logging.Logger
+    input_wav: Path  # 入力wavのパス
+    input_npz: Path  # 入力npzのパス
+    output_wav: Path  # 出力wavのパス
+    output_npz: Path  # 出力npzのパス
+    stp: float  # 入力wavの先頭のオフセット [ms]
+    length: float  # 追記したい音声長さ [ms]
+    frame_period: int  # WORLD特徴量のフレーム周期 [ms]
+    sample_rate: int  # 入出力wavのサンプルレート [Hz]
+    f0: np.ndarray  # f0 (WORLD特徴量 F0)
+    sp: np.ndarray  # sp (WORLD特徴量 Spectrogram)
+    ap: np.ndarray  # ap (WORLD特徴量 Aperiodicity)
+    envelope_p: list[float]  # 音量エンベロープの時刻のリスト [ms]
+    envelope_v: list[int]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
+    overlap: float  # クロスフェード時間 [ms]
+    vocoder_model: torch.nn.Module | None = None  # Vocoder model
+    vocoder_in_scaler: StandardScaler | None = None  # Vocoder input scaler
+    vocoder_config: ListConfig | DictConfig | None = None  # Vocoder config
+    logger: logging.Logger
 
     def __init__(
         self,
@@ -266,121 +266,111 @@ class NeuralNetworkWavTool:
         frame_period: int = 5,
         logger: logging.Logger | None = None,
     ) -> None:
-        self._input_wav = Path(input_wav)
-        self._input_npz = Path(input_wav).with_suffix('.npz')
-        self._output_wav = Path(output_wav)
-        self._output_npz = Path(output_wav).with_suffix('.npz')
-        self._frame_period = frame_period
-        self._stp = stp
-        self._length = length
+        self.input_wav = Path(input_wav)
+        self.input_npz = Path(input_wav).with_suffix('.npz')
+        self.output_wav = Path(output_wav)
+        self.output_npz = Path(output_wav).with_suffix('.npz')
+        self.frame_period = frame_period
+        self.stp = stp
+        self.length = length
+        self.logger = logger or setup_logger(level=logging.INFO)
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
         # envelope_p, envelope_v, overlap を初期化
         self.__init_envelope(envelope)
-        # logger を初期化
-        self._logger = logger or setup_logger(level=logging.INFO)
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
-    @property
-    def logger(self) -> logging.Logger:
-        """logger を返す。"""
-        return self._logger
-
-    @property
-    def sample_rate(self) -> int:
-        """サンプルレートを返す。"""
-        return self._sample_rate
-
     def __init_features(self, default_sample_rate: int = 44100) -> None:
-        """self._f0, self._sp, self._ap, self._sample_rate を初期化する。
+        """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
 
-        入力wavまたはnpzを読み込み、WORLD特徴量に変換して self._f0, self._sp, self._ap にセットする。
+        入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
         """
         # まずは wav を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
-        if self._input_wav.exists():
-            waveform, sample_rate, _ = wavfile_to_waveform(self._input_wav)
-            self._sample_rate = sample_rate
+        if self.input_wav.exists():
+            waveform, sample_rate, _ = wavfile_to_waveform(self.input_wav)
+            self.sample_rate = sample_rate
         # wav が存在しない場合はサンプルレートを 44100 に設定する。
         else:
-            self._sample_rate = default_sample_rate
+            self.sample_rate = default_sample_rate
 
         # npz が存在する場合は優先的に読み込んで特徴量を取得する
-        if self._input_npz.exists():
-            self._f0, self._sp, self._ap = npzfile_to_world(self._input_npz)
+        if self.input_npz.exists():
+            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
         # npz が存在しない場合は wav から特徴量を抽出する
-        elif self._input_wav.exists():
-            self._f0, self._sp, self._ap = waveform_to_world(
-                waveform, self._sample_rate, frame_period=self._frame_period
+        elif self.input_wav.exists():
+            self.f0, self.sp, self.ap = waveform_to_world(
+                waveform, self.sample_rate, frame_period=self.frame_period
             )
         # wav と npz が両方とも存在しない場合は無音特徴量を登録する。
         else:
-            msg = f'Input file not found: {self._input_wav} or {self._input_npz}'
+            dtype = np.float64
+            msg = f'Input file not found: {self.input_wav} or {self.input_npz}'
             warn(msg, stacklevel=1)
-            n_frames = round(self._length / self._frame_period)
-            self._f0 = np.zeros((n_frames,), dtype=np.float64)
-            self._sp = np.full(
                 (n_frames, 1025), 1e-12, dtype=np.float64
+            n_frames = round(self.length / self.frame_period)
+            self.f0 = np.zeros((n_frames,), dtype=np.float64)
+            self.sp = np.full(
             )  # 1025 はデフォルト次元数
-            self._ap = np.ones((n_frames, 1025), dtype=np.float64)
+            self.ap = np.ones((n_frames, 1025), dtype=dtype)
 
     def __init_envelope(self, envelope: list[float]) -> None:
-        """envelope を解析し、self._envelope_p, self._envelope_v, self._overlap を初期化する。
+        """envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
 
         Args:
             envelope (list[float]): エンベロープの値のリスト
         """
-        p, v, ove = parse_envelope(envelope, self._length, self._frame_period)
-        self._envelope_p = p
-        self._envelope_v = v
-        self._overlap = ove
+        p, v, ove = parse_envelope(envelope, self.length, self.frame_period)
+        self.envelope_p = p
+        self.envelope_v = v
+        self.overlap = ove
 
     def _apply_range(self) -> None:
-        """self._f0, self._sp, self._ap に stp, length を適用する。
+        """self.f0, self.sp, self.ap に stp, length を適用する。
 
         stp, length に基づいて特徴量をクロップする。
         """
-        length_by_frame = round(self._length / self._frame_period)
+        length_by_frame = round(self.length / self.frame_period)
         # stp, length に基づいて特徴量をクロップする
-        start_frame = round(self._stp / self._frame_period)
+        start_frame = round(self.stp / self.frame_period)
         end_frame = start_frame + length_by_frame
-        self._f0 = self._f0[start_frame:end_frame]
-        self._sp = self._sp[start_frame:end_frame, :]
-        self._ap = self._ap[start_frame:end_frame, :]
+        self.f0 = self.f0[start_frame:end_frame]
+        self.sp = self.sp[start_frame:end_frame, :]
+        self.ap = self.ap[start_frame:end_frame, :]
 
     def _apply_envelope(self) -> None:
-        """self._f0, self._sp, self._ap に音量エンベロープを適用する。
-        TODO: 音量エンベロープの時刻と音量値に基づいて、f0, sp, ap の各フレームに対して音量調整を行う。
+        """self.f0, self.sp, self.ap に音量エンベロープを適用する。
+        TODO: 音量エンベロープの時刻と音量値に基づいて、spectrogram の各フレームに対して音量調整を行う。
         """
         # エンベロープが2点以下の場合は何もしない
-        if len(self._envelope_p) < 2:
+        if len(self.envelope_p) < 2:
             return
         # エンベロープが3点以上の場合は音量エンベロープを適用する
-        num_frames = self._f0.shape[0]
-        x = np.arange(num_frames)
+        n_frames = self.f0.shape[0]
+        x = np.arange(n_frames)
         # 時刻をフレーム単位に変換
-        xp = [round(p / self._frame_period) for p in self._envelope_p]
+        xp = [round(p / self.frame_period) for p in self.envelope_p]
         # 音量値(0-200)を0-2に正規化 (余った v は無視)
-        fp = [v / 100.0 for v in self._envelope_v[: len(xp)]]
+        fp = [v / 100.0 for v in self.envelope_v[: len(xp)]]
         # 音量エンベロープを計算
         volume_envelope = np.interp(x, xp, fp)
         # sp, ap に音量エンベロープを適用する。f0 は何もしない(appendのときにクロスフェード処理する)。
-        self._sp *= volume_envelope[:, np.newaxis]
-        self._ap *= volume_envelope[:, np.newaxis]
+        self.sp *= volume_envelope[:, np.newaxis]
+        self.ap *= volume_envelope[:, np.newaxis]
 
     def _apply_all(self) -> None:
-        """self._f0, self._sp, self._ap に stp, length, envelope を適用する。
+        """self.f0, self.sp, self.ap に stp, length, envelope を適用する。
 
         - stp, length に基づいて特徴量をクロップする。
         - envelope に基づいて音量調整を行う。
 
-        self._f0, self._sp, self._ap に音量エンベロープを適用する。
+        self.f0, self.sp, self.ap に音量エンベロープを適用する。
         音量エンベロープの時刻と音量値に基づいて、f0, sp, ap の各フレームに対して音量調整を行う。
         """
-        length_by_frame = round(self._length / self._frame_period)
+        length_by_frame = round(self.length / self.frame_period)
         if length_by_frame <= 0:
-            msg = f'Invalid length: {self._length} ms. Length must be greater than 0 ms.'
+            msg = f'Invalid length: {self.length} ms. Length must be greater than 0 ms.'
             raise ValueError(msg)
         # クロップする
         self._apply_range()
@@ -390,54 +380,57 @@ class NeuralNetworkWavTool:
     def append(self) -> None:
         """既存のnpzファイルを読み取って、それに書き込む。wav は全体を再計算して出力する。
 
-        ノート数が多いほどWAV生成が重くなるので何とかしたい。
+        TODO: ノート数が多いほどWAV生成が重くなるので何とかしたい。
         """
         # 既存ファイルの特徴量を読み取る。なければ空の配列を取得する。
         long_f0, long_sp, long_ap = (
-            npzfile_to_world(self._output_npz)
-            if self._output_npz.exists()
+            npzfile_to_world(self.output_npz)
+            if self.output_npz.exists()
             else (np.array([]), np.array([[]]), np.array([[]]))
         )
         # クロップしたのちエンベロープを適用する
         self._apply_all()
         # overlap をフレーム数に変換
-        overlap_frames = round(self._overlap / self._frame_period)
+        overlap_frames = round(self.overlap / self.frame_period)
         self.logger.info('overlap_frames: %s', overlap_frames)
         # 既存の特徴量が空の場合はそのまま追加
         if long_f0.size == 0:
-            long_f0 = self._f0
-            long_sp = self._sp
-            long_ap = self._ap
+            long_f0 = self.f0
+            long_sp = self.sp
+            long_ap = self.ap
         # 既存の特徴量がある場合はオーバーラップさせる
         else:
             long_f0 = crossfade_world_feature(
                 long_f0.reshape(-1, 1),
-                self._f0.reshape(-1, 1),
+                self.f0.reshape(-1, 1),
                 overlap_frames,
-                shape='linear',
+                crossfade_shape='linear',
                 calc_in_log=True,
             ).reshape(-1)
-            long_sp = overlap_world_feature(long_sp, self._sp, overlap_frames)
-            long_ap = overlap_world_feature(long_ap, self._ap, overlap_frames)
+            long_sp = overlap_world_feature(long_sp, self.sp, overlap_frames)
+            long_ap = crossfade_world_feature(
+                long_ap, self.ap, overlap_frames, crossfade_shape='linear'
+            )
         # npzファイルに書き出す
-        world_to_npzfile(long_f0, long_sp, long_ap, self._output_npz, compress=False)
+        world_to_npzfile(long_f0, long_sp, long_ap, self.output_npz, compress=False)
         # wavファイルに書き出す
-        # Use self._sample_rate for input (waveform) sample rate,
-        # and self._output_sample_rate for output sample rate.
-        input_sample_rate = self._sample_rate
-        output_sample_rate = getattr(self, '_output_sample_rate', self._sample_rate)
+        # Use self.sample_rate for input (waveform) sample rate,
+        # and self.output_sample_rate for output sample rate.
+        input_sample_rate = self.sample_rate
+        output_sample_rate = getattr(self, 'output_sample_rate', self.sample_rate)
         waveform = world_to_waveform(
             long_f0,
             long_sp,
             long_ap,
             input_sample_rate,
-            frame_period=self._frame_period,
+            frame_period=self.frame_period,
         )
-        waveform_to_wavfile(waveform, self._output_wav, input_sample_rate, output_sample_rate)
+        waveform_to_wavfile(waveform, self.output_wav, input_sample_rate, output_sample_rate)
 
 
 def main_wavtool() -> None:
     """実行引数を展開して wavtool としてスタンドアロン動作させる"""
+    logger = setup_logger()
     parser = argparse.ArgumentParser(description='UTAU wavtool crossfading WORLD features')
     parser.add_argument('output', help='output wav path', type=str)
     parser.add_argument('input', help='input wav path', type=str)
@@ -449,7 +442,8 @@ def main_wavtool() -> None:
         type=float,
         help=(
             'envelope pattern '
-            "'p1 p2' or 'p1 p2 p3 v1 v2 v3 v4 ove' "
+            "'p1 p2' "
+            "or 'p1 p2 p3 v1 v2 v3 v4 ove' "
             "or 'p1 p2 p3 v1 v2 v3 v4' "
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4' "
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'"
@@ -478,9 +472,14 @@ def main_wavtool() -> None:
         default=False,
     )
     args = parser.parse_args()
+    # デバッグモード
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
     # length 文字列を float に変換
     length = str2float(args.length)
-    wavtool = NeuralNetworkWavTool(args.output, args.input, args.stp, length, args.envelope)
+    wavtool = NeuralNetworkWavTool(
+        args.output, args.input, args.stp, length, args.envelope, logger=logger
+    )
     # wavtool で音声WORLD特徴量を結合
     wavtool.append()
 
