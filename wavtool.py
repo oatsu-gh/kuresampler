@@ -480,7 +480,7 @@ class NeuralNetworkWavTool:
             n_frames = ceil((self.length + self.stp) / self.frame_period)
             dtype = np.float64
             self.f0 = np.zeros((n_frames,), dtype=dtype)
-            self.sp = np.full((n_frames, 1025), np.finfo(dtype).tiny, dtype=dtype)
+            self.sp = np.zeros((n_frames, 1025), dtype=dtype)
             self.ap = np.ones((n_frames, 1025), dtype=dtype)
 
     def __init_envelope(self, envelope: list[float]) -> None:
