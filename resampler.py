@@ -193,7 +193,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     def denoise_f0(self) -> None:
         """f0 のスパイクノイズを除去する。"""
         if self._f0 is not None:
-            self._f0 = denoise_spike(self._f0)
+            self._f0 = denoise_spike(self._f0, logger=self.logger)
 
     def synthesize(self) -> None:
         """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
@@ -347,8 +347,8 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # WORLD 特徴量を npz ファイル出力する。
         if self.export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
-            np.savez(npz_path, f0=self.f0, spectrogram=self.sp, aperiodicity=self.ap)
-            self.logger.debug('Exported WORLD features (f0, sp, ap): %s', npz_path)
+            np.savez(npz_path, f0=self.f0, spectral_envelope=self.sp, aperiodicity=self.ap)
+            self.logger.debug('Exported NPZ (f0, spectral_envelope, aperiodicity): %s', npz_path)
 
 
 def main_resampler(

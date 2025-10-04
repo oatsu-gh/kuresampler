@@ -39,7 +39,7 @@ def get_device() -> torch.device:
 def setup_logger(level=logging.INFO) -> logging.Logger:
     """Loggerを作成する。"""
     formatter = ColoredFormatter(
-        '[%(filename)s][%(log_color)s%(levelname)s%(reset)s] %(message)s',
+        '[%(filename)s:%(lineno)d][%(log_color)s%(levelname)s%(reset)s] %(message)s',
         log_colors={
             'DEBUG': 'green',
             'INFO': 'blue',
@@ -77,12 +77,15 @@ def easy_interpolate(y: list[float] | np.ndarray) -> float:
     return sum([a * b for a, b in zip(y, weights, strict=True)]) / sum(weights)
 
 
-def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
+def denoise_spike(
+    f0: np.ndarray, iqr_multiplier: float = 1.5, *, logger: None | logging.Logger
+) -> np.ndarray:
     """1次元配列の f0 のスパイクノイズを除去する。
 
     Args:
-        f0 (np.ndarray): スパイクノイズを除去する対象の f0 配列
-        iqr_multiplier (float): IQR (Interquartile Range) の何倍を外れ値とみなすか
+        f0 (np.ndarray)               : スパイクノイズを除去する対象の f0 配列
+        iqr_multiplier (float)        : IQR (Interquartile Range) の何倍を外れ値とみなすか
+        logger (logging.Logger | None): Logger
 
     Returns:
         np.ndarray: スパイクノイズを除去した f0 配列
@@ -102,7 +105,10 @@ def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
         upper_bound = a3 + iqr_multiplier * iqr
         # スパイクノイズを除去
         if f0_clean[i] < lower_bound or f0_clean[i] > upper_bound:
-            warn(f'Spike noise detected at index {i}: {f0_clean[i]}', stacklevel=2)
+            if logger is not None:
+                logger.warning(f'Spike noise detected at index {i}: {f0_clean[i]}')
+            else:
+                warn(f'Spike noise detected at index {i}: {f0_clean[i]}', stacklevel=2)
             y = [
                 f0_clean[i - 2],
                 f0_clean[i - 1],

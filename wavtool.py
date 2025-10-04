@@ -1,6 +1,5 @@
 # Copyright (c) 2025 oatsu
-"""
-Resampler classes
+"""Wavtool
 
 wavtool に求められること
 - 実行引数を解釈してプロパティにセットする
@@ -17,7 +16,7 @@ wavtool の処理の流れ
 - wav ファイルを書き出す
 
 ## 注意すること
-- 自身が 先頭ノート/中間ノート/最終ノート のいずれであるかはわからないため、wav ファイルは常に出力する必要がある。
+- 自身が 先頭ノート/中間ノート/最終ノート のいずれであるかはわからないため、wav ファイルは常に出力必要。
 - wav ファイルを出力する際、既存の wav ファイルがある場合は、オーバーラップ時間を考慮して重ねる必要がある。
 
 """
@@ -25,12 +24,14 @@ wavtool の処理の流れ
 import argparse
 import logging
 import sys
+from functools import partial
+from math import ceil
 from pathlib import Path
-from warnings import warn
 
 import colored_traceback.auto  # noqa: F401
 import numpy as np
 import torch
+from nnsvs.gen import predict_waveform
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
@@ -51,8 +52,11 @@ from convert import (  # noqa: F401
     world_to_waveform,
 )
 from util import (
-    crossfade_world_feature,
-    overlap_world_feature,
+    get_device,
+    load_vocoder_model,
+    overlap_ap,
+    overlap_f0,
+    overlap_sp,
     setup_logger,
 )
 
@@ -81,7 +85,7 @@ def extract_overlap(envelope: list[float]) -> float:
 
 
 def parse_envelope(
-    envelope: list[float], length: float, frame_period: float
+    envelope: list[float], rounded_length: float, frame_period: float
 ) -> tuple[list, list, float]:
     """Envelope のパターンを解析し、時刻のリストと音量のリストとoverlap時間を返す。
 
@@ -204,14 +208,13 @@ def parse_envelope(
     if p_list != sorted(p_list):
         msg = f'p_list must be in ascending order, but got {p_list}.'
         raise ValueError(msg)
-    # TODO: p_list が昇順になっていない場合は自動修正する。昇順になるように並べ替えるかクリッピングする。
 
     return p_list, v_list, overlap
 
 
 def str2float(length: float | str) -> float:
-    """
-    UTAUのLength文字列をfloatに変換します。
+    """UTAUのLength文字列をfloatに変換します。
+
     NOTE: Copied function from PyWavTool.PyWavTool.length_string.str2float by delta-kuro.
 
     Parameters
@@ -286,6 +289,7 @@ class NeuralNetworkWavTool:
       WorldFeatureWavTool.self._dat (WORLD特徴量) の要素数は frame_period に応じた長さ (秒数/frame_period*1000) になることに注意。
 
     TODO: 音量ノーマライズの際に WORLD 特徴量にノーマライズをかける方法を検討する。いったんWAVに変換して係数を算出する?
+
     """
 
     input_wav: Path  # 入力wavのパス
@@ -297,16 +301,28 @@ class NeuralNetworkWavTool:
     frame_period: int  # WORLD特徴量のフレーム周期 [ms]
     sample_rate: int  # 入出力wavのサンプルレート [Hz]
     f0: np.ndarray  # f0 (WORLD特徴量 F0)
-    sp: np.ndarray  # sp (WORLD特徴量 Spectrogram)
+    sp: np.ndarray  # sp (WORLD特徴量 Spectral envelope)
     ap: np.ndarray  # ap (WORLD特徴量 Aperiodicity)
+    f0_appended: np.ndarray  # 追記後のf0 (WORLD特徴量 F0)
+    sp_appended: np.ndarray  # 追記後のsp (WORLD特徴量 Spectral envelope)
+    ap_appended: np.ndarray  # 追記後のap (WORLD特徴量 Aperiodicity)
+    resample_type: str  # リサンプリングの
     envelope_p: list[float]  # 音量エンベロープの時刻のリスト [ms]
     envelope_v: list[int]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
     overlap: float  # クロスフェード時間 [ms]
+    use_vocoder_model: bool = True  # Vocoder model を使用するか否か
     vocoder_model: torch.nn.Module | None = None  # Vocoder model
     vocoder_in_scaler: StandardScaler | None = None  # Vocoder input scaler
     vocoder_config: ListConfig | DictConfig | None = None  # Vocoder config
+    vocoder_type: str
+    vocoder_feature_type: str
+    vocoder_vuv_threshold: float
+    vocoder_frame_period: int
+    device: torch.device
     logger: logging.Logger
+    _residual_error: float  # このノート以降の length の丸め誤差 [ms]
 
+    # MARK: __init__
     def __init__(
         self,
         output_wav: Path | str,
@@ -315,63 +331,164 @@ class NeuralNetworkWavTool:
         length: float,
         envelope: list[float],
         *,
-        frame_period: int = 5,
+        use_vocoder_model: bool,
         logger: logging.Logger | None = None,
+        frame_period: int = 5,
+        residual_error: float = 0.0,  # このノート以前の時刻丸め誤差
+        vocoder_model: torch.nn.Module | None = None,
+        vocoder_in_scaler: StandardScaler | None = None,
+        vocoder_config: DictConfig | ListConfig | None = None,
+        vocoder_type: str = 'usfgan',
+        vocoder_feature_type: str = 'world',
+        vocoder_vuv_threshold: float = 0.5,
+        vocoder_frame_period: int = 5,
+        resample_type: str = 'soxr_vhq',
     ) -> None:
+        """NeuralNetworkWavTool のコンストラクタ"""
+        self.logger = logger or setup_logger(level=logging.INFO)
         self.input_wav = Path(input_wav)
         self.input_npz = Path(input_wav).with_suffix('.npz')
         self.output_wav = Path(output_wav)
         self.output_npz = Path(output_wav).with_suffix('.npz')
         self.frame_period = frame_period
         self.stp = stp
-        self.length = length
-        self.logger = logger or setup_logger(level=logging.INFO)
+        # length と _residual_error を初期化
+        self.__init_length(length, extract_overlap(envelope), residual_error)
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
+
+        # デバッグ出力: f0, sp, ap のshape,min,maxを確認
+        self.logger.debug('Initial features:')
+        self._debug_features(f0=self.f0, sp=self.sp, ap=self.ap)
+
         # envelope_p, envelope_v, overlap を初期化
         self.__init_envelope(envelope)
+        # デバイス設定
+        self.device = get_device()
+        # ボコーダー関連の設定
+        self.use_vocoder_model = use_vocoder_model
+        self.vocoder_type = vocoder_type
+        self.vocoder_feature_type = vocoder_feature_type
+        self.vocoder_vuv_threshold = vocoder_vuv_threshold
+        self.vocoder_frame_period = vocoder_frame_period
+        self.resample_type = resample_type
+
+        # framem_period と vocoder_frame_period が異なる場合は警告を出す
+        if self.frame_period != self.vocoder_frame_period:
+            self.logger.warning(
+                'frame_period (%d ms) and vocoder_frame_period (%d ms) are different. This may result in unexpected behavior.',
+                self.frame_period,
+                self.vocoder_frame_period,
+            )
+
+        # use_vocoder_model が True の時はボコーダーモデルを代入する
+        if use_vocoder_model is True:
+            # vocoder model 関連の引数が全て揃っていることを確認
+            if vocoder_model is None or vocoder_in_scaler is None or vocoder_config is None:
+                msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
+                raise ValueError(msg)
+            self.vocoder_model = vocoder_model
+            self.vocoder_in_scaler = vocoder_in_scaler
+            self.vocoder_config = vocoder_config
+        # use_vocoder_model が False の場合
+        else:
+            # use_vocoder_model が False なのに vocoder が指定されているときは警告を出す
+            if (vocoder_model, vocoder_in_scaler, vocoder_config) != (None, None, None):
+                self.logger.warning(
+                    'use_vocoder_model is False, but vocoder_model, vocoder_in_scaler, or vocoder_config is provided. They will be ignored.',
+                )
+            self.vocoder_model = None
+            self.vocoder_in_scaler = None
+            self.vocoder_config = None
+
+        self.logger.info('Using vocoder model: %s', self.use_vocoder_model)
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
-    def __init_features(self, default_sample_rate: int = 44100) -> None:
+    @property
+    def residual_error(self) -> float:
+        """このノート以降の length の丸め誤差 [ms]"""
+        return self._residual_error
+
+    @property
+    def vocoder_sample_rate(self) -> int:
+        """ボコーダーモデルのwav出力サンプリング周波数"""
+        if self.vocoder_config is None:
+            msg = 'vocoder_config is None. vocoder_model must be loaded first.'
+            raise ValueError(msg)
+        return self.vocoder_config.data.sample_rate
+
+    def __init_length(
+        self, original_length: float, original_overlap: float, residual_error: float
+    ):
+        """self.length と self._residual_error を初期化する。
+
+        Args:
+            original_length (float): 元の長さ [ms]
+            original_overlap (float): 元のオーバーラップ [ms]
+            residual_error (float): このノート以前の丸め誤差 [ms]
+
+        """
+        rounded_overlap = round_by_frame(original_overlap, self.frame_period)
+        overlap_error = original_overlap - rounded_overlap
+        # 以前の丸め誤差を考慮して length を調整する
+        adjusted_length = original_length + residual_error - overlap_error
+        # frame_period に基づいて length を丸める
+        rounded_length = round(adjusted_length / self.frame_period) * self.frame_period
+        # 新しい丸め誤差を計算する
+        new_residual_error = adjusted_length - rounded_length
+        self.logger.debug('residual_error (before): %.3f [ms]', residual_error)
+        self.logger.debug('original_overlap: %.3f [ms]', original_overlap)
+        self.logger.debug('rounded_overlap: %.3f [ms]', rounded_overlap)
+        self.logger.debug('overlap_error: %.3f [ms]', overlap_error)
+        self.logger.debug('original_length: %.3f [ms]', original_length)
+        self.logger.debug('adjusted_length: %.3f [ms]', adjusted_length)
+        self.logger.debug('rounded_length: %.3f [ms]', rounded_length)
+        self.logger.debug('new_residual_error (after): %.3f [ms]', new_residual_error)
+        self.length = rounded_length
+        self._residual_error = new_residual_error
+
+    def __init_features(self, default_sample_rate: int = DEFAULT_SAMPLE_RATE) -> None:
         """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
         """
-        # まずは wav を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
-        if self.input_wav.exists():
+        # wav と npz が両方存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
+        if self.input_wav.exists() and self.input_npz.exists():
             waveform, sample_rate, _ = wavfile_to_waveform(self.input_wav)
             self.sample_rate = sample_rate
-        # wav が存在しない場合はサンプルレートを 44100 に設定する。
+            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
+        # wav のみ存在する場合、を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
+        elif self.input_wav.exists():
+            waveform, sample_rate, _ = wavfile_to_waveform(self.input_wav)
+            self.sample_rate = sample_rate
+            self.f0, self.sp, self.ap = waveform_to_world(
+                waveform,
+                self.sample_rate,
+                frame_period=self.frame_period,
+            )
+        # npz のみ存在する場合、npz から特徴量を取得する。sample_rate は default_sample_rate に設定する。
+        elif self.input_npz.exists():
+            self.sample_rate = default_sample_rate
+            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
+        # wav と npz が両方とも存在しない場合は無音特徴量を使用する。
         else:
             self.sample_rate = default_sample_rate
-
-        # npz が存在する場合は優先的に読み込んで特徴量を取得する
-        if self.input_npz.exists():
-            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
-        # npz が存在しない場合は wav から特徴量を抽出する
-        elif self.input_wav.exists():
-            self.f0, self.sp, self.ap = waveform_to_world(
-                waveform, self.sample_rate, frame_period=self.frame_period
-            )
-        # wav と npz が両方とも存在しない場合は無音特徴量を登録する。
-        else:
+            msg = f'Input file not found: {self.input_wav} or {self.input_npz}. Using silent features.'
+            self.logger.warning(msg, stacklevel=1)
+            n_frames = ceil((self.length + self.stp) / self.frame_period)
             dtype = np.float64
-            msg = f'Input file not found: {self.input_wav} or {self.input_npz}'
-            warn(msg, stacklevel=1)
-            n_frames = round(self.length / self.frame_period)
-            self.f0 = np.zeros((n_frames,), dtype=np.float64)
-            self.sp = np.full(
-                (n_frames, 1025), np.finfo(dtype).tiny, dtype=dtype
-            )  # 1025 はデフォルト次元数
+            self.f0 = np.zeros((n_frames,), dtype=dtype)
+            self.sp = np.full((n_frames, 1025), np.finfo(dtype).tiny, dtype=dtype)
             self.ap = np.ones((n_frames, 1025), dtype=dtype)
 
     def __init_envelope(self, envelope: list[float]) -> None:
-        """envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
+        """Envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
 
         Args:
             envelope (list[float]): エンベロープの値のリスト
+
         """
         p, v, ove = parse_envelope(envelope, self.length, self.frame_period)
         self.logger.debug('Parsed envelope:')
@@ -397,8 +514,10 @@ class NeuralNetworkWavTool:
 
     def _apply_envelope(self) -> None:
         """self.f0, self.sp, self.ap に音量エンベロープを適用する。
+
         TODO: 音量エンベロープの時刻と音量値に基づいて、spectrogram の各フレームに対して音量調整を行う。
         """
+        self.logger.debug('envelope_p: %s', self.envelope_p)
         # エンベロープが2点以下の場合は何もしない
         if len(self.envelope_p) < 2:
             return
@@ -433,6 +552,18 @@ class NeuralNetworkWavTool:
         # 音量エンベロープを適用する
         self._apply_envelope()
 
+    def _debug_features(self, **kwargs: np.ndarray) -> None:
+        """self.f0, self.sp, self.ap の情報をログに出力する。"""
+        # 空の ndarray をSkipする
+        kwargs = {k: v for k, v in kwargs.items() if v.size > 0}
+        # shape を出力
+        for name, array in kwargs.items():
+            self.logger.debug('  %s.shape: %s', name, array.shape)
+        # min, max を出力
+        for name, array in kwargs.items():
+            self.logger.debug('  %s (min, max): (%s, %s)', name, array.min(), array.max())
+
+    # MARK: append
     def append(self) -> None:
         """既存のnpzファイルを読み取って、それに書き込む。wav は全体を再計算して出力する。
 
@@ -449,52 +580,144 @@ class NeuralNetworkWavTool:
         # overlap をフレーム数に変換
         overlap_frames = round(self.overlap / self.frame_period)
         self.logger.info('overlap_frames: %s', overlap_frames)
-        # 既存の特徴量が空の場合はそのまま追加
+
+        # デバッグ出力 --------------------------
+        self.logger.debug('Features before overlap:')
+        self._debug_features(
+            long_f0=long_f0,
+            long_sp=long_sp,
+            long_ap=long_ap,
+            self_f0=self.f0,
+            self_sp=self.sp,
+            self_ap=self.ap,
+        )
+        # --------------------------------------
+
+        # 先頭ノートの場合は何もせず代入
         if long_f0.size == 0:
             long_f0 = self.f0
             long_sp = self.sp
             long_ap = self.ap
         # 既存の特徴量がある場合はオーバーラップさせる
         else:
-            self.logger.debug('Before crossfade:')
-            self.logger.debug('  long_f0.shape: %s', long_f0.shape)
-            self.logger.debug('  long_sp.shape: %s', long_sp.shape)
-            self.logger.debug('  long_ap.shape: %s', long_ap.shape)
-            self.logger.debug('  self.f0.shape: %s', self.f0.shape)
-            self.logger.debug('  self.sp.shape: %s', self.f0.shape)
-            self.logger.debug('  self.ap.shape: %s', self.f0.shape)
-            long_f0 = crossfade_world_feature(
-                long_f0.reshape(-1, 1),
-                self.f0.reshape(-1, 1),
-                overlap_frames,
-                crossfade_shape='linear',
-                calc_in_log=True,
-            ).reshape(-1)
-            long_sp = overlap_world_feature(long_sp, self.sp, overlap_frames)
-            long_ap = crossfade_world_feature(
-                long_ap, self.ap, overlap_frames, crossfade_shape='linear'
-            )
-            self.logger.debug('After crossfade:')
-            self.logger.debug('  long_f0.shape: %s', long_f0.shape)
-            self.logger.debug('  long_sp.shape: %s', long_sp.shape)
-            self.logger.debug('  long_ap.shape: %s', long_ap.shape)
-        # npzファイルに書き出す
-        world_to_npzfile(long_f0, long_sp, long_ap, self.output_npz, compress=False)
-        # wavファイルに書き出す
-        # Use self.sample_rate for input (waveform) sample rate,
-        # and self.output_sample_rate for output sample rate.
-        input_sample_rate = self.sample_rate
-        output_sample_rate = getattr(self, 'output_sample_rate', self.sample_rate)
-        waveform = world_to_waveform(
-            long_f0,
-            long_sp,
-            long_ap,
-            input_sample_rate,
-            frame_period=self.frame_period,
+            # 既存特徴量に新規ノートの特徴量を結合する
+            long_f0 = overlap_f0(long_f0, self.f0, overlap_frames, crossfade_shape='linear')
+            long_sp = overlap_sp(long_sp, self.sp, overlap_frames, crossfade_shape=None)
+            long_ap = overlap_ap(long_ap, self.ap, overlap_frames, crossfade_shape='linear')
+        # 追記後の特徴量を保存
+        self.f0_appended = long_f0
+        self.ap_appended = long_ap
+        self.sp_appended = long_sp
+        # デバッグ出力 --------------------------
+        self.logger.debug('Features after overlap:')
+        self._debug_features(
+            long_f0=long_f0,
+            long_sp=long_sp,
+            long_ap=long_ap,
         )
-        waveform_to_wavfile(waveform, self.output_wav, input_sample_rate, output_sample_rate)
+        # --------------------------------------
+
+    # MARK: synthesize
+    def synthesize(self) -> None:
+        """WORLD特徴量からwavを合成して出力する。
+
+        Todo:
+            WORLD 特徴量を.wav 拡張子で出力するオプションを追加する (.npz はUTAUが自動で消してくれないため)。
+            もしくは、エンジン一括実行を行うツールで、レンダリング開始前に .npz を消す処理を追加する。
+
+        """
+        # append された特徴量が揃っていることを確認する
+        if self.f0_appended is None or self.sp_appended is None or self.ap_appended is None:
+            msg = 'f0_appended, sp_appended, or ap_appended is None. Call append() first.'
+            raise ValueError(msg)
+
+        # npzファイルに書き出す
+        world_to_npzfile(
+            self.f0_appended,
+            self.sp_appended,
+            self.ap_appended,
+            self.output_npz,
+            compress=False,
+        )
+
+        # 入力ファイルのサンプルレートを取得
+        input_sample_rate = self.sample_rate
+        # ボコーダーモデルを使用する場合は、ボコーダーのサンプルレートのまま出力する。
+        if self.use_vocoder_model is True:
+            output_sample_rate = self.vocoder_sample_rate
+        # ボコーダーモデルを使用しない場合は、入力サンプルレートのまま出力する。
+        else:
+            output_sample_rate = input_sample_rate
+
+        # ボコーダーモデルを使用しない場合
+        if self.use_vocoder_model is False:
+            wav = world_to_waveform(
+                self.f0_appended,
+                self.sp_appended,
+                self.ap_appended,
+                input_sample_rate,
+                frame_period=self.frame_period,
+            )
+        # ボコーダーモデルを使用する場合
+        elif self.use_vocoder_model is True:
+            # vocoder model 関連の引数が全て揃っていることを確認
+            if (
+                self.vocoder_model is None
+                or self.vocoder_in_scaler is None
+                or self.vocoder_config is None
+            ):
+                msg = 'vocoder_model, vocoder_in_scaler, or vocoder_config is None.'
+                raise ValueError(msg)
+
+            # モデルに渡す用に特徴量を変換
+            mgc, lf0, vuv, bap = world_to_nnsvs(
+                self.f0_appended,
+                self.sp_appended,
+                self.ap_appended,
+                input_sample_rate,
+            )
+            multistream_features = (mgc, lf0, vuv, bap)
+            # DEBUG: --------------------------------------------------
+            self.logger.debug('NNSVS features before waveform prediction -----------------------')
+            self._debug_features(mgc=mgc, lf0=lf0, vuv=vuv, bap=bap)
+            # DEBUG: --------------------------------------------------
+            # waveformを生成
+            wav = predict_waveform(
+                device=self.device,
+                multistream_features=multistream_features,
+                vocoder=self.vocoder_model,
+                vocoder_config=self.vocoder_config,
+                vocoder_in_scaler=self.vocoder_in_scaler,
+                sample_rate=self.vocoder_sample_rate,
+                frame_period=self.vocoder_frame_period,
+                use_world_codec=True,
+                feature_type=self.vocoder_feature_type,
+                vocoder_type=self.vocoder_type,
+                vuv_threshold=self.vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+            )
+        else:
+            msg = f'Invalid use_vocoder_model: {self.use_vocoder_model}. Must be True or False.'
+            raise ValueError(msg)
+
+        # wavform の長さを丸め誤差分だけ補正する
+        n_compensation_samples = round(self._residual_error / 1000 * input_sample_rate)
+        self.logger.debug('n_compensation_samples: %d', n_compensation_samples)
+        self.logger.debug('waveform.shape before compensation: %s', wav.shape)
+        # wav が目標よりも短い場合はゼロパディングする。
+        if n_compensation_samples > 0:
+            wav = np.pad(wav, (0, n_compensation_samples))
+        # wav が目標よりも長い場合は切り詰める。
+        elif n_compensation_samples < 0:
+            wav = wav[:n_compensation_samples]
+        self.logger.debug('waveform.shape after compensation: %s', wav.shape)
+        # wavファイルに書き出す
+        if self.use_vocoder_model:
+            waveform_to_wavfile(wav, self.output_wav, self.vocoder_sample_rate, output_sample_rate)
+        else:
+            waveform_to_wavfile(wav, self.output_wav, input_sample_rate, output_sample_rate)
 
 
+# MARK: main_wavtool
 def main_wavtool() -> None:
     """実行引数を展開して wavtool としてスタンドアロン動作させる"""
     logger = setup_logger()
@@ -544,11 +767,32 @@ def main_wavtool() -> None:
         logger.setLevel(logging.DEBUG)
     # length 文字列を float に変換
     length = str2float(args.length)
+    # モデルロードを試みる
+    if args.use_vocoder_model:
+        if args.model_dir is None:
+            msg = 'When --use_vocoder_model is specified, --model_dir must be provided.'
+            raise ValueError(msg)
+        vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(args.model_dir)
+    else:
+        vocoder_model = None
+        vocoder_in_scaler = None
+        vocoder_config = None
     wavtool = NeuralNetworkWavTool(
-        args.output, args.input, args.stp, length, args.envelope, logger=logger
+        args.output,
+        args.input,
+        args.stp,
+        length,
+        args.envelope,
+        logger=logger,
+        use_vocoder_model=args.use_vocoder_model,
+        vocoder_model=vocoder_model,
+        vocoder_in_scaler=vocoder_in_scaler,
+        vocoder_config=vocoder_config,
     )
     # wavtool で音声WORLD特徴量を結合
     wavtool.append()
+    # wav ファイルを生成
+    wavtool.synthesize()
 
 
 if __name__ == '__main__':
