@@ -9,7 +9,6 @@
 
 """
 
-import logging
 import sys
 from logging import Logger
 from pathlib import Path
@@ -17,10 +16,8 @@ from shutil import rmtree
 from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
-import numpy as np
 import torch
 import utaupy
-from nnsvs.gen import predict_waveform
 from PyUtauCli.projects.Render import Render
 from PyUtauCli.projects.Ust import Ust
 from tqdm.auto import tqdm
@@ -32,81 +29,11 @@ from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
-from convert import (  # noqa: F401
-    nnsvs_to_npzfile,
-    nnsvs_to_world,
-    npzfile_to_nnsvs,
-    npzfile_to_world,
-    waveform_to_wavfile,
-    waveform_to_world,
-    wavfile_to_waveform,
-    world_to_nnsvs,
-    world_to_npzfile,
-    world_to_waveform,
-)
 from resampler import NeuralNetworkResamp
 from resampler import main_resampler as _main_resampler
-from util import get_device, load_vocoder_model, setup_logger
+from util import load_vocoder_model, setup_logger
 from wavtool import NeuralNetworkWavTool
 from wavtool import main_wavtool as _main_wavtool
-
-# MARK: Utility functions
-
-
-def nnsvs_to_waveform(
-    mgc: np.ndarray,
-    lf0: np.ndarray,
-    vuv: np.ndarray,
-    bap: np.ndarray,
-    vocoder_model_dir: Path | str,
-    *,
-    vocoder_type: str = 'usfgan',
-    feature_type: str = 'world',
-    vuv_threshold: float = 0.5,
-    frame_period: int = 5,
-    logger: Logger | None = None,
-) -> np.ndarray:
-    """World (original) の特徴量から wav を生成する。
-
-    2025-08-25 時点の nnsvs.gen.predict_waveform は vocoder_type は world, pwg, usfgan に対応している。
-
-    Args:
-        f0 (np.ndarray): continuous F0
-        spectrogram (np.ndarray):
-        aperiodicity (np.ndarray): band aperiodicity
-        vocoder (nn.Module): Vocoder model
-        vocoder_config (dict): Vocoder config
-        vocoder_in_scaler (StandardScaler): Vocoder input scaler
-        vocoder_type (str): Vocoder type. `world` or `pwg` or `usfgan`
-
-    Returns:
-        wav (np.ndarray): wavform. shape: (n_samples,)
-
-    """
-    logger = logging.getLogger(__name__) if logger is None else logger
-    # モデルに渡す用に特徴量をまとめる
-    multistream_features = (mgc, lf0, vuv, bap)
-    # モデルを読み込む
-    vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(vocoder_model_dir)
-    # サンプリング周波数を自動取得
-    sample_rate = vocoder_config.data.sample_rate
-    # waveform を生成
-    device = get_device()
-    wav = predict_waveform(
-        device=device,
-        multistream_features=multistream_features,
-        vocoder=vocoder_model,
-        vocoder_config=vocoder_config,
-        vocoder_in_scaler=vocoder_in_scaler,
-        sample_rate=sample_rate,
-        frame_period=frame_period,
-        use_world_codec=True,
-        feature_type=feature_type,
-        vocoder_type=vocoder_type,
-        vuv_threshold=vuv_threshold,  # vuv 閾値設定はするけど使われないはず
-    )
-    # 生成した waveform を返す
-    return wav
 
 
 # MARK: NeuralNetworkRender
@@ -145,6 +72,7 @@ class NeuralNetworkRender(Render):
         use_neural_wavtool: bool = True,
         force_wav_crossfade: bool = False,
     ) -> None:
+        """Initialize NeuralNetworkRender."""
         # loggerを作成
         logger = setup_logger() if logger is None else logger
         super().__init__(
@@ -178,23 +106,24 @@ class NeuralNetworkRender(Render):
             msg = (
                 '非推奨の組み合わせが検出されました。'
                 'use_neural_resampler=True かつ use_neural_wavtool=True は非推奨です。'
-                'use_neural_resampler=False に強制設定して処理を続行します (レンダリング時間短縮のため)。'
+                'use_neural_resampler=False への変更を推奨します (レンダリング時間短縮のため)。'
             )
             logger.warning(msg)
-            use_neural_resampler = False
         # 非推奨の組み合わせを警告
         if use_neural_wavtool and export_features is False:
             msg = (
                 '非推奨の組み合わせが検出されました。'
                 'export_features=False かつ use_neural_wavtool=True は非推奨です。'
-                'export_features=True に強制設定して処理を続行します (クロスフェード品質最大化のため)。'
+                'export_features=True への変更を推奨します (クロスフェード品質最大化のため)。'
             )
             logger.warning(msg)
-            export_features = True
         # vocoder モデルを読み込む
         if use_neural_resampler is True or use_neural_wavtool is True:
             if vocoder_model_dir is None:
-                msg = 'vocoder_model_dir must be specified when use_neural_resampler or use_neural_wavtool is True.'
+                msg = (
+                    'vocoder_model_dir must be specified '
+                    'when use_neural_resampler or use_neural_wavtool is True.'
+                )
                 raise ValueError(msg)
             logger.info('Loading vocoder model: %s', vocoder_model_dir)
             self._vocoder_model, self._vocoder_in_scaler, self._vocoder_config = (
@@ -226,8 +155,7 @@ class NeuralNetworkRender(Render):
         return self._vocoder_config.data.sample_rate
 
     def resamp(self, *, force: bool = False) -> None:
-        """
-        NeuralNetworkResampを使用してキャッシュファイルを生成する。
+        """NeuralNetworkResampを使用してキャッシュファイルを生成する。
 
         Args:
             force: Trueの場合、キャッシュファイルがあっても生成する。
@@ -238,7 +166,7 @@ class NeuralNetworkRender(Render):
         for note in tqdm(
             self.notes, mininterval=0.02, colour='cyan', desc='Resample', unit='note'
         ):
-            print('\n---------------')
+            self.logger.info('\n---------------')
             if not note.require_resamp:
                 continue
             if force or not Path(note.cache_path).is_file():
@@ -304,11 +232,13 @@ class NeuralNetworkRender(Render):
         out_wav_path.with_suffix('.wav.whd').unlink(missing_ok=True)
         out_wav_path.with_suffix('.wav.dat').unlink(missing_ok=True)
 
+        residual_error = 0.0  # wavtool で生じる累積丸め誤差 [ms]
+
         # 特徴量クロスフェードを実施
         for note in tqdm(
             self.notes, mininterval=0.02, colour='magenta', desc='Append', unit='note'
         ):
-            print('\n---------------')
+            self.logger.info('\n---------------')
             # direct=True の場合は原音WAVをそのままクロスフェードする
             if note.direct is True:
                 stp = note.stp + note.offset
@@ -333,45 +263,60 @@ class NeuralNetworkRender(Render):
                 length=note.output_ms,
                 envelope=[float(item) for item in note.envelope.split(' ')],
                 logger=self.logger,
-            )
-            # WAVと特徴量ファイル出力
-            wavtool.append()
-
-        # 必要に応じて vocoder を用いて wav を生成
-        if self._use_neural_wavtool is True:
-            print('---------------')
-            self.logger.info('ニューラルボコーダーでWAVを生成します')
-            f0, sp, ap = npzfile_to_world(out_wav_path.with_suffix('.npz'))
-            # vocoder で wav を生成
-            # WORLD 特徴量を NNSVS 用に変換
-            mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, self.vocoder_sample_rate)
-            # モデルに渡す用に特徴量をまとめる
-            multistream_features = (mgc, lf0, vuv, bap)
-            # print(mgc.shape, lf0.shape, vuv.shape, bap.shape)
-            # waveformを生成
-            # NOTE: ここのsample_rate って vocoder のサンプルレートで大丈夫？
-            waveform = predict_waveform(
-                device=get_device(),
-                multistream_features=multistream_features,
-                vocoder=self._vocoder_model,
-                vocoder_config=self._vocoder_config,
+                residual_error=residual_error,
+                use_vocoder_model=self._use_neural_wavtool,
+                vocoder_model=self._vocoder_model,
                 vocoder_in_scaler=self._vocoder_in_scaler,
-                sample_rate=self.vocoder_sample_rate,
-                frame_period=self._vocoder_frame_period,
-                use_world_codec=True,
-                feature_type=self._vocoder_feature_type,
-                vocoder_type='usfgan',
-                vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+                vocoder_config=self._vocoder_config,
+                vocoder_type=self._vocoder_type,
+                vocoder_feature_type=self._vocoder_feature_type,
+                vocoder_vuv_threshold=self._vocoder_vuv_threshold,
+                vocoder_frame_period=self._vocoder_frame_period,
             )
+            # 次のノートに引き継ぐ丸め誤差を取得
+            residual_error = wavtool.residual_error
+            self.logger.debug('residual_error: %.3f [ms]', residual_error)
+            # 特徴量を連結
+            wavtool.append()
+            # WAV生成
+            wavtool.synthesize()
+            self.logger.debug('Exported WAV: %s', out_wav_path)
 
-            # wav ファイルを書き出す
-            waveform_to_wavfile(
-                waveform,
-                out_wav_path,
-                in_sample_rate=self.vocoder_sample_rate,
-                out_sample_rate=self.vocoder_sample_rate,
-                resample_type='soxr_vhq',
-            )
+        # # 必要に応じて vocoder を用いて wav を生成
+        # if self._use_neural_wavtool is True:
+        #     self.logger.info('---------------')
+        #     self.logger.info('ニューラルボコーダーでWAVを一括生成します')
+        #     f0, sp, ap = npzfile_to_world(out_wav_path.with_suffix('.npz'))
+        #     # vocoder で wav を生成
+        #     # WORLD 特徴量を NNSVS 用に変換
+        #     mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, self.vocoder_sample_rate)
+        #     # モデルに渡す用に特徴量をまとめる
+        #     multistream_features = (mgc, lf0, vuv, bap)
+        #     # self.logger.info(mgc.shape, lf0.shape, vuv.shape, bap.shape)
+        #     # waveformを生成
+        #     # NOTE: ここのsample_rate って vocoder のサンプルレートで大丈夫？
+        #     waveform = predict_waveform(
+        #         device=get_device(),
+        #         multistream_features=multistream_features,
+        #         vocoder=self._vocoder_model,
+        #         vocoder_config=self._vocoder_config,
+        #         vocoder_in_scaler=self._vocoder_in_scaler,
+        #         sample_rate=self.vocoder_sample_rate,
+        #         frame_period=self._vocoder_frame_period,
+        #         use_world_codec=True,
+        #         feature_type=self._vocoder_feature_type,
+        #         vocoder_type='usfgan',
+        #         vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+        #     )
+
+        #     # wav ファイルを書き出す
+        #     waveform_to_wavfile(
+        #         waveform,
+        #         out_wav_path,
+        #         in_sample_rate=self.vocoder_sample_rate,
+        #         out_sample_rate=self.vocoder_sample_rate,
+        #         resample_type='soxr_vhq',
+        #     )
 
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""
@@ -441,9 +386,9 @@ def main_as_integrated_wavtool(path_ust_in: Path | str, path_wav_out: Path | str
     )
     render.clean()
     render.resamp(force=True)
-    print('---------------')
+    logger.info('---------------')
     render.append()
-    print('---------------')
+    logger.info('---------------')
 
 
 if __name__ == '__main__':
