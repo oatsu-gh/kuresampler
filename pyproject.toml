@@ -1,10 +1,15 @@
 [tool.ruff]
-line-length    = 99
+line-length = 99
 target-version = 'py312'
 
 [tool.ruff.lint]
-select = ['ALL']
-ignore = ['N802', 'PT028', 'RUF', 'TD', 'FIX']
+select = ['B', 'C4', 'D', 'W', 'E', 'F', 'I', 'S', 'ARG', 'PTH', 'PLE', 'PLW', 'RET', 'SIM', 'UP', 'T20', 'EXE', 'EM']
+ignore = [
+    'D400', # missing-trailing-period: First line should end with a period
+    'D415', # missing-terminal-punctuation: First line should end with a period, question mark, or exclamation point
+    'E501', # line-too-long: Line too long
+    'RET504', # unnecessary-assign: Unnecessary assignment before return statement
+]
 
 # Configure single quotes
 [tool.ruff.format]
