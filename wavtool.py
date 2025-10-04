@@ -360,9 +360,9 @@ class NeuralNetworkWavTool:
         fp = [v / 100.0 for v in self.envelope_v[: len(xp)]]
         # 音量エンベロープを計算
         volume_envelope = np.interp(x, xp, fp)
+        # 音量エンベロープを x 倍するには sp を x^2 倍する必要がある。
         # sp, ap に音量エンベロープを適用する。f0 は何もしない(appendのときにクロスフェード処理する)。
-        self.sp *= volume_envelope[:, np.newaxis]
-        self.ap *= volume_envelope[:, np.newaxis]
+        self.sp *= volume_envelope[:, np.newaxis] ** 2
 
     def _apply_all(self) -> None:
         """self.f0, self.sp, self.ap に stp, length, envelope を適用する。

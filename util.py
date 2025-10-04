@@ -113,97 +113,6 @@ def denoise_spike(f0: np.ndarray, iqr_multiplier: float = 1.5) -> np.ndarray:
     return f0_clean
 
 
-def overlap_f0(
-    f0_a: np.ndarray,
-    f0_b: np.ndarray,
-    n_overlap: int,
-    crossfade_shape: str = 'linear',
-) -> np.ndarray:
-    """f0をオーバーラップさせる。オーバーラップ区間に0Hzが含まれる場合は0Hzではない方の値を使用する。
-
-    Args:
-        f0_a (np.ndarray): The first set of f0.
-        f0_b (np.ndarray): The second set of f0.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
-
-    Returns:
-        np.ndarray: The crossfaded f0.
-
-    """
-    # reshape
-    f0_a = f0_a.reshape(-1, 1)
-    f0_b = f0_b.reshape(-1, 1)
-    # f0 = 0 を nan に置換
-    f0_a = np.where(f0_a == 0, np.nan, f0_a)
-    f0_b = np.where(f0_b == 0, np.nan, f0_b)
-    # 対数変換
-    log_f0_a = np.log(f0_a)  # nan 補完してあるのでもとの f0 に 0 は含まれない
-    log_f0_b = np.log(f0_b)  # nan 補完してあるのでもとの f0 に 0 は含まれない
-    # クロスフェード
-    result = _crossfade_world_feature(
-        log_f0_a,
-        log_f0_b,
-        n_overlap,
-        crossfade_shape=crossfade_shape,
-    )
-    # 指数変換して元に戻す
-    result = np.exp(result)
-    # nan を 0 に置換して元に戻す
-    result = np.where(np.isnan(result), 0, result)
-    # reshape を戻してから返す
-    return result.reshape(-1)
-
-
-def overlap_sp(
-    sp_a: np.ndarray,
-    sp_b: np.ndarray,
-    n_overlap: int,
-    crossfade_shape: None | str = None,
-) -> np.ndarray:
-    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。あらかじめ音量エンベロープが反映されていることを想定しているため、単純オーバーラップを行う。
-
-    Args:
-        sp_a (np.ndarray): The first set of WORLD features.
-        sp_b (np.ndarray): The second set of WORLD features.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
-
-    Returns:
-        np.ndarray: The crossfaded WORLD features.
-
-    """
-    result = _crossfade_world_feature(
-        sp_a,
-        sp_b,
-        n_overlap,
-        crossfade_shape=crossfade_shape,
-    )
-    return result
-
-
-def overlap_ap(
-    ap_a: np.ndarray,
-    ap_b: np.ndarray,
-    n_overlap: int,
-    crossfade_shape: None | str = 'linear',
-) -> np.ndarray:
-    """WORLD特徴量の ap (Aperiodicity) をオーバーラップさせる。クロスフェードを行う。
-
-    Args:
-        ap_a (np.ndarray): The first set of aperiodicity features.
-        ap_b (np.ndarray): The second set of aperiodicity features.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
-
-    Returns:
-        np.ndarray: The crossfaded aperiodicity features.
-
-    """
-    result = _crossfade_world_feature(ap_a, ap_b, n_overlap, crossfade_shape=crossfade_shape)
-    return result
-
-
 def fill_nan_pair(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """2つの配列のうち、片方がNaNで片方が数値のとき、NaNを数値で埋める。
 
@@ -330,6 +239,97 @@ def _crossfade_world_feature(
     overlap_area = overlap_a * fade_out + overlap_b * fade_in
     # 前・クロスフェード部分・後ろを結合して返す
     result = np.concatenate([feature_a[:-n_overlap], overlap_area, feature_b[n_overlap:]], axis=0)
+    return result
+
+
+def overlap_f0(
+    f0_a: np.ndarray,
+    f0_b: np.ndarray,
+    n_overlap: int,
+    crossfade_shape: str = 'linear',
+) -> np.ndarray:
+    """f0をオーバーラップさせる。オーバーラップ区間に0Hzが含まれる場合は0Hzではない方の値を使用する。
+
+    Args:
+        f0_a (np.ndarray): The first set of f0.
+        f0_b (np.ndarray): The second set of f0.
+        n_overlap (int): The number of samples to fade.
+        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
+
+    Returns:
+        np.ndarray: The crossfaded f0.
+
+    """
+    # reshape
+    f0_a = f0_a.reshape(-1, 1)
+    f0_b = f0_b.reshape(-1, 1)
+    # f0 = 0 を nan に置換
+    f0_a = np.where(f0_a == 0, np.nan, f0_a)
+    f0_b = np.where(f0_b == 0, np.nan, f0_b)
+    # 対数変換
+    log_f0_a = np.log(f0_a)  # nan 補完してあるのでもとの f0 に 0 は含まれない
+    log_f0_b = np.log(f0_b)  # nan 補完してあるのでもとの f0 に 0 は含まれない
+    # クロスフェード
+    result = _crossfade_world_feature(
+        log_f0_a,
+        log_f0_b,
+        n_overlap,
+        crossfade_shape=crossfade_shape,
+    )
+    # 指数変換して元に戻す
+    result = np.exp(result)
+    # nan を 0 に置換して元に戻す
+    result = np.where(np.isnan(result), 0, result)
+    # reshape を戻してから返す
+    return result.reshape(-1)
+
+
+def overlap_sp(
+    sp_a: np.ndarray,
+    sp_b: np.ndarray,
+    n_overlap: int,
+    crossfade_shape: None | str = None,
+) -> np.ndarray:
+    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。あらかじめ音量エンベロープが反映されていることを想定しているため、単純オーバーラップを行う。
+
+    Args:
+        sp_a (np.ndarray): The first set of WORLD features.
+        sp_b (np.ndarray): The second set of WORLD features.
+        n_overlap (int): The number of samples to fade.
+        crossfade_shape (str): The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
+
+    Returns:
+        np.ndarray: The crossfaded WORLD features.
+
+    """
+    result = _crossfade_world_feature(
+        sp_a,
+        sp_b,
+        n_overlap,
+        crossfade_shape=crossfade_shape,
+    )
+    return result
+
+
+def overlap_ap(
+    ap_a: np.ndarray,
+    ap_b: np.ndarray,
+    n_overlap: int,
+    crossfade_shape: None | str = 'linear',
+) -> np.ndarray:
+    """WORLD特徴量の ap (Aperiodicity) をオーバーラップさせる。クロスフェードを行う。
+
+    Args:
+        ap_a (np.ndarray): The first set of aperiodicity features.
+        ap_b (np.ndarray): The second set of aperiodicity features.
+        n_overlap (int): The number of samples to fade.
+        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
+
+    Returns:
+        np.ndarray: The crossfaded aperiodicity features.
+
+    """
+    result = _crossfade_world_feature(ap_a, ap_b, n_overlap, crossfade_shape=crossfade_shape)
     return result
 
 
