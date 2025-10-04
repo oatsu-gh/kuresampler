@@ -177,11 +177,6 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         if 'e' not in self._flag_value and 'l' not in self._flag_value:
             self._flag_value += 'e'
 
-    def denoise_f0(self) -> None:
-        """f0 のスパイクノイズを除去する。"""
-        if self._f0 is not None:
-            self._f0 = denoise_spike(self._f0)
-
     @property
     def vocoder_model(self) -> torch.nn.Module | None:
         """ボコーダーモデル"""
@@ -194,6 +189,11 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             msg = 'vocoder_config is None. vocoder_model must be loaded first.'
             raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
+
+    def denoise_f0(self) -> None:
+        """f0 のスパイクノイズを除去する。"""
+        if self._f0 is not None:
+            self._f0 = denoise_spike(self._f0)
 
     def synthesize(self) -> None:
         """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
@@ -422,7 +422,12 @@ def main_resampler(
         nargs='?',
         default=0,
     )
-    parser.add_argument('volume', help='音量。0～200(省略可 default:100)', nargs='?', default=100)
+    parser.add_argument(
+        'volume',
+        help='音量。0～200(省略可 default:100)',
+        nargs='?',
+        default=100,
+    )
     parser.add_argument(
         'modulation',
         help='モジュレーション。0～200(省略可 default:0)',
