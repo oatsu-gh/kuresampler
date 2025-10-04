@@ -1,6 +1,5 @@
 # Copyright (c) 2025 oatsu
-"""
-Resampler classes
+"""Resampler classes
 
 PyRwu.resamp.Resamp を継承し、
 WAVファイルの代わりにWORLD特徴量をファイルに出力する
@@ -8,10 +7,11 @@ WAVファイルの代わりにWORLD特徴量をファイルに出力する
 """
 
 import argparse
+import logging
 import sys
 from logging import Logger
 from pathlib import Path
-import logging
+
 import colored_traceback.auto  # noqa: F401
 import librosa
 import numpy as np
@@ -69,10 +69,10 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         tempo: str | None = None,
         pitchbend: str = '',
         *,
+        use_vocoder_model: bool,
         logger: Logger | None = None,
         export_wav: bool,
         export_features: bool,
-        use_vocoder_model: bool = True,
         vocoder_model: torch.nn.Module | None = None,
         vocoder_in_scaler: StandardScaler | None = None,
         vocoder_config: DictConfig | ListConfig | None = None,
@@ -82,6 +82,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         vocoder_frame_period: int = 5,
         resample_type: str = 'soxr_vhq',
     ) -> None:
+        """Initialize NeuralNetworkResamp."""
         self.logger = setup_logger() if logger is None else logger
         if tempo is None:
             self.logger.warning('Tempo is None, set to "!120" by default')
@@ -142,6 +143,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     @property
     def export_wav(self) -> bool:
+        """wavファイルを出力するか否か"""
         return self._export_wav
 
     @export_wav.setter
@@ -150,6 +152,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     @property
     def export_features(self) -> bool:
+        """npzファイルを出力するか否か"""
         return self._export_features
 
     @export_features.setter
@@ -158,6 +161,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     @property
     def use_vocoder_model(self) -> bool:
+        """wav生成にボコーダーモデルを使用するか否か"""
         return self._use_vocoder_model
 
     @use_vocoder_model.setter
@@ -252,14 +256,19 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     def _synthesize_with_vocoder_model(self) -> None:
         """Vocoder modelを用いてWORLD特徴量からwaveformを生成する。"""
-        assert self._vocoder_model is not None, 'vocoder_model is None'
-        assert self._vocoder_config is not None, 'vocoder_config is None'
-        assert self._vocoder_in_scaler is not None, 'vocoder_in_scaler is None'
+        if self._vocoder_model is None:
+            msg = 'vocoder_model is None'
+            raise ValueError(msg)
+        if self._vocoder_config is None:
+            msg = 'vocoder_config is None'
+            raise ValueError(msg)
+        if self._vocoder_in_scaler is None:
+            msg = 'vocoder_in_scaler is None'
+            raise ValueError(msg)
         # WORLD 特徴量を NNSVS 用に変換
         # sp, ap はもとの wav のサンプリング周波数に基づいて抽出されているので、
         # nnsvs 向け特徴量への変換時はフレームレートは原音 wav のそれを渡す。
         # ap に 0 が含まれていると bap の計算で nan になるので、最小値を 1e-10 にする
-        # DEBUG: --------------------------------------------------
         # モデルに渡す用に特徴量を変換する
         mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.framerate)
         multistream_features = (mgc, lf0, vuv, bap)
