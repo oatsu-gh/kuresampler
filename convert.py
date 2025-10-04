@@ -19,6 +19,11 @@ import librosa
 import numpy as np
 import pyworld
 import soundfile as sf
+import torch
+from nnsvs.gen import predict_waveform
+from nnsvs.util import StandardScaler
+from omegaconf.dictconfig import DictConfig
+from omegaconf.listconfig import ListConfig
 
 # WAV settings ---------------------
 DEFAULT_WAV_DTYPE: str = 'float64'
@@ -28,8 +33,6 @@ DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
 DEFAULT_F0_CEIL: float = 2000.0
 DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu default is 0.85.)
-MIN_APERIODICITY: float = 0.001  # ap <= 0 のとき bap が nan になってしまう # TODO: 数値要検討
-MAX_APERIODICITY: float = 1.0  # ap の最大値 (1はNGで0.999...かもしれない)
 # ----------------------------------
 
 
@@ -374,3 +377,86 @@ def npzfile_to_nnsvs(
     # 読み取り
     npz = np.load(npz_path)
     return npz['mgc'], npz['lf0'], npz['vuv'], npz['bap']
+
+def world_to_nnsvs_to_waveform(
+    device: torch.device,
+    f0: np.ndarray,
+    sp: np.ndarray,
+    ap: np.ndarray,
+    *,
+    input_sample_rate: int,
+    output_sample_rate: int,
+    vocoder_model: torch.nn.Module,
+    vocoder_config: DictConfig | ListConfig,
+    vocoder_in_scaler: StandardScaler,
+    frame_period: int = 5,
+    use_world_codec: bool = True,
+    feature_type: str = 'world',
+    vocoder_type: str = 'usfgan',
+    vuv_threshold: float = 0.5,
+    mgc_dimensions: int = 60,
+    resample_type: str = 'soxr_vhq',
+):
+    """通常のWORLD特徴量 (f0, sp, ap) から NNSVS特徴量 (mgc, lf0, vuv, bap) を経由して waveform に変換する。
+
+    Args:
+        device (torch.device)          : The device to run the model on.
+        f0 (np.ndarray)                : F0 [Hz]
+        sp (np.ndarray)                : Spectral envelope
+        ap (np.ndarray)                : Aperiodicity
+        input_sample_rate (int)        : Original sample rate of the audio, before feature extraction.
+        output_sample_rate (int)       : Target sample rate for the output waveform.
+        vocoder_model (torch.nn.Module): The vocoder model.
+        vocoder_config (DictConfig)    : The configuration for the vocoder model.
+        vocoder_in_scaler (StandardScaler): The input scaler for the vocoder model.
+        frame_period (int)             : Frame period [ms]
+        use_world_codec (bool)         : Whether to use WORLD codec for waveform generation.
+        feature_type (str)             : Feature type for the vocoder. Select from ["world", "mel"].
+        vocoder_type (str)             : Type of the vocoder. Select from ["world", "pwgan", "usfgan"].
+        vuv_threshold (float)          : Threshold for voiced/unvoiced decision.
+        mgc_dimensions (int)           : Number of mel-generalized cepstral coefficients.
+        resample_type (str)            : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
+
+    Returns:
+        waveform (np.ndarray): The generated waveform.
+
+    """
+    # vocoder のサンプリング周波数を取得
+    vocoder_sample_rate = vocoder_config.data.sample_rate
+
+    # WORLD -> NNSVS 変換
+    mgc, lf0, vuv, bap = world_to_nnsvs(
+        f0,
+        sp,
+        ap,
+        input_sample_rate,  # 原音WAVの特徴量抽出に使ったサンプリング周波数を渡す
+        number_of_mgc_dimensions=mgc_dimensions,
+    )
+    multistream_features = (mgc, lf0, vuv, bap)
+
+    # NNSVS -> waveform 変換
+    waveform = predict_waveform(
+        device,
+        multistream_features,
+        vocoder=vocoder_model,
+        vocoder_config=vocoder_config,
+        vocoder_in_scaler=vocoder_in_scaler,
+        sample_rate=vocoder_sample_rate,
+        frame_period=frame_period,
+        use_world_codec=use_world_codec,
+        feature_type=feature_type,
+        vocoder_type=vocoder_type,
+        vuv_threshold=vuv_threshold,
+    )  # この時点のサンプリング周波数は vocoder_sample_rate
+
+    # リサンプリング
+    if vocoder_sample_rate != output_sample_rate:
+        waveform = librosa.resample(
+            waveform,
+            orig_sr=vocoder_sample_rate,
+            target_sr=output_sample_rate,
+            res_type=resample_type,
+        )  # ここで output_sample_rate のサンプリング周波数に変換される
+
+    # waveform を返す (サンプリング周波数は output_sample_rate)
+    return waveform
