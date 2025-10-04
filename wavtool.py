@@ -56,20 +56,45 @@ from util import (
     setup_logger,
 )
 
+DEFAULT_SAMPLE_RATE = 44100
+
+
+def round_by_frame(x: float, frame_period: float) -> float:
+    """frame_period に基づいて x を丸める。"""
+    return round(x / frame_period) * frame_period
+
+
+def extract_overlap(envelope: list[float]) -> float:
+    """Envelope から ove だけを取得する。
+
+    Args:
+        envelope (list[float]): エンベロープ値のリスト
+
+    """
+    len_envelope = len(envelope)
+    if len_envelope in [2, 7]:
+        return 0.0
+    if len_envelope in [8, 9, 11]:
+        return envelope[7]
+    msg = f'Invalid envelope length ({len_envelope}). The length must be 2, 7, 8, 9, or 11.'
+    raise ValueError(msg)
+
 
 def parse_envelope(
     envelope: list[float], length: float, frame_period: float
 ) -> tuple[list, list, float]:
-    """envelope のパターンを解析し、時刻のリストと音量のリストとoverlap時間を返す。
+    """Envelope のパターンを解析し、時刻のリストと音量のリストとoverlap時間を返す。
 
     Args:
         envelope (list[float]): エンベロープの値のリスト
-        length (float): ノートの長さ(先行発声含む)(ms)
+        rounded_length (float): ノートの長さ(先行発声含む)(ms)。あらかじめ frame_period で丸めておく必要あり。
+        frame_period (float)  : WORLD特徴量のフレーム周期(ms)
+
     Returns:
         tuple: (p, v, ove)
             p (list[float]): 音量制御の時刻のリスト(ms)。エンベロープが2点の場合空配列。
-            v (list[int]): 音量値のリスト。0-200の範囲であることを想定。
-            ove (float): クロスフェード時間(ms)。エンベロープにoveがない場合は0を返す。
+            v (list[int])  : 音量値のリスト。0-200の範囲であることを想定。
+            ove (float)    : クロスフェード時間(ms)。エンベロープにoveがない場合は0を返す。
 
     ## エンベロープのパターン
     - 長さ2 : p1 p2
@@ -100,9 +125,8 @@ def parse_envelope(
     if len_envelope == 2:
         return [], [], 0
 
-    def round_by_frame(x: float) -> float:
-        """frame_period に基づいて x を丸める。"""
-        return round(x / frame_period) * frame_period
+    # 丸め関数を定義
+    round_func = partial(round_by_frame, frame_period=frame_period)
 
     # エンベロープが2点以外で想定される点数のとき
     p_list: list[float]
@@ -112,7 +136,13 @@ def parse_envelope(
     if len_envelope == 7:
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
-        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p3), length]
+        p_list = [
+            0,
+            round_func(p1),
+            round_func(p1 + p2),
+            rounded_length - round_func(p3),
+            rounded_length,
+        ]
         v_list = [0, v1, v2, v3, v4, 0]
         overlap = 0
     # 長さ8の時は overlap が追加される
@@ -120,7 +150,13 @@ def parse_envelope(
         # [p1, p2, p3, v1, v2, v3, v4, ove]
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
-        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p3), length]
+        p_list = [
+            0,
+            round_func(p1),
+            round_func(p1 + p2),
+            rounded_length - round_func(p3),
+            rounded_length,
+        ]
         v_list = [0, v1, v2, v3, v4, 0]
         overlap = envelope[7]
     # 長さ9の時は p4 が追加される
@@ -130,7 +166,14 @@ def parse_envelope(
         v1, v2, v3, v4 = envelope[3:7]
         overlap = envelope[7]
         p4 = envelope[8]
-        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), length - round_by_frame(p4 + p3), length - round_by_frame(p4), length]
+        p_list = [
+            0,
+            round_func(p1),
+            round_func(p1 + p2),
+            rounded_length - round_func(p4 + p3),
+            rounded_length - round_func(p4),
+            rounded_length,
+        ]
         v_list = [0, v1, v2, v3, v4, 0]
     # 長さが11の時は p5, v5 が追加される
     elif len_envelope == 11:
@@ -142,11 +185,19 @@ def parse_envelope(
         p5 = envelope[9]
         v5 = envelope[10]
         # NOTE: p5 の位置は p2 と p3 の間であることに注意!
-        p_list = [0, round_by_frame(p1), round_by_frame(p1 + p2), round_by_frame(p1 + p2 + p5), length - round_by_frame(p4 + p3), length - round_by_frame(p4), length]  # 絶対時刻
+        p_list = [
+            0,
+            round_func(p1),
+            round_func(p1 + p2),
+            round_func(p1 + p2 + p5),
+            rounded_length - round_func(p4 + p3),
+            rounded_length - round_func(p4),
+            rounded_length,
+        ]  # 絶対時刻
         v_list = [0, v1, v2, v5, v3, v4, 0]
     # それ以外の要素数はエラー
     else:
-        msg = f'Invalid envelope length (len_envelope={len_envelope}). The length must be 2, 7, 8, 9, or 11.'
+        msg = f'Invalid envelope length ({len_envelope}). The length must be 2, 7, 8, 9, or 11.'
         raise ValueError(msg)
 
     # p_list が昇順になっていない場合はエラー
