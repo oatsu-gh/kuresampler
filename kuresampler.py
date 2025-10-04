@@ -150,7 +150,6 @@ class NeuralNetworkRender(Render):
         """ボコーダーモデルのwav出力サンプリング周波数"""
         if self._vocoder_config is None:
             msg = 'Vocoder config is not loaded. Cannot get sample rate.'
-            self.logger.error(msg)
             raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
 
@@ -321,7 +320,7 @@ class NeuralNetworkRender(Render):
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""
         if Path(self._cache_dir).is_dir():
-            rmtree(self._cache_dir)
+            rmtree(self._cache_dir, ignore_errors=False)
         Path(self._output_file).unlink(missing_ok=True)
         Path(self._output_file).with_suffix('.npz').unlink(missing_ok=True)
 
