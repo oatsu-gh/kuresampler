@@ -2,6 +2,9 @@
 line-length = 99
 target-version = 'py312'
 
+[tool.pyright]
+typeCheckingMode = "standard"
+
 [tool.ruff.lint]
 select = ['B', 'C4', 'D', 'W', 'E', 'F', 'I', 'S', 'ARG', 'PTH', 'PLE', 'PLW', 'RET', 'SIM', 'UP', 'T20', 'EXE', 'EM']
 ignore = [
