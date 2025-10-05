@@ -1,8 +1,7 @@
 # Directories
+__pycache__
+.vscode
 /*.cache
-
-# ENUNU cache dir
-/*enutemp
 
 # File extensions
 *.code-workspace
