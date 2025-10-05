@@ -471,13 +471,13 @@ class NeuralNetworkWavTool:
         """
         # wav と npz が両方存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
         if self.input_wav.exists() and self.input_npz.exists():
-            waveform, sample_rate, _ = wavfile_to_waveform(self.input_wav)
-            self.original_sample_rate = sample_rate
+            waveform, original_sample_rate, _ = wavfile_to_waveform(self.input_wav)
+            self.original_sample_rate = original_sample_rate
             self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
         # wav のみ存在する場合、を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
         elif self.input_wav.exists():
-            waveform, sample_rate, _ = wavfile_to_waveform(self.input_wav)
-            self.original_sample_rate = sample_rate
+            waveform, original_sample_rate, _ = wavfile_to_waveform(self.input_wav)
+            self.original_sample_rate = original_sample_rate
             self.f0, self.sp, self.ap = waveform_to_world(
                 waveform,
                 self.original_sample_rate,
