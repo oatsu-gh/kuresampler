@@ -197,7 +197,7 @@ def test_vocoder_model(
     # TODO: WORLD 特徴量からvocoder_model を通してWAVを生成するテストをつくる。
     inprocess_sample_rate = 48000
     print('Converting wavfile to nnsvs-world features...')
-    waveform_in, _, _ = wavfile_to_waveform(path_wav_in, out_sample_rate=inprocess_sample_rate)
+    waveform_in, _, _ = wavfile_to_waveform(path_wav_in, inprocess_sample_rate)
     f0, sp, ap = waveform_to_world(waveform_in, inprocess_sample_rate)
     mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, inprocess_sample_rate)
     print('Rendering waveform with vocoder model...')
@@ -495,5 +495,5 @@ if __name__ == '__main__':
     test_resampler_and_wavtool(
         Path('./test/test.ust'),
         Path('./test/test_resampler_out.wav'),
-        Path('./models/usfGAN_EnunuKodoku_0826'),
+        Path('./models/usfGAN_NamineRitsu_4130'),
     )
