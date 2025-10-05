@@ -27,7 +27,7 @@ from omegaconf.listconfig import ListConfig
 
 # WAV settings ---------------------
 DEFAULT_WAV_DTYPE: str = 'float64'
-DEFAULT_RESAMPLE_TYPE: str = 'soxr_hq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
+DEFAULT_RESAMPLE_TYPE: str = 'soxr_vhq'  # [soxr_vhq, soxr_hq, kaiser_best] あたりから選ぶとよい。https://librosa.org/doc/0.11.0/generated/librosa.resample.html#librosa-resample
 # WORLD settings -------------------
 DEFAULT_FRAME_PERIOD: int = 5  # ms
 DEFAULT_F0_FLOOR: float = 50.0
@@ -59,21 +59,19 @@ def wavfile_to_waveform(
     """
     waveform: np.ndarray
     in_sample_rate: int
-
+    # wav ファイル読み込み
     wav_path = Path(wav_path)
     waveform, in_sample_rate = sf.read(wav_path, dtype=dtype)
     # out_sample_rate が None の場合は in_sample_rate と同じにする
     if out_sample_rate is None:
         out_sample_rate = in_sample_rate
-
-    # リサンプリング
-    if in_sample_rate != out_sample_rate:
-        waveform = librosa.resample(
-            waveform,
-            orig_sr=in_sample_rate,
-            target_sr=out_sample_rate,
-            res_type=resample_type,
-        )
+    # リサンプル
+    waveform = librosa.resample(
+        waveform,
+        orig_sr=in_sample_rate,
+        target_sr=out_sample_rate,
+        res_type=resample_type,
+    )
     return waveform, in_sample_rate, out_sample_rate
 
 
@@ -97,13 +95,12 @@ def waveform_to_wavfile(
         dtype               (np.dtype)  : The dtype for the output WAV file.
 
     """
-    if in_sample_rate != out_sample_rate:
-        waveform = librosa.resample(
-            waveform,
-            orig_sr=in_sample_rate,
-            target_sr=out_sample_rate,
-            res_type=resample_type,
-        )
+    waveform = librosa.resample(
+        waveform,
+        orig_sr=in_sample_rate,
+        target_sr=out_sample_rate,
+        res_type=resample_type,
+    )
     sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
 
 
@@ -142,6 +139,7 @@ def waveform_to_world(
         f0, timeaxis = pyworld.harvest(
             waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
+        f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
     elif f0_extractor == 'dio':
         f0, timeaxis = pyworld.dio(
             waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
@@ -343,7 +341,7 @@ def nnsvs_to_npzfile(
         lf0 (np.ndarray): Log F0
         vuv (np.ndarray): Voiced / unvoiced flag
         bap (np.ndarray): Band aperiodicity
-        npz_path (Path): Output NPZ file path.
+        npz_path (Path) : Output NPZ file path.
 
     """
     npz_path = Path(npz_path)
@@ -376,14 +374,13 @@ def npzfile_to_nnsvs(
     npz = np.load(npz_path)
     return npz['mgc'], npz['lf0'], npz['vuv'], npz['bap']
 
+
 def world_to_nnsvs_to_waveform(
     device: torch.device,
     f0: np.ndarray,
     sp: np.ndarray,
     ap: np.ndarray,
     *,
-    input_sample_rate: int,
-    output_sample_rate: int,
     vocoder_model: torch.nn.Module,
     vocoder_config: DictConfig | ListConfig,
     vocoder_in_scaler: StandardScaler,
@@ -393,6 +390,7 @@ def world_to_nnsvs_to_waveform(
     vocoder_type: str = 'usfgan',
     vuv_threshold: float = 0.5,
     mgc_dimensions: int = 60,
+    target_sample_rate: int | None = None,
     resample_type: str = 'soxr_vhq',
 ):
     """通常のWORLD特徴量 (f0, sp, ap) から NNSVS特徴量 (mgc, lf0, vuv, bap) を経由して waveform に変換する。
@@ -402,8 +400,7 @@ def world_to_nnsvs_to_waveform(
         f0 (np.ndarray)                : F0 [Hz]
         sp (np.ndarray)                : Spectral envelope
         ap (np.ndarray)                : Aperiodicity
-        input_sample_rate (int)        : Original sample rate of the audio, before feature extraction.
-        output_sample_rate (int)       : Target sample rate for the output waveform.
+        target_sample_rate (int)       : Target sample rate for the output waveform.
         vocoder_model (torch.nn.Module): The vocoder model.
         vocoder_config (DictConfig)    : The configuration for the vocoder model.
         vocoder_in_scaler (StandardScaler): The input scaler for the vocoder model.
@@ -421,15 +418,19 @@ def world_to_nnsvs_to_waveform(
     """
     # vocoder のサンプリング周波数を取得
     vocoder_sample_rate = vocoder_config.data.sample_rate
+    target_sample_rate = target_sample_rate or vocoder_sample_rate
+    if not target_sample_rate:
+        msg = f'Unexpected target_sample_rate or None ({target_sample_rate})'
+        raise ValueError(msg)
 
     # WORLD -> NNSVS 変換
     mgc, lf0, vuv, bap = world_to_nnsvs(
         f0,
         sp,
         ap,
-        input_sample_rate,  # 原音WAVの特徴量抽出に使ったサンプリング周波数を渡す
+        vocoder_sample_rate,  # ボコーダー入力のサンプリング周波数に沿う
         number_of_mgc_dimensions=mgc_dimensions,
-    )
+    )  # vocoder_sample_rate
     multistream_features = (mgc, lf0, vuv, bap)
 
     # NNSVS -> waveform 変換
@@ -445,16 +446,14 @@ def world_to_nnsvs_to_waveform(
         feature_type=feature_type,
         vocoder_type=vocoder_type,
         vuv_threshold=vuv_threshold,
-    )  # この時点のサンプリング周波数は vocoder_sample_rate
+    )  # vocoder_sample_rate
 
     # リサンプリング
-    if vocoder_sample_rate != output_sample_rate:
-        waveform = librosa.resample(
-            waveform,
-            orig_sr=vocoder_sample_rate,
-            target_sr=output_sample_rate,
-            res_type=resample_type,
-        )  # ここで output_sample_rate のサンプリング周波数に変換される
+    waveform = librosa.resample(
+        waveform,
+        orig_sr=vocoder_sample_rate,
+        target_sr=target_sample_rate,
+        res_type=resample_type,
+    )  # target_sample_rate
 
-    # waveform を返す (サンプリング周波数は output_sample_rate)
-    return waveform
+    return waveform  # target_sample_rate

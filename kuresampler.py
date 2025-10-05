@@ -23,7 +23,7 @@ from PyUtauCli.projects.Ust import Ust
 from tqdm.auto import tqdm
 
 if __name__ == '__main__':
-    sys.path.append(str(Path(__file__).parent))  # for local import
+    sys.path.append(str(Path(__file__).parent))  # For relative import
 
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
@@ -160,8 +160,11 @@ class NeuralNetworkRender(Render):
             force: Trueの場合、キャッシュファイルがあっても生成する。
 
         """
+        # キャッシュフォルダを作成
         Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
-
+        # PyWavTool で WAV クロスフェードする場合は 44100 Hz にリサンプリングしておく(音高ずれ回避のため)
+        resampler_target_sample_rate = 44100 if self._force_wav_crossfade else None
+        # 各ノートを処理
         for note in tqdm(
             self.notes, mininterval=0.02, colour='cyan', desc='Resample', unit='note'
         ):
@@ -200,7 +203,6 @@ class NeuralNetworkRender(Render):
                     tempo=note.tempo,
                     pitchbend=note.pitchbend,
                     logger=self.logger,
-                    export_wav=self._export_wav,
                     export_features=self._export_features,
                     use_vocoder_model=self._use_neural_resampler,
                     vocoder_model=self._vocoder_model,
@@ -210,6 +212,7 @@ class NeuralNetworkRender(Render):
                     vocoder_feature_type=self._vocoder_feature_type,
                     vocoder_vuv_threshold=self._vocoder_vuv_threshold,
                     vocoder_frame_period=self._vocoder_frame_period,
+                    target_sample_rate=resampler_target_sample_rate,
                 )
                 resamp.resamp()
             else:
