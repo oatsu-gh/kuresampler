@@ -97,16 +97,14 @@ def waveform_to_wavfile(
         dtype               (np.dtype)  : The dtype for the output WAV file.
 
     """
-    if in_sample_rate == out_sample_rate:
-        sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
-    else:
-        waveform_resampled = librosa.resample(
+    if in_sample_rate != out_sample_rate:
+        waveform = librosa.resample(
             waveform,
             orig_sr=in_sample_rate,
             target_sr=out_sample_rate,
             res_type=resample_type,
         )
-        sf.write(wav_path, waveform_resampled.astype(dtype), out_sample_rate)
+    sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
 
 
 def waveform_to_world(
@@ -389,7 +387,7 @@ def world_to_nnsvs_to_waveform(
     vocoder_model: torch.nn.Module,
     vocoder_config: DictConfig | ListConfig,
     vocoder_in_scaler: StandardScaler,
-    frame_period: int = 5,
+    vocoder_frame_period: int = 5,
     use_world_codec: bool = True,
     feature_type: str = 'world',
     vocoder_type: str = 'usfgan',
@@ -409,7 +407,7 @@ def world_to_nnsvs_to_waveform(
         vocoder_model (torch.nn.Module): The vocoder model.
         vocoder_config (DictConfig)    : The configuration for the vocoder model.
         vocoder_in_scaler (StandardScaler): The input scaler for the vocoder model.
-        frame_period (int)             : Frame period [ms]
+        vocoder_frame_period (int)             : Frame period [ms]
         use_world_codec (bool)         : Whether to use WORLD codec for waveform generation.
         feature_type (str)             : Feature type for the vocoder. Select from ["world", "mel"].
         vocoder_type (str)             : Type of the vocoder. Select from ["world", "pwgan", "usfgan"].
@@ -442,7 +440,7 @@ def world_to_nnsvs_to_waveform(
         vocoder_config=vocoder_config,
         vocoder_in_scaler=vocoder_in_scaler,
         sample_rate=vocoder_sample_rate,
-        frame_period=frame_period,
+        frame_period=vocoder_frame_period,
         use_world_codec=use_world_codec,
         feature_type=feature_type,
         vocoder_type=vocoder_type,
