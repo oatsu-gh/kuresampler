@@ -13,12 +13,10 @@ from logging import Logger
 from pathlib import Path
 
 import colored_traceback.auto  # noqa: F401
-import librosa
 import numpy as np
 import PyRwu as pyrwu  # noqa: N813
 import pyworld
 import torch
-from nnsvs.gen import predict_waveform
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
@@ -26,7 +24,7 @@ from omegaconf.listconfig import ListConfig
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
 
-from convert import world_to_nnsvs
+from convert import waveform_to_wavfile, world_to_nnsvs_to_waveform, world_to_npzfile
 from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
 
@@ -39,19 +37,6 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         use_vocoder_model: Whether to use vocoder model for waveform synthesis. If False, use WORLD.
 
     """
-
-    _export_wav: bool
-    _export_features: bool
-    _use_vocoder_model: bool
-    _vocoder_model: torch.nn.Module | None
-    _vocoder_in_scaler: StandardScaler | None
-    _vocoder_config: DictConfig | ListConfig | None
-    _vocoder_type: str
-    _vocoder_feature_type: str
-    _vocoder_vuv_threshold: float
-    _vocoder_frame_period: int
-    _device: torch.device
-    _resample_type: str
 
     def __init__(
         self,
@@ -105,37 +90,37 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             logger=logger,
         )
         # WAVファイルを出力するか否か
-        self._export_wav = export_wav
+        self._export_wav: bool = export_wav
         # WORLD特徴量をファイル出力するか否か
-        self._export_features = export_features
+        self._export_features: bool = export_features
         # ボコーダーモデルを使用するか否か
-        self._use_vocoder_model = use_vocoder_model
+        self._use_vocoder_model: bool = use_vocoder_model
         # フラグに 'e' (stretch) を追加して、原音WAVの伸縮をストレッチ式に強制する。
         self.__force_stretch()
         # デバイス設定
-        self._device = get_device()
+        self._device: torch.device = get_device()
         # ボコーダー関連の設定
-        self._vocoder_type = vocoder_type
-        self._vocoder_feature_type = vocoder_feature_type
-        self._vocoder_vuv_threshold = vocoder_vuv_threshold
-        self._vocoder_frame_period = vocoder_frame_period
-        self._resample_type = resample_type
+        self._vocoder_type: str = vocoder_type
+        self._vocoder_feature_type: str = vocoder_feature_type
+        self._vocoder_vuv_threshold: float = vocoder_vuv_threshold
+        self._vocoder_frame_period: int = vocoder_frame_period
+        self._resample_type: str = resample_type
 
+        self._vocoder_model = vocoder_model
+        self._vocoder_in_scaler = vocoder_in_scaler
+        self._vocoder_config = vocoder_config
         # use_vocoder_model が True の時はボコーダーモデルを代入する
         if use_vocoder_model is True:
             # vocoder model 関連の引数が全て揃っていることを確認
             if vocoder_model is None or vocoder_in_scaler is None or vocoder_config is None:
                 msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
                 raise ValueError(msg)
-            self._vocoder_model = vocoder_model
-            self._vocoder_in_scaler = vocoder_in_scaler
-            self._vocoder_config = vocoder_config
         # use_vocoder_model が False の場合
         else:
             # use_vocoder_model が False なのに vocoder が指定されているときは警告を出す
             if (vocoder_model, vocoder_in_scaler, vocoder_config) != (None, None, None):
                 self.logger.warning(
-                    'use_vocoder_model is False, but vocoder_model, vocoder_in_scaler, or vocoder_config is provided. They will be ignored.',
+                    'use_vocoder_model is False, but vocoder_model, vocoder_in_scaler or vocoder_config is provided. They will be ignored.',
                 )
             self._vocoder_model = None
             self._vocoder_in_scaler = None
@@ -168,15 +153,6 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     def use_vocoder_model(self, value: bool) -> None:
         self._use_vocoder_model = value
 
-    def __force_stretch(self) -> None:
-        """原音WAVの伸縮をストレッチ式に強制する。
-
-        note.flags に `e` を追加する。
-        ただし、note.flags に `e` が既に存在する場合や、`l` (loop) が明示的に指定されている場合は skip。
-        """
-        if 'e' not in self._flag_value and 'l' not in self._flag_value:
-            self._flag_value += 'e'
-
     @property
     def vocoder_model(self) -> torch.nn.Module | None:
         """ボコーダーモデル"""
@@ -189,6 +165,15 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             msg = 'vocoder_config is None. vocoder_model must be loaded first.'
             raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
+
+    def __force_stretch(self) -> None:
+        """原音WAVの伸縮をストレッチ式に強制する。
+
+        note.flags に `e` を追加する。
+        ただし、note.flags に `e` が既に存在する場合や、`l` (loop) が明示的に指定されている場合は skip。
+        """
+        if 'e' not in self._flag_value and 'l' not in self._flag_value:
+            self._flag_value += 'e'
 
     def denoise_f0(self) -> None:
         """f0 のスパイクノイズを除去する。"""
@@ -265,58 +250,31 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         if self._vocoder_in_scaler is None:
             msg = 'vocoder_in_scaler is None'
             raise ValueError(msg)
-        # WORLD 特徴量を NNSVS 用に変換
-        # sp, ap はもとの wav のサンプリング周波数に基づいて抽出されているので、
-        # nnsvs 向け特徴量への変換時はフレームレートは原音 wav のそれを渡す。
-        # ap に 0 が含まれていると bap の計算で nan になるので、最小値を 1e-10 にする
-        # モデルに渡す用に特徴量を変換する
-        mgc, lf0, vuv, bap = world_to_nnsvs(self.f0, self.sp, self.ap, self.framerate)
-        multistream_features = (mgc, lf0, vuv, bap)
-        # DEBUG: --------------------------------------------------
-        self.logger.debug('NNSVS features before waveform prediction -----------------------')
-        self.logger.debug('  mgc (min, max): (%s, %s)', mgc.min(), mgc.max())
-        self.logger.debug('  lf0 (min, max): (%s, %s)', lf0.min(), lf0.max())
-        self.logger.debug('  vuv (min, max): (%s, %s)', vuv.min(), vuv.max())
-        self.logger.debug('  bap (min, max): (%s, %s)', bap.min(), bap.max())
-        # DEBUG: --------------------------------------------------
-        # waveformを生成
-        wav = predict_waveform(
+        input_sample_rate = self.framerate
+        output_sample_rate = self.vocoder_sample_rate
+        # nnsvs を使って waveform を合成
+        wav = world_to_nnsvs_to_waveform(
             device=self._device,
-            multistream_features=multistream_features,
-            vocoder=self._vocoder_model,
+            f0=self.f0,
+            sp=self.sp,
+            ap=self.ap,
+            input_sample_rate=input_sample_rate,
+            output_sample_rate=output_sample_rate,
+            vocoder_model=self._vocoder_model,
             vocoder_config=self._vocoder_config,
             vocoder_in_scaler=self._vocoder_in_scaler,
-            sample_rate=self.vocoder_sample_rate,
-            frame_period=self._vocoder_frame_period,
+            vocoder_frame_period=self._vocoder_frame_period,
             use_world_codec=True,
             feature_type=self._vocoder_feature_type,
             vocoder_type=self._vocoder_type,
-            vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+            vuv_threshold=self._vocoder_vuv_threshold,
+            resample_type=self._resample_type,
         )
-        # サンプリング周波数が異なる場合、UTAUの原音と同じになるようにリサンプリングする。
-        # DEBUG: --------------------------------------------------
-        self.logger.debug('wav: %s', wav)
-        # DEBUG: --------------------------------------------------
-        if self.vocoder_sample_rate != self.framerate:
-            wav = librosa.resample(
-                wav,
-                orig_sr=self.vocoder_sample_rate,  # ボコーダモデルが出力するサンプルレート
-                target_sr=self.framerate,  # UTAUの原音のサンプルレート
-                res_type=self._resample_type,
-            )
         # 生成した波形を _output_data に代入
         self._output_data = wav
 
     def resamp(self) -> None:
         """Neural Networkまたは WORLD を用いてWORLD特徴量をリサンプリングする。"""
-        if self._use_vocoder_model:
-            self.logger.info(
-                'Synthesize WAV using Neural Vocoder (%s)',
-                type(self._vocoder_model),
-            )
-        else:
-            self.logger.info('Synthesize WAV using WORLD Vocoder')
-
         self.parseFlags()  # フラグを取得
         self.getInputData()  # 原音WAVからWORLD特徴量を抽出
         self.stretch()  # 時間伸縮
@@ -334,6 +292,25 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # ------------------------------------------------------
         # f0 のスパイクノイズを除去
         self.denoise_f0()
+
+        # モデル情報とサンプルレートをログ出力
+        # ボコーダーモデルを使用する場合はそのモデルのサンプルレートでwav出力する
+        if self._use_vocoder_model:
+            self.logger.info(
+                'Synthesize WAV using Neural Vocoder (%s)',
+                type(self._vocoder_model),
+            )
+            input_sample_rate = self.framerate
+            output_sample_rate = self.vocoder_sample_rate
+        # ボコーダーモデルを使用しない場合は原音のサンプルレートでwav出力する
+        else:
+            self.logger.info('Synthesize WAV using WORLD Vocoder')
+            input_sample_rate = self.framerate
+            output_sample_rate = self.framerate
+        # サンプルレートをログ出力
+        self.logger.info('Input sample rate : %d Hz', input_sample_rate)
+        self.logger.info('Output sample rate: %d Hz', output_sample_rate)
+
         # synthesize はオーバーライドされているので vocoder または world を使って waveform 生成
         self.synthesize()
         # UST の音量を waveform に反映
@@ -341,13 +318,18 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
         # WAV ファイル出力
         if self.export_wav:
-            self.output()
+            waveform_to_wavfile(
+                self._output_data,
+                self.output_path,
+                output_sample_rate,
+                output_sample_rate,
+            )
             self.logger.debug('Exported WAV file: %s', self.output_path)
 
         # WORLD 特徴量を npz ファイル出力する。
         if self.export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
-            np.savez(npz_path, f0=self.f0, spectral_envelope=self.sp, aperiodicity=self.ap)
+            world_to_npzfile(self.f0, self.sp, self.ap, npz_path)
             self.logger.debug('Exported NPZ (f0, spectral_envelope, aperiodicity): %s', npz_path)
 
 
