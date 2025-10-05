@@ -266,6 +266,7 @@ def overlap_f0(
         np.ndarray: The crossfaded f0.
 
     """
+    # TODO: オーバーラップ領域以外も対数変換をしていて無駄なので、オーバーラップ領域だけ変換できるようにする。
     # reshape
     f0_a = f0_a.reshape(-1, 1)
     f0_b = f0_b.reshape(-1, 1)
@@ -296,7 +297,12 @@ def overlap_sp(
     n_overlap: int,
     crossfade_shape: None | str = None,
 ) -> np.ndarray:
-    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。あらかじめ音量エンベロープが反映されていることを想定しているため、単純オーバーラップを行う。
+    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。あらかじめ音量エンベロープが反映されていることを想定。
+
+    音量エンベロープによって線形ではなく2乗でパラメータフェードイン/フェードアウトされており、
+    そのままオーバーラップすると音量が下がってしまうため、
+    平方根スケールでオーバーラップしてから2乗に戻す必要がある。
+    オーバーラップ領域を平方根スケールに変換 → 合算 → 2乗 → 前後と結合
 
     Args:
         sp_a (np.ndarray): The first set of WORLD features.
@@ -308,12 +314,16 @@ def overlap_sp(
         np.ndarray: The crossfaded WORLD features.
 
     """
+    # TODO: オーバーラップ領域以外も対数変換をしていて無駄なので、オーバーラップ領域だけ変換できるようにする。
+    sp_a = np.sqrt(sp_a)
+    sp_b = np.sqrt(sp_b)
     result = _crossfade_world_feature(
         sp_a,
         sp_b,
         n_overlap,
         crossfade_shape=crossfade_shape,
     )
+    result = np.square(result)
     return result
 
 
