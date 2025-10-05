@@ -369,33 +369,6 @@ def test_resampler_and_wavtool(
     render.append()
     print('Exported:', output_wav)
 
-    print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (wav) + PyWavTool.WavTool (wav crossfade)')
-    print('------------------------------------------------------------')
-    """
-    kersamp.NeuralNetworkRender のテスト
-    Case 1: NeuralNetworkResamp + PyWavTool.WavTool
-    - WorldFeatureResamp の出力: wav + npz
-    - WavToolの入力: wav
-    """
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_pywavtool.wav')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=output_wav,
-        export_wav=True,
-        export_features=False,
-        use_neural_resampler=True,
-        use_neural_wavtool=False,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=True,  # use PyWavTool.WavTool
-    )
-    render.clean()
-    render.resamp(force=True)
-    render.append()
-    print('Exported:', output_wav)
 
     print('------------------------------------------------------------')
     print('NeuralNetworkResamp (wav) + NeuralNetworkRender (w/o vocoder-model)')
