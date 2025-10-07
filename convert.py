@@ -105,8 +105,8 @@ def waveform_to_wavfile(
 
 
 def waveform_to_world(
-    waveform: np.ndarray,
-    sample_rate: int,
+    wav: np.ndarray,
+    wav_sample_rate: int,
     *,
     frame_period: int = DEFAULT_FRAME_PERIOD,
     f0_extractor: str = 'harvest',
@@ -117,8 +117,8 @@ def waveform_to_world(
     """Convert a waveform (numpy array) to WORLD features.
 
     Args:
-        waveform     (np.ndarray): The waveform as a numpy array.
-        sample_rate  (int)       : The sample rate of the audio.
+        wav     (np.ndarray)     : The waveform as a numpy array.
+        wav_sample_rate  (int)   : The sample rate of the audio.
         frame_period (float)     : The frame period in milliseconds.
         f0_extractor (str)       : The F0 extraction method. Select from ["harvest", "dio", "crepe"].
         f0_floor     (float)     : The minimum F0 value.
@@ -137,14 +137,14 @@ def waveform_to_world(
     # F0
     if f0_extractor == 'harvest':
         f0, timeaxis = pyworld.harvest(
-            waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            wav, wav_sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
+        f0 = pyworld.stonemask(wav, f0, timeaxis, wav_sample_rate)
     elif f0_extractor == 'dio':
         f0, timeaxis = pyworld.dio(
-            waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            wav, wav_sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
+        f0 = pyworld.stonemask(wav, f0, timeaxis, wav_sample_rate)
     elif f0_extractor == 'crepe':
         msg = 'CREPE f0 extractor is not implemented yet.'
         raise NotImplementedError(msg)
@@ -154,8 +154,8 @@ def waveform_to_world(
         raise ValueError(error_msg)
 
     # spectral_envelope, aperiodicity
-    spectral_envelope = pyworld.cheaptrick(waveform, f0, timeaxis, sample_rate)
-    aperiodicity = pyworld.d4c(waveform, f0, timeaxis, sample_rate, threshold=d4c_threshold)
+    spectral_envelope = pyworld.cheaptrick(wav, f0, timeaxis, wav_sample_rate)
+    aperiodicity = pyworld.d4c(wav, f0, timeaxis, wav_sample_rate, threshold=d4c_threshold)
 
     return f0, spectral_envelope, aperiodicity
 
@@ -164,7 +164,7 @@ def world_to_waveform(
     f0: np.ndarray,
     spectral_envelope: np.ndarray,
     aperiodicity: np.ndarray,
-    sample_rate: int,
+    target_sample_rate: int,
     *,
     frame_period: float = DEFAULT_FRAME_PERIOD,
 ) -> np.ndarray:
@@ -175,10 +175,10 @@ def world_to_waveform(
         spectral_envelope (np.ndarray): Spectral Envelope
         aperiodicity      (np.ndarray): Aperiodicity
         frame_period      (float)     : Frame period [ms]
-        sample_rate       (int)       : Sample rate [Hz]
+        wav_sample_rate   (int)       : Sample rate [Hz]
 
     Returns:
-        waveform (np.ndarray): The reconstructed waveform.
+        wav (np.ndarray): The reconstructed waveform.
 
     """
     # 特徴量の nan と inf を除去
@@ -190,7 +190,9 @@ def world_to_waveform(
     spectral_envelope = np.clip(spectral_envelope, np.finfo(spectral_envelope.dtype).tiny, 1)
     aperiodicity = np.clip(aperiodicity, np.finfo(aperiodicity.dtype).tiny, 1)
     # waveform を合成
-    waveform = pyworld.synthesize(f0, spectral_envelope, aperiodicity, sample_rate, frame_period)
+    waveform = pyworld.synthesize(
+        f0, spectral_envelope, aperiodicity, target_sample_rate, frame_period
+    )
     return waveform
 
 
@@ -258,7 +260,7 @@ def world_to_nnsvs(
     f0: np.ndarray,
     sp: np.ndarray,
     ap: np.ndarray,
-    sample_rate: int,
+    vocoder_sample_rate: int,
     *,
     number_of_mgc_dimensions: int = 60,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -268,7 +270,7 @@ def world_to_nnsvs(
         f0 (np.ndarray)               : F0 [Hz]
         sp (np.ndarray)               : Spectral envelope
         ap (np.ndarray)               : Aperiodicity
-        sample_rate (int)             : Output sample rate of the audio [Hz]
+        vocoder_sample_rate (int)     : Output sample rate of the audio [Hz]
         number_of_mgc_dimensions (int): Number of mel-generalized cepstral coefficients
 
     Returns:
@@ -288,14 +290,14 @@ def world_to_nnsvs(
     ap = np.clip(ap, np.finfo(ap.dtype).tiny, 1)
 
     # sp -> mgc, f0
-    mgc = pyworld.code_spectral_envelope(sp, sample_rate, number_of_mgc_dimensions)
+    mgc = pyworld.code_spectral_envelope(sp, vocoder_sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
     lf0 = np.zeros_like(f0)
     lf0[np.nonzero(f0)] = np.log(f0[np.nonzero(f0)])
     # vuv を計算
     vuv = (f0 > 0).astype(np.float32)
     # aperiodicity -> bap
-    bap = pyworld.code_aperiodicity(ap, sample_rate)
+    bap = pyworld.code_aperiodicity(ap, vocoder_sample_rate)
     # nnsvs 向けの world 特徴量を返す
     return mgc, lf0.reshape(-1, 1), vuv.reshape(-1, 1), bap
 
@@ -305,7 +307,7 @@ def nnsvs_to_world(
     lf0: np.ndarray,
     vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
-    sample_rate: int,
+    vocoder_sample_rate: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
@@ -321,13 +323,13 @@ def nnsvs_to_world(
 
     """
     # Automatically determine fft_size from sample_rate
-    fft_size = pyworld.get_cheaptrick_fft_size(sample_rate)
+    fft_size = pyworld.get_cheaptrick_fft_size(vocoder_sample_rate)
     # mgc -> spectral_envelope
-    spectral_envelope = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
+    spectral_envelope = pyworld.decode_spectral_envelope(mgc, vocoder_sample_rate, fft_size)
     # lf0 -> f0
     f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: lf0 のみで計算しているがvuvを使うこともできる。
     # bap -> aperiodicity
-    aperiodicity = pyworld.decode_aperiodicity(bap, sample_rate, fft_size)
+    aperiodicity = pyworld.decode_aperiodicity(bap, vocoder_sample_rate, fft_size)
     return f0, spectral_envelope, aperiodicity
 
 
