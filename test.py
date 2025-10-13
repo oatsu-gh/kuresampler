@@ -227,6 +227,7 @@ def test_performance(path_wav_in: Path | str = TEST_WAV_IN, n_iter: int = TEST_N
             *args: 関数に渡す位置引数
             **kwargs: 関数に渡すキーワード引数
 
+
         """
         print('---------------------------------------------')
         print(f'{_func.__name__} (x{_n_iter})')
@@ -292,6 +293,7 @@ def test_resampler_and_wavtool(
         path_ust_in: UST ファイルのパス
         path_wav_out: 出力する WAV ファイルのパス
         model_dir: ニューラルボコーダーモデルのディレクトリ
+
 
     """
     logger = setup_logger()
@@ -368,7 +370,6 @@ def test_resampler_and_wavtool(
     render.resamp(force=True)
     render.append()
     print('Exported:', output_wav)
-
 
     print('------------------------------------------------------------')
     print('NeuralNetworkResamp (wav) + NeuralNetworkRender (w/o vocoder-model)')

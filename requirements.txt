@@ -1,12 +1,15 @@
 git+https://github.com/oatsu-gh/nnsvs@kuresampler
-git+https://github.com/oatsu-gh/PyUtauCli@kuresampler
+# git+https://github.com/oatsu-gh/PyUtauCli@kuresampler
 git+https://github.com/oatsu-gh/PyRwu@kuresampler
-git+https://github.com/oatsu-gh/PyWavTool@kuresampler
+# git+https://github.com/oatsu-gh/PyWavTool@kuresampler
 git+https://github.com/oatsu-gh/ParallelWaveGAN@kuresampler
 git+https://github.com/oatsu-gh/HN-UnifiedSourceFilterGAN@kuresampler
+utaupy
 numpy<2
 omegaconf
 light-the-torch
 colored-traceback
 colorlog
+fastapi[standard]
+uvicorn[standard]
 # torch should be installed manually according to the environment
