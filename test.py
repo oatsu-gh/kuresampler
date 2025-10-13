@@ -372,7 +372,7 @@ def test_resampler_and_wavtool(
     print('Exported:', output_wav)
 
     print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (wav) + NeuralNetworkRender (w/o vocoder-model)')
+    print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/o vocoder-model)')
     print('------------------------------------------------------------')
     output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_nomodel.wav')
     render = NeuralNetworkRender(
@@ -394,7 +394,7 @@ def test_resampler_and_wavtool(
     print('Exported:', output_wav)
 
     print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (npz) + WorldFeatureWavTool (w/o vocoder-model)')
+    print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/o vocoder-model)')
     print('------------------------------------------------------------')
     output_wav = str(path_wav_out).replace('.wav', '_nnresamp_npz_nnwavtool_nomodel.wav')
     render = NeuralNetworkRender(
@@ -416,7 +416,6 @@ def test_resampler_and_wavtool(
     print('Exported:', output_wav)
 
     print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (wav) + WorldFeatureWavTool (w/ vocoder-model)')
     print('------------------------------------------------------------')
     output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_withmodel.wav')
     render = NeuralNetworkRender(
@@ -439,7 +438,6 @@ def test_resampler_and_wavtool(
     print('Exported:', output_wav)
 
     print('------------------------------------------------------------')
-    print('NeuralNetworkResamp (npz) + WorldFeatureWavTool (w/ vocoder-model)')
     print('------------------------------------------------------------')
     output_wav = str(path_wav_out).replace('.wav', '_nnresamp_npz_nnwavtool_withmodel.wav')
     render = NeuralNetworkRender(
@@ -461,6 +459,8 @@ def test_resampler_and_wavtool(
     logger.setLevel(logging.DEBUG)
     render.append()
     print('Exported:', output_wav)
+    # print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/ vocoder-model)')
+    # print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/ vocoder-model)')
 
 
 if __name__ == '__main__':
