@@ -708,9 +708,9 @@ class NeuralNetworkWavTool:
             # nnsvs のボコーダーモデルを使って wav 生成
             wav = world_to_nnsvs_to_waveform(
                 device=self.device,
-                f0=self.f0,
-                sp=self.sp,
-                ap=self.ap,
+                f0=self.f0_appended,
+                sp=self.sp_appended,
+                ap=self.ap_appended,
                 vocoder_model=self.vocoder_model,
                 vocoder_config=self.vocoder_config,
                 vocoder_in_scaler=self.vocoder_in_scaler,
