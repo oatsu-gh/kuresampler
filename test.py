@@ -428,54 +428,54 @@ def test_resampler_and_wavtool(
     render.append()
     print('Exported:', output_wav)
 
-    # print('------------------------------------------------------------')
-    # print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/ vocoder-model)')
-    # print('------------------------------------------------------------')
-    # testname = '_nnresamp_wav_nnwavtool_withmodel'
-    # output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
-    # render = NeuralNetworkRender(
-    #     ust,
-    #     logger=logger,
-    #     voice_dir=str(voice_dir),
-    #     cache_dir=str(cache_dir)+testname,
-    #     output_file=output_wav,
-    #     export_wav=True,
-    #     export_features=False,
-    #     use_neural_resampler=False,
-    #     use_neural_wavtool=True,
-    #     vocoder_model_dir=model_dir,
-    #     force_wav_crossfade=False,
-    # )
-    # render.clean()
-    # logger.setLevel(logging.DEBUG)
-    # render.resamp(force=True)
-    # render.append()
-    # print('Exported:', output_wav)
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/ vocoder-model)')
+    print('------------------------------------------------------------')
+    testname = '_nnresamp_wav_nnwavtool_withmodel'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir) + testname,
+        output_file=output_wav,
+        export_wav=True,
+        export_features=False,
+        use_neural_resampler=False,
+        use_neural_wavtool=True,
+        vocoder_model_dir=model_dir,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    logger.setLevel(logging.DEBUG)
+    render.resamp(force=True)
+    render.append()
+    print('Exported:', output_wav)
 
-    # print('------------------------------------------------------------')
-    # print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/ vocoder-model)')
-    # print('------------------------------------------------------------')
-    # testname = '_nnresamp_npz_nnwavtool_withmodel'
-    # output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
-    # render = NeuralNetworkRender(
-    #     ust,
-    #     logger=logger,
-    #     voice_dir=str(voice_dir),
-    #     cache_dir=str(cache_dir) + testname,
-    #     output_file=output_wav,
-    #     export_wav=False,
-    #     export_features=True,
-    #     use_neural_resampler=False,
-    #     use_neural_wavtool=True,
-    #     vocoder_model_dir=model_dir,
-    #     force_wav_crossfade=False,
-    # )
-    # render.clean()
-    # logger.setLevel(logging.INFO)
-    # render.resamp(force=True)
-    # logger.setLevel(logging.DEBUG)
-    # render.append()
-    # print('Exported:', output_wav)
+    print('------------------------------------------------------------')
+    print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/ vocoder-model)')
+    print('------------------------------------------------------------')
+    testname = '_nnresamp_npz_nnwavtool_withmodel'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
+    render = NeuralNetworkRender(
+        ust,
+        logger=logger,
+        voice_dir=str(voice_dir),
+        cache_dir=str(cache_dir) + testname,
+        output_file=output_wav,
+        export_wav=False,
+        export_features=True,
+        use_neural_resampler=False,
+        use_neural_wavtool=True,
+        vocoder_model_dir=model_dir,
+        force_wav_crossfade=False,
+    )
+    render.clean()
+    logger.setLevel(logging.INFO)
+    render.resamp(force=True)
+    logger.setLevel(logging.DEBUG)
+    render.append()
+    print('Exported:', output_wav)
 
 
 def test_wav2world2wav(path_wav_in: Path = TEST_WAV_IN) -> None:
