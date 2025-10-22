@@ -59,7 +59,10 @@ def test_convert(
     print('wavefile_to_waveform ---------------------------------------------------------')
     # read WAV and convert from 44100 -> 48000 Hz
     inprocess_sample_rate = 48000
-    waveform, original_sample_rate, _ = wavfile_to_waveform(path_wav_in, inprocess_sample_rate)
+    waveform, original_sample_rate, _ = wavfile_to_waveform(
+        path_wav_in,
+        target_sample_rate=inprocess_sample_rate,
+    )
     if original_sample_rate != 44100:
         msg = f'This test assumes the input wav file is 44100 Hz, but got {original_sample_rate}.'
         raise ValueError(msg)
@@ -100,28 +103,37 @@ def test_convert(
     print()
 
     print('world_to_npzfile ------------------------------------------------------------')
-    world_to_npzfile(f0, sp, ap, path_world_npz)
+    world_to_npzfile(
+        f0,
+        sp,
+        ap,
+        inprocess_sample_rate,
+        path_world_npz,
+    )
     print('output npzfile:', path_world_npz.resolve())
     print()
 
     print('npzfile_to_world ------------------------------------------------------------')
-    f0, sp, ap = npzfile_to_world(path_world_npz)
-    print('f0.shape :', f0.shape)
-    print('sp.shape :', sp.shape)
-    print('ap.shape :', ap.shape)
+    f0, sp, ap, original_sample_rate = npzfile_to_world(path_world_npz)
+    print('f0.shape    :', f0.shape)
+    print('sp.shape    :', sp.shape)
+    print('ap.shape    :', ap.shape)
+    print('sample_rate :', original_sample_rate)
     print()
 
     print('nnsvs_to_npzfile ------------------------------------------------------------')
-    nnsvs_to_npzfile(mgc, lf0, vuv, bap, path_nnsvs_npz)
+    nnsvs_to_npzfile(mgc, lf0, vuv, bap, original_sample_rate, path_nnsvs_npz)
     print('output npzfile:', path_nnsvs_npz.resolve())
     print()
 
     print('npzfile_to_nnsvs ------------------------------------------------------------')
-    mgc, lf0, vuv, bap = npzfile_to_nnsvs(path_nnsvs_npz)
-    print('mgc.shape :', mgc.shape)
-    print('lf0.shape :', lf0.shape)
-    print('vuv.shape :', vuv.shape)
-    print('bap.shape :', bap.shape)
+    mgc, lf0, vuv, bap, sample_rate = npzfile_to_nnsvs(path_nnsvs_npz)  # sample_rate は使わない
+    print('mgc.shape   :', mgc.shape)
+    print('lf0.shape   :', lf0.shape)
+    print('vuv.shape   :', vuv.shape)
+    print('bap.shape   :', bap.shape)
+    print('sample_rate :', sample_rate)
+
     print()
 
 
@@ -149,7 +161,7 @@ def nnsvs_to_waveform(
         vocoder_model_dir (Path | str): ニューラルボコーダーモデルのディレクトリ
         vocoder_type (str): ニューラルボコーダーの種類。'world', 'pwg', 'usfgan' のいずれか。
         feature_type (str): 特徴量の種類。'world', 'mcep' のいずれか。
-        vuv_threshold (float): vuv の閾値。vuv >= threshold なら有声、vuv < threshold なら無声とする。
+        vuv_threshold (float): vuv の閾値。vuv >= threshold なら有声、vuv < threshold なら無声。
         frame_period (int): WORLD特徴量のフレーム周期(ms)
 
     Returns:
@@ -195,9 +207,9 @@ def test_vocoder_model(
     print('type(vocoder_config):', type(vocoder_config))
 
     # TODO: WORLD 特徴量からvocoder_model を通してWAVを生成するテストをつくる。
-    inprocess_sample_rate = 48000
+    inprocess_sample_rate = 44100
     print('Converting wavfile to nnsvs-world features...')
-    waveform_in, _, _ = wavfile_to_waveform(path_wav_in, inprocess_sample_rate)
+    waveform_in, _, _ = wavfile_to_waveform(path_wav_in, target_sample_rate=inprocess_sample_rate)
     f0, sp, ap = waveform_to_world(waveform_in, inprocess_sample_rate)
     mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, inprocess_sample_rate)
     print('Rendering waveform with vocoder model...')
@@ -302,10 +314,7 @@ def test_resampler_and_wavtool(
     ust_utaupy = utaupy.ust.load(path_ust_in)
     voice_dir = ust_utaupy.voicedir
     # ust_path = ust.setting.get('Project')
-    cache_dir = ust_utaupy.setting.get(
-        'CacheDir',
-        Path(__file__).parent / 'kuresampler.cache',
-    )
+    cache_dir = Path(__file__).parent / 'test' / 'kuresampler.cache'
     # path_wav_out = ust.setting.get('OutFile', 'output.wav')
 
     # 一時フォルダにustを出力してPyUtauCliで読み直す
@@ -330,12 +339,13 @@ def test_resampler_and_wavtool(
     - Renderの出力: wavのみ
     - WavToolの入力: wavのみ
     """
-    output_wav = str(path_wav_out).replace('.wav', '_pyrwu_wav_pywavtool.wav')
+    testname = '_pyrwu_wav_pywavtool'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
     render = PyUtauCliRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
+        cache_dir=str(cache_dir) + testname,
         output_file=output_wav,
     )
     render.clean()
@@ -352,12 +362,13 @@ def test_resampler_and_wavtool(
     - WorldFeatureResamp の出力: wav + npz
     - WavToolの入力: wav
     """
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_pywavtool.wav')
+    testname = '_nnresamp_wav_pywavtool'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
     render = NeuralNetworkRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
+        cache_dir=str(cache_dir) + testname,
         output_file=output_wav,
         export_wav=True,
         export_features=False,
@@ -374,12 +385,13 @@ def test_resampler_and_wavtool(
     print('------------------------------------------------------------')
     print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/o vocoder-model)')
     print('------------------------------------------------------------')
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_nomodel.wav')
+    testname = '_nnresamp_wav_nnwavtool_nomodel'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
     render = NeuralNetworkRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
+        cache_dir=str(cache_dir) + testname,
         output_file=output_wav,
         export_wav=True,
         export_features=False,
@@ -396,12 +408,13 @@ def test_resampler_and_wavtool(
     print('------------------------------------------------------------')
     print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/o vocoder-model)')
     print('------------------------------------------------------------')
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_npz_nnwavtool_nomodel.wav')
+    testname = '_nnresamp_npz_nnwavtool_nomodel'
+    output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
     render = NeuralNetworkRender(
         ust,
         logger=logger,
         voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
+        cache_dir=str(cache_dir) + testname,
         output_file=output_wav,
         export_wav=False,
         export_features=True,  # export npz
@@ -415,52 +428,89 @@ def test_resampler_and_wavtool(
     render.append()
     print('Exported:', output_wav)
 
-    print('------------------------------------------------------------')
-    print('------------------------------------------------------------')
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_wav_nnwavtool_withmodel.wav')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=output_wav,
-        export_wav=True,
-        export_features=False,
-        use_neural_resampler=False,
-        use_neural_wavtool=True,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=False,
-    )
-    render.clean()
-    logger.setLevel(logging.DEBUG)
-    render.resamp(force=True)
-    render.append()
-    print('Exported:', output_wav)
-
-    print('------------------------------------------------------------')
-    print('------------------------------------------------------------')
-    output_wav = str(path_wav_out).replace('.wav', '_nnresamp_npz_nnwavtool_withmodel.wav')
-    render = NeuralNetworkRender(
-        ust,
-        logger=logger,
-        voice_dir=str(voice_dir),
-        cache_dir=str(cache_dir),
-        output_file=output_wav,
-        export_wav=False,
-        export_features=True,
-        use_neural_resampler=False,
-        use_neural_wavtool=True,
-        vocoder_model_dir=model_dir,
-        force_wav_crossfade=False,
-    )
-    render.clean()
-    logger.setLevel(logging.INFO)
-    render.resamp(force=True)
-    logger.setLevel(logging.DEBUG)
-    render.append()
-    print('Exported:', output_wav)
+    # print('------------------------------------------------------------')
     # print('NeuralNetworkResamp (wav) + NeuralNetworkWavTool (w/ vocoder-model)')
+    # print('------------------------------------------------------------')
+    # testname = '_nnresamp_wav_nnwavtool_withmodel'
+    # output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
+    # render = NeuralNetworkRender(
+    #     ust,
+    #     logger=logger,
+    #     voice_dir=str(voice_dir),
+    #     cache_dir=str(cache_dir)+testname,
+    #     output_file=output_wav,
+    #     export_wav=True,
+    #     export_features=False,
+    #     use_neural_resampler=False,
+    #     use_neural_wavtool=True,
+    #     vocoder_model_dir=model_dir,
+    #     force_wav_crossfade=False,
+    # )
+    # render.clean()
+    # logger.setLevel(logging.DEBUG)
+    # render.resamp(force=True)
+    # render.append()
+    # print('Exported:', output_wav)
+
+    # print('------------------------------------------------------------')
     # print('NeuralNetworkResamp (npz) + NeuralNetworkWavTool (w/ vocoder-model)')
+    # print('------------------------------------------------------------')
+    # testname = '_nnresamp_npz_nnwavtool_withmodel'
+    # output_wav = str(path_wav_out).replace('.wav', f'{testname}.wav')
+    # render = NeuralNetworkRender(
+    #     ust,
+    #     logger=logger,
+    #     voice_dir=str(voice_dir),
+    #     cache_dir=str(cache_dir) + testname,
+    #     output_file=output_wav,
+    #     export_wav=False,
+    #     export_features=True,
+    #     use_neural_resampler=False,
+    #     use_neural_wavtool=True,
+    #     vocoder_model_dir=model_dir,
+    #     force_wav_crossfade=False,
+    # )
+    # render.clean()
+    # logger.setLevel(logging.INFO)
+    # render.resamp(force=True)
+    # logger.setLevel(logging.DEBUG)
+    # render.append()
+    # print('Exported:', output_wav)
+
+
+def test_wav2world2wav(path_wav_in: Path = TEST_WAV_IN) -> None:
+    """WAV -> WORLD特徴量 -> WAV の変換テストを行う。"""
+    for inprocess_sample_rate, output_sample_rate in [
+        (44100, 44100),
+        (48000, 48000),
+        (44100, 48000),
+        (48000, 44100),
+    ]:
+        print('------------------------------------------------------------')
+        print(f'Inprocess sample rate: {inprocess_sample_rate}')
+        print(f'Output sample rate: {output_sample_rate}')
+        print('test_wav_world_wav ---------------------------------------------------------')
+
+        print('Input wavfile:', path_wav_in.resolve())
+        print('Converting wavfile to world features...')
+        waveform_in, original_sample_rate, _ = wavfile_to_waveform(path_wav_in)
+        path_wav_out = (path_wav_in.parent / f'test_wav2world2wav_{original_sample_rate}_{inprocess_sample_rate}_{output_sample_rate}.wav')  # noqa: E501  # fmt: skip
+        print('Original sample rate  :', original_sample_rate)
+        print('Inprocess sample rate :', inprocess_sample_rate)
+        print('Output sample rate    :', output_sample_rate)
+        f0, sp, ap = waveform_to_world(waveform_in, original_sample_rate)
+        print('Rendering waveform from world features...')
+        waveform_out = world_to_waveform(f0, sp, ap, output_sample_rate)
+        print('Exporting wavefile...')
+        waveform_to_wavfile(
+            waveform_out,
+            path_wav_out,
+            original_sample_rate=output_sample_rate,
+            target_sample_rate=output_sample_rate,
+        )
+        print('Output wavfile:', path_wav_out.resolve())
+        print('WAV -> WORLD特徴量 -> WAV test completed!')
+        print()
 
 
 if __name__ == '__main__':
@@ -487,9 +537,9 @@ if __name__ == '__main__':
 
     # test vocoder model
     # test_vocoder_model(
-    #     Path('./../models/usfGAN_EnunuKodoku_0826'),
-    #     Path('./../data/_a_a_n_i_a_u_a_44100.wav'),
-    #     Path('./../test/test_vocoder_out.wav'),
+    #     Path('./models/usfGAN_EnunuKodoku_0826'),
+    #     Path('./data/_a_a_n_i_a_u_a_44100.wav'),
+    #     Path('./test/test_vocoder_out.wav'),
     # )
 
     # test resampler
@@ -498,3 +548,6 @@ if __name__ == '__main__':
         Path('./test/test_resampler_out.wav'),
         Path('./models/usfGAN_NamineRitsu_4130'),
     )
+
+    # # test wav -> world -> wav
+    # test_wav2world2wav(TEST_WAV_IN)
