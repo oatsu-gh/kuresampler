@@ -1,11 +1,9 @@
 # Copyright (c) 2025 oatsu
 """Resampler classes
 
-PyRwu.resamp.Resamp を継承し、
-WAVファイルの代わりにWORLD特徴量をファイルに出力する
-クラス WorldFeatureResamp を定義する。
-"""
+PyRwu.resamp.Resamp を継承し、WAVファイルとWORLD特徴量をファイルに出力する
 
+"""
 import argparse
 import copy
 import logging
@@ -15,6 +13,7 @@ from logging import Logger
 from pathlib import Path
 
 import colored_traceback.auto  # noqa: F401
+import librosa
 import PyRwu as pyrwu  # noqa: N813
 import pyworld
 import torch
@@ -38,9 +37,9 @@ from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 class NeuralNetworkResamp(pyrwu.Resamp):
     """Neural NetworkによるWORLD特徴量のリサンプリングを行う。
 
-    Args:
-        vocoder_model_dir: The directory containing the vocoder model files.
-        use_vocoder_model: Whether to use vocoder model for waveform synthesis. If False, use WORLD.
+    About sample rates:
+        - original_sample_rate: 原音WAVのサンプリング周波数。任意の値でOK。
+        - internal_sample_rate: 内部処理のサンプリング周波数。ボコーダーモデルに合わせる。
 
     """
 
@@ -72,7 +71,8 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         vocoder_vuv_threshold: float = 0.5,
         vocoder_frame_period: int = 5,
         resample_type: str = 'soxr_vhq',
-        target_sample_rate: int | None = None,
+        internal_sample_rate: int = 48000,
+        target_sample_rate: int = 44100,
     ) -> None:
         """Initialize NeuralNetworkResamp."""
         # logger 設定(先頭固定)======================================
@@ -99,49 +99,57 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self._pitchbend = pitchbend
         # サンプリング周波数関連=========================
         self._original_sample_rate: int  # getInputData() で初期化予定
-        self._target_sample_rate: int | None = target_sample_rate  # getInputData() で初期化予定
-        self.resample_type: str = resample_type
+        self._framerate: int = internal_sample_rate  # 内部処理のサンプリング周波数
+        self._target_sample_rate: int = target_sample_rate  # 出力wavのサンプリング周波数
+        self._resample_type: str = resample_type
         ## インスタンス変数への代入==================================
         # WORLD特徴量をファイル出力するか否か
-        self.export_features: bool = export_features
+        self._export_features: bool = export_features
         # ボコーダーモデルを使用するか否か
-        self.use_vocoder_model: bool = use_vocoder_model
+        self._use_vocoder_model: bool = use_vocoder_model
         # フラグに 'e' (stretch) を追加して、原音WAVの伸縮をストレッチ式に強制する。
         self.__force_stretch()
         # デバイス設定
-        self.device: torch.device = get_device()
+        self._device: torch.device = get_device()
         # ボコーダー関連の設定
-        self.vocoder_type: str = vocoder_type
-        self.vocoder_feature_type: str = vocoder_feature_type
-        self.vocoder_vuv_threshold: float = vocoder_vuv_threshold
-        self.vocoder_frame_period: int = vocoder_frame_period
-        self.vocoder_model: torch.nn.Module | None = vocoder_model
-        self.vocoder_in_scaler: StandardScaler | None = vocoder_in_scaler
-        self.vocoder_config: DictConfig | ListConfig | None = vocoder_config
+        self._vocoder_type: str = vocoder_type
+        self._vocoder_feature_type: str = vocoder_feature_type
+        self._vocoder_vuv_threshold: float = vocoder_vuv_threshold
+        self._vocoder_frame_period: int = vocoder_frame_period
+        self._vocoder_model: torch.nn.Module | None = vocoder_model
+        self._vocoder_in_scaler: StandardScaler | None = vocoder_in_scaler
+        self._vocoder_config: DictConfig | ListConfig | None = vocoder_config
 
-        # use_vocoder_model が True なのにボコーダー関連の引数が一つでも None の場合はエラー
-        if use_vocoder_model is True and any(
-            x is None for x in (vocoder_model, vocoder_in_scaler, vocoder_config)
-        ):
-            msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
-            raise ValueError(msg)
-
-        # vocoder_sample_rate を設定
-        if use_vocoder_model is True:
-            if vocoder_config is None:
-                msg = 'vocoder_config is None. vocoder_config must be loaded first.'
-                raise ValueError(msg)
-            self._vocoder_sample_rate = vocoder_config.data.sample_rate
-
-        # use_vocoder_model が False なのにボコーダー関連の引数が指定されている場合は警告を出力し、None に強制
-        if use_vocoder_model is False and any(
+        # use_vocoder_model が False なのにボコーダー関連引数が指定されている場合は警告を出力し None に強制  # noqa: E501
+        if not self._use_vocoder_model and any(
             x is not None for x in (vocoder_model, vocoder_in_scaler, vocoder_config)
         ):
+            msg = (
+                'vocoder_model, vocoder_in_scaler, and vocoder_config are ignored '
+                'when use_vocoder_model is False.'
+            )
+            self.logger.warning(msg)
             self._vocoder_model = None
             self._vocoder_in_scaler = None
             self._vocoder_config = None
-            msg = 'vocoder_model, vocoder_in_scaler, and vocoder_config are ignored when use_vocoder_model is False.'
-            self.logger.warning(msg)
+
+        # use_vocoder_model が True なのにボコーダー関連の引数が一つでも None の場合はエラー
+        if self._use_vocoder_model and any(
+            x is None for x in (vocoder_model, vocoder_in_scaler, vocoder_config)
+        ):
+            msg = (
+                'When use_vocoder_model is True, '
+                'vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
+            )
+            raise ValueError(msg)
+
+        # ボコーダーモデルのサンプリング周波数と内部処理のサンプリング周波数が異なる場合はエラー
+        if self._use_vocoder_model and self.vocoder_sample_rate != self._internal_sample_rate:
+            msg = (
+                f'vocoder_sample_rate ({self.vocoder_sample_rate}) '
+                f'does not match internal_sample_rate ({self._internal_sample_rate}).'
+            )
+            raise ValueError(msg)
 
     # MARK: properties
     @property
@@ -171,6 +179,15 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         return self._original_sample_rate
 
     @property
+    def _internal_sample_rate(self) -> int | None:
+        """内部処理のサンプリング周波数 (private)"""
+        return self._framerate
+
+    @_internal_sample_rate.setter
+    def _internal_sample_rate(self, value: int) -> None:
+        self._framerate = value
+
+    @property
     def internal_sample_rate(self) -> int:
         """内部処理のサンプリング周波数"""
         if self._framerate is None:
@@ -183,19 +200,10 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self._framerate = value
 
     @property
-    def _internal_sample_rate(self) -> int | None:
-        """内部処理のサンプリング周波数 (private)"""
-        return self._framerate
-
-    @_internal_sample_rate.setter
-    def _internal_sample_rate(self, value: int) -> None:
-        self._framerate = value
-
-    @property
     def target_sample_rate(self) -> int:
         """出力wavのサンプリング周波数"""
         if self._target_sample_rate is None:
-            msg = 'Target_sample_rate is None. It will be set to internal_sample_rate.'
+            msg = 'target_sample_rate is None. Call getInputData() first.'
             raise ValueError(msg)
         return self._target_sample_rate
 
@@ -206,16 +214,16 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     @property
     def vocoder_sample_rate(self) -> int:
         """ボコーダーモデルのwav出力サンプリング周波数"""
-        if self.vocoder_config is None:
+        if self._vocoder_config is None:
             msg = 'vocoder_config is None. vocoder_model must be loaded first.'
             raise ValueError(msg)
-        return self.vocoder_config.data.sample_rate
+        return self._vocoder_config.data.sample_rate
 
     def __force_stretch(self) -> None:
         """原音WAVの伸縮をストレッチ式に強制する。
 
         note.flags に `e` を追加する。
-        ただし、note.flags に `e` が既に存在する場合や、`l` (loop) が明示的に指定されている場合は skip。
+        ただし、note.flags に `e` が既に存在する場合や、`l` (loop) が指定されている場合はスキップ。
         """
         if 'e' not in self._flag_value and 'l' not in self._flag_value:
             self._flag_value += 'e'
@@ -229,7 +237,14 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         q1: float = pyrwu.settings.PYWORLD_Q1,
         threshold: float = pyrwu.settings.PYWORLD_THRESHOLD,
     ) -> None:
-        """入力された音声データからworldパラメータを取得し、self._input_data, self._framerate, self._f0, self._sp, self._apを更新します。
+        """入力された音声データからworldパラメータを取得し、インスタンス変数に値を代入する。
+
+        対象となるインスタンス変数:
+            - self._original_sample_rate
+            - self._framerate
+            - self._f0
+            - self._sp
+            - self._ap
 
         Args:
         f0_floor: float, default settings.PYWORLD_F0_FLOOR
@@ -257,7 +272,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
         Notes:
             - 音声データの取得方法を変更したい場合、このメソッドをオーバーライドしてください。
-            - オーバーライドする際、self._input_dataはこれ以降の処理で使用しないため、更新しなくても問題ありません。
+            - オーバーライドする際、self._input_dataはこれ以降の処理で使用しないため、更新不要。
 
         PyRwy.resamp.Resamp.getInputData() からの変更点:
             - PyWorldのキャッシュファイルを常に使用しない。
@@ -268,15 +283,30 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         wav_path = Path(self._input_path)
         frq_path = wav_path.with_name(wav_path.stem + '_wav.frq')
         # 原音のWAVファイルを切り出して、データとフレームレートを取得
-        original_waveform, original_sample_rate = pyrwu.wave_io.read(
+        original_waveform, self._original_sample_rate = pyrwu.wave_io.read(
             self._input_path,
             self._offset,
             self._end_ms,
         )
         # 周波数表FRQファイルが無い場合は新規作成する
         if not frq_path.exists():
-            input_data, original_sample_rate = pyrwu.wave_io.read(self._input_path, 0, 0)
-            pyrwu.frq_io.write(input_data, str(frq_path), original_sample_rate)
+            input_data, self._original_sample_rate = pyrwu.wave_io.read(self._input_path, 0, 0)
+            pyrwu.frq_io.write(input_data, str(frq_path), self._original_sample_rate)
+
+        # サンプルレートまわりのインスタンス変数を初期化
+        self.logger.debug('Sample rates before init-----------------------')
+        self.logger.debug(f'  _original_sample_rate : {self._original_sample_rate}')
+        self.logger.debug(f'  _internal_sample_rate : {self._internal_sample_rate}')
+        self.logger.debug(f'  _target_sample_rate   : {self._target_sample_rate}')
+        self.logger.debug('--------------------------------------------')
+
+        # waveform を内部処理のサンプルレートにリサンプリング
+        resampled_waveform = librosa.resample(
+            original_waveform,
+            orig_sr=self._original_sample_rate,
+            target_sr=self.internal_sample_rate,
+            res_type=self._resample_type,
+        )
 
         # 周波数表FRQファイルが存在する場合は読み込む
         if frq_path.exists():
@@ -284,14 +314,14 @@ class NeuralNetworkResamp(pyrwu.Resamp):
                 str(frq_path),
                 self._offset,
                 self._end_ms,
-                original_sample_rate,
+                self._original_sample_rate,
                 frame_period,
             )
         # 周波数表FRQファイルが(なぜか)存在しない場合は新規にf0抽出する
         else:
             f0, t = pyworld.harvest(  # pyright: ignore[reportAttributeAccessIssue]
-                original_waveform,
-                original_sample_rate,
+                resampled_waveform,
+                self._internal_sample_rate,
                 f0_floor=f0_floor,
                 f0_ceil=f0_ceil,
                 frame_period=frame_period,
@@ -301,53 +331,34 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             original_waveform,
             f0,
             t,
-            original_sample_rate,
+            self._internal_sample_rate,
         )
         ## リサンプル
         # ボコーダーモデルを使用する場合はそのモデルのサンプルレートにする
         # ボコーダーモデルを使用しない場合は原音のサンプルレートを維持
         # スペクトル包絡(sp)抽出
         sp = pyworld.cheaptrick(  # pyright: ignore[reportAttributeAccessIssue]
-            original_waveform,
+            resampled_waveform,
             f0,
             t,
-            original_sample_rate,
+            self._internal_sample_rate,
             q1=q1,
             f0_floor=f0_floor,
         )
         # 非周期性指標(ap)抽出
         ap = pyworld.d4c(  # pyright: ignore[reportAttributeAccessIssue]
-            original_waveform,
+            resampled_waveform,
             f0,
             t,
-            original_sample_rate,
+            self._internal_sample_rate,
             threshold=threshold,
         )
         # インスタンス変数に代入
-        self._input_data = original_waveform
+        self._input_data = resampled_waveform
         self._t = t
         self._f0 = f0
         self._sp = sp
         self._ap = ap
-        # 原音のサンプルレート
-        # 原音WAVのサンプルレートをそのまま登録
-        self._original_sample_rate = original_sample_rate
-        # 内部処理のサンプルレート:
-        # ボコーダーモデルを使用する場合はモデルのサンプルレートで内部処理、使用しない場合は原音のサンプルレートで内部処理
-        if self.use_vocoder_model is True:
-            if self.vocoder_config is None:
-                msg = 'vocoder_config is None. vocoder_config must be loaded first.'
-                raise ValueError(msg)
-            self._framerate = self.vocoder_config.data.sample_rate
-        else:
-            self._framerate = original_sample_rate
-        # 出力wavのサンプルレート:
-        # target_sample_rate が None の場合は内部処理のサンプルレートに設定
-        self._target_sample_rate = self._target_sample_rate or self.internal_sample_rate
-        # 念のため
-        assert self._original_sample_rate is not None  # noqa: S101
-        assert self.internal_sample_rate is not None  # noqa: S101
-        assert self._target_sample_rate is not None  # noqa: S101
 
     def denoise_f0(self) -> None:
         """f0 のスパイクノイズを除去する。"""
@@ -356,12 +367,13 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     # MARK: synthesize
     def synthesize(self) -> None:
-        """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""
+        """Pyworld または vocoder model を用いてWORLD特徴量からwaveformを生成し、self._output_dataに代入する。"""  # noqa: E501
         # DEBUG: --------------------------------------------------
         self.logger.debug('WORLD features before applying F0_EFFECTS-----------------------')
         self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
         self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
         self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
+
         for effect in pyrwu.settings.F0_EFFECTS:
             self._f0 = effect.apply(self)
 
@@ -372,6 +384,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
         for effect in pyrwu.settings.SP_EFFECTS:
             self._sp = effect.apply(self)
+
         self.logger.debug('WORLD features after applying SP_EFFECTS-----------------------')
         self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
         self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
@@ -379,6 +392,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
         for effect in pyrwu.settings.AP_EFFECTS:
             self._ap = effect.apply(self)
+
         self.logger.debug('WORLD features after applying AP_EFFECTS-----------------------')
         self.logger.debug('  f0 (min, max): (%s, %s)', self.f0.min(), self.f0.max())
         self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
@@ -392,7 +406,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self.logger.debug('  sp (min, max): (%s, %s)', self.sp.min(), self.sp.max())
         self.logger.debug('  ap (min, max): (%s, %s)', self.ap.min(), self.ap.max())
 
-        if self.use_vocoder_model:
+        if self._use_vocoder_model:
             # Neural Network Vocoderを使用してwaveformを生成
             self._synthesize_with_vocoder_model()
         else:
@@ -405,7 +419,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             self.f0,
             self.sp,
             self.ap,
-            target_sample_rate=self.internal_sample_rate,
+            sample_rate=self.internal_sample_rate,
             frame_period=pyrwu.settings.PYWORLD_PERIOD,
         )
         # 生成した波形を _output_data に代入
@@ -413,34 +427,39 @@ class NeuralNetworkResamp(pyrwu.Resamp):
 
     def _synthesize_with_vocoder_model(self) -> None:
         """Vocoder modelを用いてWORLD特徴量からwaveformを生成する。"""
-        if self.vocoder_model is None:
+        if self._vocoder_model is None:
             msg = 'vocoder_model is None'
             raise ValueError(msg)
-        if self.vocoder_config is None:
+        if self._vocoder_config is None:
             msg = 'vocoder_config is None'
             raise ValueError(msg)
-        if self.vocoder_in_scaler is None:
+        if self._vocoder_in_scaler is None:
             msg = 'vocoder_in_scaler is None'
+            raise ValueError(msg)
+        # 周波数不一致がないか確認
+        if self.vocoder_sample_rate != self.internal_sample_rate:
+            msg = (
+                f'vocoder_sample_rate ({self.vocoder_sample_rate}) '
+                f'does not match internal_sample_rate ({self.internal_sample_rate}).'
+            )
             raise ValueError(msg)
         # nnsvs を使って waveform を合成
         wav = world_to_nnsvs_to_waveform(
-            device=self.device,
-            f0=self.f0,
-            sp=self.sp,
-            ap=self.ap,
-            vocoder_model=self.vocoder_model,
-            vocoder_config=self.vocoder_config,
-            vocoder_in_scaler=self.vocoder_in_scaler,
-            vocoder_frame_period=self.vocoder_frame_period,
+            device=self._device,
+            f0=self._f0,
+            sp=self._sp,
+            ap=self._ap,
+            vocoder_model=self._vocoder_model,
+            vocoder_config=self._vocoder_config,
+            vocoder_in_scaler=self._vocoder_in_scaler,
+            vocoder_frame_period=self._vocoder_frame_period,
             use_world_codec=True,
-            feature_type=self.vocoder_feature_type,
-            vocoder_type=self.vocoder_type,
-            vuv_threshold=self.vocoder_vuv_threshold,
-            target_sample_rate=self.internal_sample_rate,
-            resample_type=self.resample_type,
+            feature_type=self._vocoder_feature_type,
+            vocoder_type=self._vocoder_type,
+            vuv_threshold=self._vocoder_vuv_threshold,
         )
         # 生成した波形を _output_data に代入
-        self._output_data = wav
+        self._output_data = wav  # vocoder_sample_rate
 
     # MARK: resamp
     def resamp(self) -> None:
@@ -452,6 +471,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self.applyPitch()  # ピッチベンド適用
 
         # パラメータ確認 ---------------------------------------
+        self.logger.debug('Resampling parameters-----------------------')
         self.logger.debug('  input_path  : %s', self.input_path)
         self.logger.debug('  output_path : %s', self.output_path)
         self.logger.debug('  t.shape     : %s', self.t.shape)
@@ -459,17 +479,18 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         self.logger.debug('  sp.shape    : %s', self.sp.shape)
         self.logger.debug('  ap.shape    : %s', self.ap.shape)
         self.logger.debug('  original_sample_rate : %s', self.original_sample_rate)
-        self.logger.debug('  internal_sample_rate : %s', self.target_sample_rate)
+        self.logger.debug('  internal_sample_rate : %s', self.internal_sample_rate)
         self.logger.debug('  target_sample_rate   : %s', self.target_sample_rate)
+        self.logger.debug('--------------------------------------------')
         # ------------------------------------------------------
         # f0 のスパイクノイズを除去
         self.denoise_f0()
         # モデル情報とサンプルレートをログ出力
         # ボコーダーモデルを使用する場合はそのモデルのサンプルレートでwav出力する
-        if self.use_vocoder_model:
+        if self._use_vocoder_model:
             self.logger.info(
                 'Synthesize WAV using Neural Vocoder (%s)',
-                type(self.vocoder_model),
+                type(self._vocoder_model),
             )
         # ボコーダーモデルを使用しない場合は原音のサンプルレートでwav出力する
         else:
@@ -484,15 +505,21 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         waveform_to_wavfile(
             self._output_data,
             self.output_path,
-            in_sample_rate=self.internal_sample_rate,
-            out_sample_rate=self.target_sample_rate,
+            original_sample_rate=self.internal_sample_rate,
+            target_sample_rate=self.target_sample_rate,
         )
         self.logger.debug('Exported WAV file: %s', self.output_path)
 
         # WORLD 特徴量を npz ファイル出力する。
-        if self.export_features:
+        if self._export_features:
             npz_path = Path(self.output_path).with_suffix('.npz')
-            world_to_npzfile(self.f0, self.sp, self.ap, npz_path)
+            world_to_npzfile(
+                self._f0,
+                self._sp,
+                self._ap,
+                self.internal_sample_rate,
+                npz_path,
+            )
             self.logger.debug('Exported NPZ (f0, spectral_envelope, aperiodicity): %s', npz_path)
 
 
@@ -517,7 +544,7 @@ def main_resampler(
     Returns:
         None
 
-    """
+    """  # noqa: E501
     logger = setup_logger()
 
     # 引数を展開
@@ -640,7 +667,7 @@ def main_resampler(
     if args.model_dir is not None:
         if not args.use_vocoder_model:
             logger.warning(
-                '--model_dir is specified but --use_vocoder_model is not set. The model will be ignored.'
+                '--model_dir is specified but --use_vocoder_model is not set. The model will be ignored.'  # noqa: E501
             )
         else:
             # vocoder model 関連のファイルを読み込む

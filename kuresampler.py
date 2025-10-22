@@ -162,8 +162,6 @@ class NeuralNetworkRender(Render):
         """
         # キャッシュフォルダを作成
         Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
-        # PyWavTool で WAV クロスフェードする場合は 44100 Hz にリサンプリングしておく(音高ずれ回避のため)
-        resampler_target_sample_rate = 44100 if self._force_wav_crossfade else None
         # 各ノートを処理
         for note in tqdm(
             self.notes, mininterval=0.02, colour='cyan', desc='Resample', unit='note'
@@ -212,7 +210,6 @@ class NeuralNetworkRender(Render):
                     vocoder_feature_type=self._vocoder_feature_type,
                     vocoder_vuv_threshold=self._vocoder_vuv_threshold,
                     vocoder_frame_period=self._vocoder_frame_period,
-                    target_sample_rate=resampler_target_sample_rate,
                 )
                 resamp.resamp()
             else:
@@ -308,7 +305,7 @@ class NeuralNetworkRender(Render):
         #         use_world_codec=True,
         #         feature_type=self._vocoder_feature_type,
         #         vocoder_type='usfgan',
-        #         vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われないはず
+        #         vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われない
         #     )
 
         #     # wav ファイルを書き出す
@@ -348,7 +345,8 @@ def main_as_integrated_wavtool(path_ust_in: Path | str, path_wav_out: Path | str
     短所:
     - 特徴量でクロスフェードする必要があるので、クロスフェード計算を独自実装する必要あり。
     - エンベロープおよびゲイン反映を独自実装する必要あり。
-    - 音量ノーマライズを独自実装する必要あり。いっそ world で wav を内部生成して音量係数を取得してしまう？
+    - 音量ノーマライズを独自実装する必要あり。
+        - TODO: いっそ world で wav を内部生成して音量係数を取得してしまう？
     - 一度にボコーダーに渡すサイズが大きいので WAV 生成に時間がかかり、VRAM 消費も激しい。
     """
     logger = setup_logger()

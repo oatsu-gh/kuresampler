@@ -16,8 +16,8 @@ wavtool の処理の流れ
 - wav ファイルを書き出す
 
 ## 注意すること
-- 自身が 先頭ノート/中間ノート/最終ノート のいずれであるかはわからないため、wav ファイルは常に出力必要。
-- wav ファイルを出力する際、既存の wav ファイルがある場合は、オーバーラップ時間を考慮して重ねる必要がある。
+- 自身が 先頭ノート/中間ノート/最終ノート のいずれなのか不明なので、wav ファイルは常に出力必要。
+- wav ファイルを出力する際、既存の wav ファイルがある場合は、オーバーラップ時間を考慮して重ねる。
 
 """
 
@@ -91,7 +91,7 @@ def parse_envelope(
 
     Args:
         envelope (list[float]): エンベロープの値のリスト
-        rounded_length (float): ノートの長さ(先行発声含む)(ms)。あらかじめ frame_period で丸めておく必要あり。
+        rounded_length (float): ノートの長さ(先行発声含む)(ms)。事前に frame_period で丸めておく。
         frame_period (float)  : WORLD特徴量のフレーム周期(ms)
 
     Returns:
@@ -277,7 +277,7 @@ class NeuralNetworkWavTool:
     ### ファイル入出力について
     入力においては、npz がある場合は高速化のため npz を wav の代わりに優先的に読み込む。
     出力においては、npz を優先する場合でも常に wav 生成をしなければならない。
-    NOTE: UTAU から呼び出される場合は実行中のノートが 最初/途中/最後 のいずれであるか判別できないので成果物は常に wav が必要。
+    NOTE: UTAU から呼び出される場合、実行中のノートが 最初/途中/最後 のどれか不明なので wav 出力は常に必要。
 
     ### キャッシュの取り扱い
     - WAVキャッシュを使用する場合、WORLD 特徴量に変換してから append する。
@@ -290,7 +290,7 @@ class NeuralNetworkWavTool:
 
     TODO: 音量ノーマライズの際に WORLD 特徴量にノーマライズをかける方法を検討する。いったんWAVに変換して係数を算出する?
 
-    """
+    """  # noqa: E501
 
     # 入出力パス
     input_wav: Path  # 入力wavのパス
@@ -308,7 +308,6 @@ class NeuralNetworkWavTool:
     sp_appended: np.ndarray  # 追記後のsp (WORLD特徴量 Spectral envelope)
     ap_appended: np.ndarray  # 追記後のap (WORLD特徴量 Aperiodicity)
     # サンプルレート関連
-    original_sample_rate: int  # 入力wavのサンプルレート [Hz]
     internal_sample_rate: int  # 内部処理のサンプルレート [Hz]
     target_sample_rate: int  # 出力wavのサンプルレート [Hz]
     resample_type: str  # リサンプリングの種類
@@ -350,7 +349,8 @@ class NeuralNetworkWavTool:
         vocoder_feature_type: str = 'world',
         vocoder_vuv_threshold: float = 0.5,
         vocoder_frame_period: int = 5,
-        target_sample_rate: int | None = None,
+        internal_sample_rate: int = 48000,
+        target_sample_rate: int = 44100,
         resample_type: str = 'soxr_vhq',
     ) -> None:
         """NeuralNetworkWavTool のコンストラクタ"""
@@ -361,8 +361,13 @@ class NeuralNetworkWavTool:
         self.output_npz = Path(output_wav).with_suffix('.npz')
         self.frame_period = frame_period
         self.stp = stp
+        # サンプルレート関連の初期化
+        self.internal_sample_rate = internal_sample_rate
+        self.target_sample_rate = target_sample_rate
+        self.resample_type = resample_type
         # length と _residual_error を初期化
         self.__init_length(length, extract_overlap(envelope), residual_error)
+
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
 
@@ -380,42 +385,46 @@ class NeuralNetworkWavTool:
         self.vocoder_feature_type = vocoder_feature_type
         self.vocoder_vuv_threshold = vocoder_vuv_threshold
         self.vocoder_frame_period = vocoder_frame_period
-        self.resample_type = resample_type
 
         # frame_period と vocoder_frame_period が異なる場合は警告を出す
         if self.frame_period != self.vocoder_frame_period:
             self.logger.error(
-                'frame_period (%d ms) and vocoder_frame_period (%d ms) are different. This may result in unexpected behavior.',
+                'frame_period (%d ms) and vocoder_frame_period (%d ms) are different. '
+                'This may result in unexpected behavior.',
                 self.frame_period,
                 self.vocoder_frame_period,
             )
         # use_vocoder_model が True の時はボコーダーモデルを代入する
-        if use_vocoder_model is True:
+        if use_vocoder_model:
             # vocoder model 関連の引数が全て揃っていることを確認
             if vocoder_model is None or vocoder_in_scaler is None or vocoder_config is None:
-                msg = 'When use_vocoder_model is True, vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
+                msg = (
+                    'When use_vocoder_model is True, '
+                    'vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
+                )
                 raise ValueError(msg)
             self.vocoder_model = vocoder_model
             self.vocoder_in_scaler = vocoder_in_scaler
             self.vocoder_config = vocoder_config
             self.logger.info('Using vocoder model: %s', self.use_vocoder_model)
-            # サンプルレート初期化
-            self.internal_sample_rate = self.vocoder_config.data.sample_rate
-            self.target_sample_rate = target_sample_rate or self.internal_sample_rate
+            # サンプルレートチェック
+            if self.vocoder_config.data.sample_rate != self.internal_sample_rate:
+                msg = (
+                    f'Vocoder model sample rate ({self.vocoder_config.data.sample_rate} Hz) '
+                    f'and internal sample rate ({self.internal_sample_rate} Hz) are different.'
+                )
+                raise ValueError(msg)
         # use_vocoder_model が False の場合
         else:
             # use_vocoder_model が False なのに vocoder が指定されているときは警告を出す
             if (vocoder_model, vocoder_in_scaler, vocoder_config) != (None, None, None):
                 self.logger.warning(
-                    'use_vocoder_model is False, but [vocoder_model, vocoder_in_scaler, or vocoder_config] are provided. They will be ignored.',
+                    'use_vocoder_model is False, '
+                    'but [vocoder_model, vocoder_in_scaler, or vocoder_config] are provided. '
+                    'They will be ignored.'
                 )
-            self.vocoder_model = None
-            self.vocoder_in_scaler = None
-            self.vocoder_config = None
+                self.vocoder_model, self.vocoder_in_scaler, self.vocoder_config = None, None, None
             self.logger.info('Not using vocoder model.')
-            # サンプルレート初期化
-            self.internal_sample_rate = self.original_sample_rate
-            self.target_sample_rate = target_sample_rate or self.internal_sample_rate
 
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
@@ -463,34 +472,40 @@ class NeuralNetworkWavTool:
         self.length = rounded_length
         self._residual_error = new_residual_error
 
-    def __init_features(self, default_sample_rate: int = DEFAULT_SAMPLE_RATE) -> None:
+    def __init_features(self) -> None:
         """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
         """
-        # wav と npz が両方存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
-        if self.input_wav.exists() and self.input_npz.exists():
-            waveform, original_sample_rate, _ = wavfile_to_waveform(self.input_wav)
-            self.original_sample_rate = original_sample_rate
-            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
-        # wav のみ存在する場合、を読み込んでサンプルレートと waveform を取得する。sample_rate は 必須。
+        # npz が存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
+        if self.input_npz.exists():
+            self.f0, self.sp, self.ap, npz_sample_rate = npzfile_to_world(self.input_npz)
+            # npz のサンプルレートが内部サンプルレートと異なる場合はエラー
+            if npz_sample_rate != self.internal_sample_rate:
+                msg = (
+                    f"NPZ file's sample rate ({npz_sample_rate} Hz) and "
+                    f'internal_sample_rate ({self.internal_sample_rate} Hz) are different.'
+                )
+                raise ValueError(msg)
+        # wav のみ存在する場合はサンプルレート変換したのちに特徴量抽出する。
         elif self.input_wav.exists():
-            waveform, original_sample_rate, _ = wavfile_to_waveform(self.input_wav)
-            self.original_sample_rate = original_sample_rate
+            waveform, _, _ = wavfile_to_waveform(
+                self.input_wav,
+                target_sample_rate=self.internal_sample_rate,
+                resample_type=self.resample_type,
+            )
             self.f0, self.sp, self.ap = waveform_to_world(
                 waveform,
-                self.original_sample_rate,
+                sample_rate=self.internal_sample_rate,
                 frame_period=self.frame_period,
             )
-        # npz のみ存在する場合、npz から特徴量を取得する。sample_rate は default_sample_rate に設定する。
-        elif self.input_npz.exists():
-            self.original_sample_rate = default_sample_rate
-            self.f0, self.sp, self.ap = npzfile_to_world(self.input_npz)
         # wav と npz が両方とも存在しない場合は無音特徴量を使用する。
         else:
-            self.original_sample_rate = default_sample_rate
-            msg = f'Input file not found: {self.input_wav} or {self.input_npz}. Using silent features.'
+            msg = (
+                f'Input file not found: {self.input_wav} or {self.input_npz}. '
+                'Using silent features.'
+            )
             self.logger.warning(msg, stacklevel=1)
             n_frames = ceil((self.length + self.stp) / self.frame_period)
             dtype = np.float64
@@ -530,7 +545,7 @@ class NeuralNetworkWavTool:
     def _apply_envelope(self) -> None:
         """self.f0, self.sp, self.ap に音量エンベロープを適用する。
 
-        TODO: 音量エンベロープの時刻と音量値に基づいて、spectrogram の各フレームに対して音量調整を行う。
+        TODO: 音量エンベロープの時刻と音量値に基づいて、spectrogram の音量加工を行う。
         """
         self.logger.debug('envelope_p: %s', self.envelope_p)
         # エンベロープが2点以下の場合は何もしない
@@ -545,8 +560,7 @@ class NeuralNetworkWavTool:
         fp = [v / 100.0 for v in self.envelope_v[: len(xp)]]
         # 音量エンベロープを計算
         volume_envelope = np.interp(x, xp, fp)
-        # 音量エンベロープを x 倍するには sp を x^2 倍する必要がある。
-        # sp, ap に音量エンベロープを適用する。f0 は何もしない(appendのときにクロスフェード処理する)。
+        # sp に音量エンベロープを適用する。音量を x 倍するには sp を x^2 倍する。
         self.sp *= volume_envelope[:, np.newaxis] ** 2
 
     def _apply_all(self) -> None:
@@ -585,16 +599,30 @@ class NeuralNetworkWavTool:
         TODO: ノート数が多いほどWAV生成が重くなるので何とかしたい。
         """
         # 既存ファイルの特徴量を読み取る。なければ空の配列を取得する。
-        long_f0, long_sp, long_ap = (
-            npzfile_to_world(self.output_npz)
-            if self.output_npz.exists()
-            else (np.array([]), np.array([[]]), np.array([[]]))
-        )
+        if self.output_npz.exists():
+            self.logger.info('Loading existing features from: %s', self.output_npz)
+            long_f0, long_sp, long_ap, npz_sample_rate = npzfile_to_world(self.output_npz)
+            if npz_sample_rate != self.internal_sample_rate:
+                msg = (
+                    f"Existing NPZ file's sample rate ({npz_sample_rate} Hz) and "
+                    f'internal_sample_rate ({self.internal_sample_rate} Hz) are different.'
+                )
+                raise ValueError(msg)
+        else:
+            self.logger.info('No existing features found. Starting fresh.')
+            long_f0, long_sp, long_ap, _ = (
+                np.array([]),
+                np.array([[]]),
+                np.array([[]]),
+                self.internal_sample_rate,
+            )
+
         # クロップしたのちエンベロープを適用する
         self._apply_all()
+
         # overlap をフレーム数に変換
-        overlap_frames = round(self.overlap / self.frame_period)
-        self.logger.info('overlap_frames: %s', overlap_frames)
+        n_overlap_frames = round(self.overlap / self.frame_period)
+        self.logger.info('overlap_frames: %s', n_overlap_frames)
 
         # デバッグ出力 --------------------------
         self.logger.debug('Features before overlap:')
@@ -616,9 +644,9 @@ class NeuralNetworkWavTool:
         # 既存の特徴量がある場合はオーバーラップさせる
         else:
             # 既存特徴量に新規ノートの特徴量を結合する
-            long_f0 = overlap_f0(long_f0, self.f0, overlap_frames, crossfade_shape='linear')
-            long_sp = overlap_sp(long_sp, self.sp, overlap_frames, crossfade_shape=None)
-            long_ap = overlap_ap(long_ap, self.ap, overlap_frames, crossfade_shape='linear')
+            long_f0 = overlap_f0(long_f0, self.f0, n_overlap_frames, crossfade_shape='linear')
+            long_sp = overlap_sp(long_sp, self.sp, n_overlap_frames, crossfade_shape=None)
+            long_ap = overlap_ap(long_ap, self.ap, n_overlap_frames, crossfade_shape='linear')
         # 追記後の特徴量を保存
         self.f0_appended = long_f0
         self.ap_appended = long_ap
@@ -640,7 +668,7 @@ class NeuralNetworkWavTool:
             WORLD 特徴量を.wav 拡張子で出力するオプションを追加する (.npz はUTAUが自動で消してくれないため)。
             もしくは、エンジン一括実行を行うツールで、レンダリング開始前に .npz を消す処理を追加する。
 
-        """
+        """  # noqa: E501
         # append された特徴量が揃っていることを確認する
         if self.f0_appended is None or self.sp_appended is None or self.ap_appended is None:
             msg = 'f0_appended, sp_appended, or ap_appended is None. Call append() first.'
@@ -651,26 +679,24 @@ class NeuralNetworkWavTool:
             self.f0_appended,
             self.sp_appended,
             self.ap_appended,
+            self.internal_sample_rate,
             self.output_npz,
             compress=False,
         )
 
-        # 入力ファイルのサンプルレートを取得
-        input_sample_rate = self.original_sample_rate
         # ボコーダーモデルを使用しない場合
         if self.use_vocoder_model is False:
-            output_sample_rate = input_sample_rate
             # wav 生成
             wav = world_to_waveform(
                 self.f0_appended,
                 self.sp_appended,
                 self.ap_appended,
-                input_sample_rate,
+                sample_rate=self.internal_sample_rate,
                 frame_period=self.frame_period,
-            )
+            )  # internal_sample_rate
+
         # ボコーダーモデルを使用する場合
         elif self.use_vocoder_model is True:
-            output_sample_rate = self.vocoder_sample_rate
             # vocoder model 関連の引数が全て揃っていることを確認
             if (
                 self.vocoder_model is None
@@ -679,13 +705,12 @@ class NeuralNetworkWavTool:
             ):
                 msg = 'vocoder_model, vocoder_in_scaler, or vocoder_config is None.'
                 raise ValueError(msg)
-            # wav 生成
+            # nnsvs のボコーダーモデルを使って wav 生成
             wav = world_to_nnsvs_to_waveform(
                 device=self.device,
                 f0=self.f0,
                 sp=self.sp,
                 ap=self.ap,
-                target_sample_rate=output_sample_rate,
                 vocoder_model=self.vocoder_model,
                 vocoder_config=self.vocoder_config,
                 vocoder_in_scaler=self.vocoder_in_scaler,
@@ -694,14 +719,14 @@ class NeuralNetworkWavTool:
                 feature_type=self.vocoder_feature_type,
                 vocoder_type=self.vocoder_type,
                 vuv_threshold=self.vocoder_vuv_threshold,
-                resample_type=self.resample_type,
-            )
+            )  # vocoder_sample_rate
+
         else:
             msg = f'Invalid use_vocoder_model: {self.use_vocoder_model}. Must be True or False.'
             raise ValueError(msg)
 
-        # wavform の長さを丸め誤差分だけ補正する
-        n_compensation_samples = round(self._residual_error / 1000 * output_sample_rate)
+        # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
+        n_compensation_samples = round(self._residual_error / 1000 * self.target_sample_rate)
         self.logger.debug('n_compensation_samples: %d', n_compensation_samples)
         self.logger.debug('waveform.shape before compensation: %s', wav.shape)
         # wav が目標よりも短い場合はゼロパディングする。
@@ -711,12 +736,16 @@ class NeuralNetworkWavTool:
         elif n_compensation_samples < 0:
             wav = wav[:n_compensation_samples]
         self.logger.debug('waveform.shape after compensation: %s', wav.shape)
+        # -------------------------------------------------------------------------------------
 
-        # wavファイルに書き出す。この時点で既に output_sample_rate にリサンプリング済み。
-        if self.use_vocoder_model:
-            waveform_to_wavfile(wav, self.output_wav, output_sample_rate, output_sample_rate)
-        else:
-            waveform_to_wavfile(wav, self.output_wav, output_sample_rate, output_sample_rate)
+        # wavファイルに書き出す。
+        waveform_to_wavfile(
+            wav,
+            self.output_wav,
+            original_sample_rate=self.internal_sample_rate,
+            target_sample_rate=self.target_sample_rate,
+            resample_type=self.resample_type,
+        )  # target_sample_rate
 
 
 # MARK: main_wavtool

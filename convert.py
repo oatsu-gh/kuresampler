@@ -11,6 +11,10 @@ world    (f0, sp, ap)   <-> npzfile     (path)
 world    (f0, sp, ap)   <-> nnsvs-world (mgc, lf0, vuv, bap)
 nnsvs-world (mgc, lf0, vuv, bap) <-> npzfile (path)
 nnsvs-world (mgc, lf0, vuv, bap) <-> waveform (np.ndarray) # NOTE: Use WORLD or GAN vocoder
+
+Notes:
+- WORLD特徴量 (non-coded, coded) は常にもとの wav の sample_rate に依存する。
+
 """
 
 from pathlib import Path
@@ -38,8 +42,8 @@ DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu
 
 def wavfile_to_waveform(
     wav_path: Path | str,
-    out_sample_rate: int | None = None,
     *,
+    target_sample_rate: int | None = None,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
     dtype: str = DEFAULT_WAV_DTYPE,
 ) -> tuple[np.ndarray, int, int]:
@@ -47,14 +51,16 @@ def wavfile_to_waveform(
 
     Args:
         wav_path           (Path)    : Path to the WAV file.
-        out_sample_rate    (int)     : Sample rate for the output waveform.
+        target_sample_rate (int)     : Sample rate for the output waveform.
         dtype              (np.dtype): dtype for the output waveform.
-        resample_type      (str)     : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
+        resample_type      (str)     :
+            Resampling method. Select from `res_type` options of `librosa.resample`.
+            (recommended: soxr_vhq, soxr_hq, kaiser_best)
 
     Returns:
         waveform    (np.ndarray): Waveform as a numpy array.
-        in_sample_rate (int): Sample rate of the original audio.
-        out_sample_rate   (int): Target sample rate of the returning waveform.
+        in_sample_rate     (int): Sample rate of the original audio.
+        target_sample_rate (int): Target sample rate of the returning waveform.
 
     """
     waveform: np.ndarray
@@ -62,24 +68,24 @@ def wavfile_to_waveform(
     # wav ファイル読み込み
     wav_path = Path(wav_path)
     waveform, in_sample_rate = sf.read(wav_path, dtype=dtype)
-    # out_sample_rate が None の場合は in_sample_rate と同じにする
-    if out_sample_rate is None:
-        out_sample_rate = in_sample_rate
+    # target_sample_rate が None の場合は in_sample_rate と同じにする
+    if target_sample_rate is None:
+        target_sample_rate = in_sample_rate
     # リサンプル
     waveform = librosa.resample(
         waveform,
         orig_sr=in_sample_rate,
-        target_sr=out_sample_rate,
+        target_sr=target_sample_rate,
         res_type=resample_type,
     )
-    return waveform, in_sample_rate, out_sample_rate
+    return waveform, in_sample_rate, target_sample_rate
 
 
 def waveform_to_wavfile(
     waveform: np.ndarray,
     wav_path: Path | str,
-    in_sample_rate: int,
-    out_sample_rate: int,
+    original_sample_rate: int,
+    target_sample_rate: int,
     *,
     resample_type: str = DEFAULT_RESAMPLE_TYPE,
     dtype: str = DEFAULT_WAV_DTYPE,
@@ -89,24 +95,26 @@ def waveform_to_wavfile(
     Args:
         waveform             (np.ndarray): The waveform as a numpy array.
         wav_path             (Path)      : The path to the output WAV file.
-        in_sample_rate       (int)       : The original sample rate of the audio.
-        out_sample_rate      (int)       : The target sample rate for the output WAV file.
-        resample_type       (str)       : Resampling method. Select from `res_type` options of `librosa.resample`. (recommended: soxr_vhq, soxr_hq, kaiser_best)
-        dtype               (np.dtype)  : The dtype for the output WAV file.
+        original_sample_rate (int)       : The original sample rate of the audio.
+        target_sample_rate   (int)       : The target sample rate for the output WAV file.
+        resample_type        (str)       :
+            Resampling method. Select from `res_type` options of `librosa.resample`.
+            (recommended: soxr_vhq, soxr_hq or kaiser_best)
+        dtype                (np.dtype)  : The dtype for the output WAV file.
 
     """
     waveform = librosa.resample(
         waveform,
-        orig_sr=in_sample_rate,
-        target_sr=out_sample_rate,
+        orig_sr=original_sample_rate,
+        target_sr=target_sample_rate,
         res_type=resample_type,
     )
-    sf.write(wav_path, waveform.astype(dtype), out_sample_rate)
+    sf.write(wav_path, waveform.astype(dtype), target_sample_rate)
 
 
 def waveform_to_world(
     wav: np.ndarray,
-    wav_sample_rate: int,
+    sample_rate: int,
     *,
     frame_period: int = DEFAULT_FRAME_PERIOD,
     f0_extractor: str = 'harvest',
@@ -117,45 +125,49 @@ def waveform_to_world(
     """Convert a waveform (numpy array) to WORLD features.
 
     Args:
-        wav     (np.ndarray)     : The waveform as a numpy array.
-        wav_sample_rate  (int)   : The sample rate of the audio.
-        frame_period (float)     : The frame period in milliseconds.
-        f0_extractor (str)       : The F0 extraction method. Select from ["harvest", "dio", "crepe"].
-        f0_floor     (float)     : The minimum F0 value.
-        f0_ceil      (float)     : The maximum F0 value.
-        d4c_threshold(float)     : The threshold for the D4C algorithm.
+        wav           (np.ndarray): Waveform as a numpy array.
+        sample_rate   (int)       : Sample rate of the audio.
+        frame_period  (float)     : Frame period in milliseconds.
+        f0_extractor  (str)       : F0 extraction method. Select from ["harvest", "dio", "crepe"].
+        f0_floor      (float)     : Minimum F0 value.
+        f0_ceil       (float)     : Maximum F0 value.
+        d4c_threshold (float)     : Threshold for the D4C algorithm.
 
     Returns:
-        f0           (np.ndarray): Fundamental frequency.
-        spectral_envelope  (np.ndarray): spectral_envelope.
-        aperiodicity (np.ndarray): Aperiodicity.
+        f0                (np.ndarray): Fundamental frequency.
+        spectral_envelope (np.ndarray): Spectral envelope.
+        aperiodicity      (np.ndarray): Aperiodicity.
 
     NOTE: CREPE はとても重いらしいので注意。GPUリソースも必要。
-    TODO: harvestのf0推定がとても重い。frq ファイルがあれば読むようにする。なければ logger で警告を出す。独自に krq ファイルを出力する?
+    TODO: harvestのf0推定がとても重い。frq ファイルがあれば読むようにする。
+          なければ logger で警告を出す。独自に krq ファイルを出力する?
 
     """
     # F0
     if f0_extractor == 'harvest':
         f0, timeaxis = pyworld.harvest(
-            wav, wav_sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            wav, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(wav, f0, timeaxis, wav_sample_rate)
+        f0 = pyworld.stonemask(wav, f0, timeaxis, sample_rate)
     elif f0_extractor == 'dio':
         f0, timeaxis = pyworld.dio(
-            wav, wav_sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            wav, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(wav, f0, timeaxis, wav_sample_rate)
+        f0 = pyworld.stonemask(wav, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
         msg = 'CREPE f0 extractor is not implemented yet.'
         raise NotImplementedError(msg)
     # f0_extractor の指定が harvest, dio, crepe 以外の場合はエラー
     else:
-        error_msg = f'Unknown f0 extractor ({f0_extractor}) is specified. Select from ["harvest", "dio", "crepe"].'
-        raise ValueError(error_msg)
+        msg = (
+            f'Unknown f0 extractor ({f0_extractor}) is specified. '
+            'Select from ["harvest", "dio", "crepe"].'
+        )
+        raise ValueError(msg)
 
     # spectral_envelope, aperiodicity
-    spectral_envelope = pyworld.cheaptrick(wav, f0, timeaxis, wav_sample_rate)
-    aperiodicity = pyworld.d4c(wav, f0, timeaxis, wav_sample_rate, threshold=d4c_threshold)
+    spectral_envelope = pyworld.cheaptrick(wav, f0, timeaxis, sample_rate)
+    aperiodicity = pyworld.d4c(wav, f0, timeaxis, sample_rate, threshold=d4c_threshold)
 
     return f0, spectral_envelope, aperiodicity
 
@@ -164,18 +176,18 @@ def world_to_waveform(
     f0: np.ndarray,
     spectral_envelope: np.ndarray,
     aperiodicity: np.ndarray,
-    target_sample_rate: int,
+    sample_rate: int,
     *,
     frame_period: float = DEFAULT_FRAME_PERIOD,
 ) -> np.ndarray:
     """Convert WORLD features (f0, spectral_envelope, aperiodicity) back to a waveform.
 
     Args:
-        f0                (np.ndarray): F0 [Hz]
-        spectral_envelope (np.ndarray): Spectral Envelope
-        aperiodicity      (np.ndarray): Aperiodicity
-        frame_period      (float)     : Frame period [ms]
-        wav_sample_rate   (int)       : Sample rate [Hz]
+        f0                (np.ndarray) : F0 [Hz]
+        spectral_envelope (np.ndarray) : Spectral Envelope
+        aperiodicity      (np.ndarray) : Aperiodicity
+        sample_rate       (int)        : Sample rate [Hz] (元wavのサンプルレート)
+        frame_period      (float)      : Frame period [ms]
 
     Returns:
         wav (np.ndarray): The reconstructed waveform.
@@ -185,14 +197,20 @@ def world_to_waveform(
     f0 = np.nan_to_num(f0, nan=0)
     spectral_envelope = np.nan_to_num(spectral_envelope, nan=0, posinf=1, neginf=0)
     aperiodicity = np.nan_to_num(aperiodicity, nan=1)
-    # 特徴量の範囲を制限
+    # 特徴量をクリッピング
     f0 = np.clip(f0, 0, None)
-    spectral_envelope = np.clip(spectral_envelope, np.finfo(spectral_envelope.dtype).tiny, 1)
-    aperiodicity = np.clip(aperiodicity, np.finfo(aperiodicity.dtype).tiny, 1)
-    # waveform を合成
-    waveform = pyworld.synthesize(
-        f0, spectral_envelope, aperiodicity, target_sample_rate, frame_period
+    spectral_envelope = np.clip(
+        spectral_envelope,
+        a_min=np.finfo(spectral_envelope.dtype).tiny,
+        a_max=1,
     )
+    aperiodicity = np.clip(
+        aperiodicity,
+        a_min=np.finfo(aperiodicity.dtype).tiny,
+        a_max=1,
+    )
+    # waveform を合成
+    waveform = pyworld.synthesize(f0, spectral_envelope, aperiodicity, sample_rate, frame_period)
     return waveform
 
 
@@ -200,6 +218,7 @@ def world_to_npzfile(
     f0: np.ndarray,
     spectral_envelope: np.ndarray,
     aperiodicity: np.ndarray,
+    sample_rate: int,
     npz_path: Path | str,
     *,
     compress: bool = False,
@@ -207,11 +226,12 @@ def world_to_npzfile(
     """Save WORLD features to a NPZ file.
 
     Args:
-        f0 (np.ndarray)                : F0 [Hz]
+        f0                (np.ndarray) : F0 [Hz]
         spectral_envelope (np.ndarray) : Spectral envelope
-        aperiodicity (np.ndarray)      : Aperiodicity
-        npz_path (Path)                : Output NPZ file path.
-        compress (bool)                : Whether to use compression when saving the NPZ file.
+        aperiodicity      (np.ndarray) : Aperiodicity
+        npz_path          (Path)       : Output NPZ file path.
+        compress          (bool)       : Whether to use compression when saving the NPZ file.
+        sample_rate       (int)        : Original sample rate of the audio.
 
     """
     npz_path = Path(npz_path)
@@ -226,6 +246,7 @@ def world_to_npzfile(
             f0=f0,
             spectral_envelope=spectral_envelope,
             aperiodicity=aperiodicity,
+            sample_rate=sample_rate,
         )
     else:
         np.savez_compressed(
@@ -233,10 +254,11 @@ def world_to_npzfile(
             f0=f0,
             spectral_envelope=spectral_envelope,
             aperiodicity=aperiodicity,
+            sample_rate=sample_rate,
         )
 
 
-def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
     """Load WORLD features from a NPZ file.
 
     Args:
@@ -253,14 +275,14 @@ def npzfile_to_world(npz_path: Path | str) -> tuple[np.ndarray, np.ndarray, np.n
         raise ValueError(msg)
     # 読み取り
     npz = np.load(npz_path)
-    return npz['f0'], npz['spectral_envelope'], npz['aperiodicity']
+    return npz['f0'], npz['spectral_envelope'], npz['aperiodicity'], npz['sample_rate']
 
 
 def world_to_nnsvs(
     f0: np.ndarray,
     sp: np.ndarray,
     ap: np.ndarray,
-    vocoder_sample_rate: int,
+    sample_rate: int,
     *,
     number_of_mgc_dimensions: int = 60,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -270,7 +292,9 @@ def world_to_nnsvs(
         f0 (np.ndarray)               : F0 [Hz]
         sp (np.ndarray)               : Spectral envelope
         ap (np.ndarray)               : Aperiodicity
-        vocoder_sample_rate (int)     : Output sample rate of the audio [Hz]
+        sample_rate (int)             :
+            Sample rate of the original audio [Hz]
+            (NOTE: もとの音声のサンプリング周波数でありnnsvsのサンプリング周波数でもある)
         number_of_mgc_dimensions (int): Number of mel-generalized cepstral coefficients
 
     Returns:
@@ -290,14 +314,14 @@ def world_to_nnsvs(
     ap = np.clip(ap, np.finfo(ap.dtype).tiny, 1)
 
     # sp -> mgc, f0
-    mgc = pyworld.code_spectral_envelope(sp, vocoder_sample_rate, number_of_mgc_dimensions)
+    mgc = pyworld.code_spectral_envelope(sp, sample_rate, number_of_mgc_dimensions)
     # f0 -> lf0
     lf0 = np.zeros_like(f0)
     lf0[np.nonzero(f0)] = np.log(f0[np.nonzero(f0)])
     # vuv を計算
     vuv = (f0 > 0).astype(np.float32)
     # aperiodicity -> bap
-    bap = pyworld.code_aperiodicity(ap, vocoder_sample_rate)
+    bap = pyworld.code_aperiodicity(ap, sample_rate)
     # nnsvs 向けの world 特徴量を返す
     return mgc, lf0.reshape(-1, 1), vuv.reshape(-1, 1), bap
 
@@ -307,7 +331,7 @@ def nnsvs_to_world(
     lf0: np.ndarray,
     vuv: np.ndarray,  # noqa: ARG001
     bap: np.ndarray,
-    vocoder_sample_rate: int,
+    sample_rate: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert NNSVS features to WORLD features.
 
@@ -316,34 +340,42 @@ def nnsvs_to_world(
         lf0 (np.ndarray) : Log F0
         vuv (np.ndarray) : Voiced / unvoiced flag
         bap (np.ndarray) : Band aperiodicity
-        sample_rate (int): Original sample rate of the audio, before feature extraction.
+        sample_rate (int): Original sample rate of the audio.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray]: WORLD features (f0, spectral_envelope, aperiodicity)
+        f0                (np.ndarray): F0 [Hz]
+        spectral_envelope (np.ndarray): Spectral envelope
+        aperiodicity      (np.ndarray): Aperiodicity
 
     """
     # Automatically determine fft_size from sample_rate
-    fft_size = pyworld.get_cheaptrick_fft_size(vocoder_sample_rate)
+    fft_size = pyworld.get_cheaptrick_fft_size(sample_rate)
     # mgc -> spectral_envelope
-    spectral_envelope = pyworld.decode_spectral_envelope(mgc, vocoder_sample_rate, fft_size)
+    spectral_envelope = pyworld.decode_spectral_envelope(mgc, sample_rate, fft_size)
     # lf0 -> f0
     f0 = np.exp(lf0, where=(lf0 > 0))  # NOTE: lf0 のみで計算しているがvuvを使うこともできる。
     # bap -> aperiodicity
-    aperiodicity = pyworld.decode_aperiodicity(bap, vocoder_sample_rate, fft_size)
+    aperiodicity = pyworld.decode_aperiodicity(bap, sample_rate, fft_size)
     return f0, spectral_envelope, aperiodicity
 
 
 def nnsvs_to_npzfile(
-    mgc: np.ndarray, lf0: np.ndarray, vuv: np.ndarray, bap: np.ndarray, npz_path: Path | str
+    mgc: np.ndarray,
+    lf0: np.ndarray,
+    vuv: np.ndarray,
+    bap: np.ndarray,
+    sample_rate: int,
+    npz_path: Path | str,
 ) -> None:
     """Save NNSVS features to a NPZ file.
 
     Args:
-        mgc (np.ndarray): Mel-generalized cepstral coefficients
-        lf0 (np.ndarray): Log F0
-        vuv (np.ndarray): Voiced / unvoiced flag
-        bap (np.ndarray): Band aperiodicity
-        npz_path (Path) : Output NPZ file path.
+        mgc (np.ndarray)  : Mel-generalized cepstral coefficients
+        lf0 (np.ndarray)  : Log F0
+        vuv (np.ndarray)  : Voiced / unvoiced flag
+        bap (np.ndarray)  : Band aperiodicity
+        sample_rate (int) : Original sample rate of the audio, before feature extraction.
+        npz_path (Path)   : Output NPZ file path.
 
     """
     npz_path = Path(npz_path)
@@ -352,12 +384,12 @@ def nnsvs_to_npzfile(
         msg = 'Output path must be .npz file.'
         raise ValueError(msg)
     # 書き出し
-    np.savez(npz_path, mgc=mgc, lf0=lf0, vuv=vuv, bap=bap)
+    np.savez(npz_path, mgc=mgc, lf0=lf0, vuv=vuv, bap=bap, sample_rate=sample_rate)
 
 
 def npzfile_to_nnsvs(
     npz_path: Path | str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]:
     """Load NNSVS features from a NPZ file.
 
     Args:
@@ -374,7 +406,7 @@ def npzfile_to_nnsvs(
         raise ValueError(msg)
     # 読み取り
     npz = np.load(npz_path)
-    return npz['mgc'], npz['lf0'], npz['vuv'], npz['bap']
+    return npz['mgc'], npz['lf0'], npz['vuv'], npz['bap'], npz['sample_rate']
 
 
 def world_to_nnsvs_to_waveform(
@@ -392,8 +424,6 @@ def world_to_nnsvs_to_waveform(
     vocoder_type: str = 'usfgan',
     vuv_threshold: float = 0.5,
     mgc_dimensions: int = 60,
-    target_sample_rate: int | None = None,
-    resample_type: str = 'soxr_vhq',
 ):
     """通常のWORLD特徴量 (f0, sp, ap) から NNSVS特徴量 (mgc, lf0, vuv, bap) を経由して waveform に変換する。
 
@@ -417,13 +447,9 @@ def world_to_nnsvs_to_waveform(
     Returns:
         waveform (np.ndarray): The generated waveform.
 
-    """
+    """  # noqa: E501
     # vocoder のサンプリング周波数を取得
     vocoder_sample_rate = vocoder_config.data.sample_rate
-    target_sample_rate = target_sample_rate or vocoder_sample_rate
-    if not target_sample_rate:
-        msg = f'Unexpected target_sample_rate or None ({target_sample_rate})'
-        raise ValueError(msg)
 
     # WORLD -> NNSVS 変換
     mgc, lf0, vuv, bap = world_to_nnsvs(
@@ -432,7 +458,7 @@ def world_to_nnsvs_to_waveform(
         ap,
         vocoder_sample_rate,  # ボコーダー入力のサンプリング周波数に沿う
         number_of_mgc_dimensions=mgc_dimensions,
-    )  # vocoder_sample_rate
+    )
     multistream_features = (mgc, lf0, vuv, bap)
 
     # NNSVS -> waveform 変換
@@ -448,14 +474,6 @@ def world_to_nnsvs_to_waveform(
         feature_type=feature_type,
         vocoder_type=vocoder_type,
         vuv_threshold=vuv_threshold,
-    )  # vocoder_sample_rate
+    )
 
-    # リサンプリング
-    waveform = librosa.resample(
-        waveform,
-        orig_sr=vocoder_sample_rate,
-        target_sr=target_sample_rate,
-        res_type=resample_type,
-    )  # target_sample_rate
-
-    return waveform  # target_sample_rate
+    return waveform  # vocoder_sample_rate
