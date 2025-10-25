@@ -32,6 +32,13 @@ from convert import (
 )
 from util import denoise_spike, get_device, load_vocoder_model, setup_logger
 
+# MARK: PyWORLD settings
+PYWORLD_FRAME_PERIOD: float = pyworld.default_frame_period  # type: ignore
+PYWORLD_F0_FLOOR: float = pyworld.default_f0_floor  # type: ignore
+PYWORLD_F0_CEIL: float = pyworld.default_f0_ceil  # type: ignore
+PYWORLD_Q1: float = -0.15
+PYWORLD_THRESHOLD: float = 0
+
 
 # MARK: NeuralNetworkResamp
 class NeuralNetworkResamp(pyrwu.Resamp):
@@ -231,11 +238,11 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     # MARK: getInputData
     def getInputData(
         self,
-        f0_floor: float = pyrwu.settings.PYWORLD_F0_FLOOR,
-        f0_ceil: float = pyrwu.settings.PYWORLD_F0_CEIL,
-        frame_period: float = pyrwu.settings.PYWORLD_PERIOD,
-        q1: float = pyrwu.settings.PYWORLD_Q1,
-        threshold: float = pyrwu.settings.PYWORLD_THRESHOLD,
+        f0_floor: float = PYWORLD_F0_FLOOR,
+        f0_ceil: float = PYWORLD_F0_CEIL,
+        frame_period: float = PYWORLD_FRAME_PERIOD,
+        q1: float = PYWORLD_Q1,
+        threshold: float = PYWORLD_THRESHOLD,
     ) -> None:
         """入力された音声データからworldパラメータを取得し、インスタンス変数に値を代入する。
 
@@ -255,7 +262,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             | worldでの分析するf0の上限
             | デフォルトでは800.0
 
-        frame_period: float, default settings.PYWORLD_PERIOD
+        frame_period: float, default settings.PYWORLD_FRAME_PERIOD
             | worldデータの1フレーム当たりの時間(ms)
             | 初期設定では5.0
 
@@ -420,7 +427,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             self.sp,
             self.ap,
             sample_rate=self.internal_sample_rate,
-            frame_period=pyrwu.settings.PYWORLD_PERIOD,
+            frame_period=PYWORLD_FRAME_PERIOD,
         )
         # 生成した波形を _output_data に代入
         self._output_data = wav
@@ -461,6 +468,38 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # 生成した波形を _output_data に代入
         self._output_data = wav  # vocoder_sample_rate
 
+    def adjustVolume(self) -> None:
+        """NoteのVolume値とPフラグに基づいて、スペクトル包絡(sp)のゲインを調整する。
+
+        いったん WORLD で waveform を合成
+        ↓
+        そのピーク音量に基づいて倍率 k を算出
+        ↓
+        特徴量のうち sp を k^2 倍
+        ↓
+        ノートの Volume 値を反映
+        """
+        # Pフラグの値を取得
+        p: float = self.flags.params['P'].value / 100.0
+        # waveform を合成
+        wav = world_to_waveform(
+            self.f0,
+            self.sp,
+            self.ap,
+            sample_rate=self.internal_sample_rate,
+            frame_period=PYWORLD_FRAME_PERIOD,
+        )
+        # ピーク音量を取得
+        peak = max(abs(wav))
+        # 音量を-6dB にするための倍率 r を算出
+        r = 0.5 / peak
+        # r の適用率である P 値を反映した倍率 k を算出
+        k = r * p + (1.0 - p)
+        # sp を k^2 倍
+        self._sp *= k**2
+        # ノートの Volume 値を反映
+        self._sp *= (self._volume / 100.0) ** 2
+
     # MARK: resamp
     def resamp(self) -> None:
         """Neural Networkまたは WORLD を用いてWORLD特徴量をリサンプリングする。"""
@@ -495,11 +534,10 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # ボコーダーモデルを使用しない場合は原音のサンプルレートでwav出力する
         else:
             self.logger.info('Synthesize WAV using WORLD Vocoder')
-
+        # UST の音量を waveform に反映
+        self.adjustVolume()  # NOTE: self.adjustVolume() はオーバーライドされていることに注意。もとは synthesize() 後に実施される。 # noqa: E501
         # synthesize はオーバーライドされているので vocoder または world を使って waveform 生成
         self.synthesize()
-        # UST の音量を waveform に反映
-        self.adjustVolume()  # TODO: npz にも反映できるようにする。
 
         # WAV ファイル出力
         waveform_to_wavfile(
