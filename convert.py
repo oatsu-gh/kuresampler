@@ -40,6 +40,74 @@ DEFAULT_D4C_THRESHOLD: float = 0.50  # default: 0.5 (NNSVS default is 0.5, PyRwu
 # ----------------------------------
 
 
+def _sanitize_world_features(
+    f0: np.ndarray,
+    sp: np.ndarray,
+    ap: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Clean WORLD features by removing NaN/Inf and clipping values.
+
+    Args:
+        f0 (np.ndarray): F0 [Hz]
+        sp (np.ndarray): Spectral envelope
+        ap (np.ndarray): Aperiodicity
+
+    Returns:
+        tuple: Cleaned (f0, sp, ap)
+
+    """
+    # 特徴量の nan と inf を除去
+    f0 = np.nan_to_num(f0, nan=0)
+    sp = np.nan_to_num(sp, nan=0, posinf=1, neginf=0)
+    ap = np.nan_to_num(ap, nan=1)
+    # 特徴量をクリッピング
+    f0 = np.clip(f0, 0, None)
+    sp = np.clip(sp, np.finfo(sp.dtype).tiny, 1)
+    ap = np.clip(ap, np.finfo(ap.dtype).tiny, 1)
+    return f0, sp, ap
+
+
+def _validate_npz_path(npz_path: Path) -> None:
+    """Validate that the path has .npz extension.
+
+    Args:
+        npz_path (Path): Path to validate
+
+    Raises:
+        ValueError: If the path does not have .npz extension
+
+    """
+    if npz_path.suffix != '.npz':
+        msg = 'Path must be .npz file.'
+        raise ValueError(msg)
+
+
+def _resample_waveform(
+    waveform: np.ndarray,
+    orig_sr: int,
+    target_sr: int,
+    resample_type: str,
+) -> np.ndarray:
+    """Resample waveform to target sample rate.
+
+    Args:
+        waveform (np.ndarray): Input waveform
+        orig_sr (int): Original sample rate
+        target_sr (int): Target sample rate
+        resample_type (str): Resampling method
+
+    Returns:
+        np.ndarray: Resampled waveform
+
+    """
+    return librosa.resample(
+        waveform,
+        orig_sr=orig_sr,
+        target_sr=target_sr,
+        res_type=resample_type,
+    )
+
+
 def wavfile_to_waveform(
     wav_path: Path | str,
     *,
@@ -72,12 +140,7 @@ def wavfile_to_waveform(
     if target_sample_rate is None:
         target_sample_rate = in_sample_rate
     # リサンプル
-    waveform = librosa.resample(
-        waveform,
-        orig_sr=in_sample_rate,
-        target_sr=target_sample_rate,
-        res_type=resample_type,
-    )
+    waveform = _resample_waveform(waveform, in_sample_rate, target_sample_rate, resample_type)
     return waveform, in_sample_rate, target_sample_rate
 
 
@@ -103,11 +166,8 @@ def waveform_to_wavfile(
         dtype                (np.dtype)  : The dtype for the output WAV file.
 
     """
-    waveform = librosa.resample(
-        waveform,
-        orig_sr=original_sample_rate,
-        target_sr=target_sample_rate,
-        res_type=resample_type,
+    waveform = _resample_waveform(
+        waveform, original_sample_rate, target_sample_rate, resample_type
     )
     sf.write(wav_path, waveform.astype(dtype), target_sample_rate)
 
@@ -193,21 +253,9 @@ def world_to_waveform(
         wav (np.ndarray): The reconstructed waveform.
 
     """
-    # 特徴量の nan と inf を除去
-    f0 = np.nan_to_num(f0, nan=0)
-    spectral_envelope = np.nan_to_num(spectral_envelope, nan=0, posinf=1, neginf=0)
-    aperiodicity = np.nan_to_num(aperiodicity, nan=1)
-    # 特徴量をクリッピング
-    f0 = np.clip(f0, 0, None)
-    spectral_envelope = np.clip(
-        spectral_envelope,
-        a_min=np.finfo(spectral_envelope.dtype).tiny,
-        a_max=1,
-    )
-    aperiodicity = np.clip(
-        aperiodicity,
-        a_min=np.finfo(aperiodicity.dtype).tiny,
-        a_max=1,
+    # 特徴量をクリーニング
+    f0, spectral_envelope, aperiodicity = _sanitize_world_features(
+        f0, spectral_envelope, aperiodicity
     )
     # waveform を合成
     waveform = pyworld.synthesize(f0, spectral_envelope, aperiodicity, sample_rate, frame_period)
@@ -236,9 +284,7 @@ def world_to_npzfile(
     """
     npz_path = Path(npz_path)
     # 拡張子をチェック
-    if npz_path.suffix != '.npz':
-        msg = 'Output path must be .npz file.'
-        raise ValueError(msg)
+    _validate_npz_path(npz_path)
     # 書き出し
     if not compress:
         np.savez(
@@ -304,14 +350,8 @@ def world_to_nnsvs(
         bap (np.ndarray): band aperiodicity
 
     """
-    # 特徴量の nan と inf を除去
-    f0 = np.nan_to_num(f0, nan=0)
-    sp = np.nan_to_num(sp, nan=0, posinf=1, neginf=0)
-    ap = np.nan_to_num(ap, nan=1)
-    # 特徴量の範囲を制限
-    f0 = np.clip(f0, 0, None)
-    sp = np.clip(sp, np.finfo(sp.dtype).tiny, 1)
-    ap = np.clip(ap, np.finfo(ap.dtype).tiny, 1)
+    # 特徴量をクリーニング
+    f0, sp, ap = _sanitize_world_features(f0, sp, ap)
 
     # sp -> mgc, f0
     mgc = pyworld.code_spectral_envelope(sp, sample_rate, number_of_mgc_dimensions)
@@ -380,9 +420,7 @@ def nnsvs_to_npzfile(
     """
     npz_path = Path(npz_path)
     # 拡張子をチェック
-    if npz_path.suffix != '.npz':
-        msg = 'Output path must be .npz file.'
-        raise ValueError(msg)
+    _validate_npz_path(npz_path)
     # 書き出し
     np.savez(npz_path, mgc=mgc, lf0=lf0, vuv=vuv, bap=bap, sample_rate=sample_rate)
 
