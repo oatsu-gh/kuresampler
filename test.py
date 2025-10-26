@@ -493,7 +493,10 @@ def test_wav2world2wav(path_wav_in: Path = TEST_WAV_IN) -> None:
 
         print('Input wavfile:', path_wav_in.resolve())
         print('Converting wavfile to world features...')
-        waveform_in, original_sample_rate, _ = wavfile_to_waveform(path_wav_in)
+        waveform_in, original_sample_rate, _ = wavfile_to_waveform(
+            path_wav_in,
+            target_sample_rate=inprocess_sample_rate,
+        )
         output_filename = f'test_wav2world2wav_{original_sample_rate}_{inprocess_sample_rate}_{output_sample_rate}.wav'  # noqa: E501
         path_wav_out = path_wav_in.parent / output_filename
         print('Original sample rate  :', original_sample_rate)
