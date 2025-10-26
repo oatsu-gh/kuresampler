@@ -513,7 +513,7 @@ class NeuralNetworkWavTool:
                 'Using silent features.'
             )
             self.logger.warning(msg, stacklevel=1)
-            n_frames = ceil((self.length + self.stp) / self.frame_period)
+            n_frames = ceil(self.length / self.frame_period)
             dtype = np.float64
             self.f0 = np.zeros((n_frames,), dtype=dtype)
             self.sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
