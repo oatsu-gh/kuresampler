@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2025 oatsu
-r"""
-UTAU の temp.bat と helper.bat を読み取って蓄積し、エンジンを一括実行できるようにする。
+# ruff: noqa: T201, T203 (print, pprint)
+r"""UTAU の temp.bat と helper.bat を読み取って蓄積し、エンジンを一括実行できるようにする。
 
 wavtool として実行されることを想定している。
 resampler として実行されると初回か否かの判定ができないため。
@@ -19,6 +19,7 @@ temp_helper.bat の内容
 """
 
 import shlex
+import sys
 from pathlib import Path
 from pprint import pprint
 from warnings import warn
@@ -129,7 +130,6 @@ def parse_temp_bat(
     encoding: str = DEFAULT_ENCODING,
 ):
     """temp.bat を読み取って、その内容と同等の処理をする"""
-
     # temp.bat を読み取る
     if not temp_bat_path.exists():
         msg = f"{temp_bat_path} is not found."
@@ -193,10 +193,9 @@ def parse_temp_bat(
     tool_commands = [shlex.split(cmd) for cmd in tool_commands if cmd.strip()]
     return variables, resamp_commands, tool_commands
 
-
+# noqa: T201
 def main():
-    import sys
-
+    """全体の処理を行う。"""
     print(sys.argv)
     if i_am_the_first():
         print("\nI am the first process!")
