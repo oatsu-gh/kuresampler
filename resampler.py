@@ -162,19 +162,13 @@ class NeuralNetworkResamp(pyrwu.Resamp):
     @property
     def framerate(self) -> int:
         """内部処理のサンプリング周波数"""
-        warnings.warn(
-            DeprecationWarning('framerate is deprecated, use internal_sample_rate instead'),
-            stacklevel=2,
-        )
+        warnings.warn(DeprecationWarning('framerate is deprecated, use internal_sample_rate instead'), stacklevel=2)  # fmt:skip # noqa: E501
         return self._framerate
 
     @property
     def sample_rate(self) -> int:
         """内部処理のサンプリング周波数"""
-        warnings.warn(
-            DeprecationWarning('sample_rate is deprecated, use internal_sample_rate instead'),
-            stacklevel=2,
-        )
+        warnings.warn(DeprecationWarning('sample_rate is deprecated, use internal_sample_rate instead'), stacklevel=2)  # fmt:skip # noqa: E501
         return self._framerate
 
     @property
