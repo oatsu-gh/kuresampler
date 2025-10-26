@@ -719,22 +719,22 @@ class NeuralNetworkWavTool:
                 feature_type=self.vocoder_feature_type,
                 vocoder_type=self.vocoder_type,
                 vuv_threshold=self.vocoder_vuv_threshold,
-            )  # vocoder_sample_rate
+            )  # vocoder_sample_rate (= internal_sample_rate)
 
         else:
             msg = f'Invalid use_vocoder_model: {self.use_vocoder_model}. Must be True or False.'
             raise ValueError(msg)
 
         # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
-        n_compensation_samples = round(self._residual_error / 1000 * self.target_sample_rate)
+        n_compensation_samples = round(self._residual_error / 1000 * self.internal_sample_rate)
         self.logger.debug('n_compensation_samples: %d', n_compensation_samples)
         self.logger.debug('waveform.shape before compensation: %s', wav.shape)
         # wav が目標よりも短い場合はゼロパディングする。
         if n_compensation_samples > 0:
-            wav = np.pad(wav, (0, n_compensation_samples))
+            wav = np.pad(wav, (0, n_compensation_samples))  # internal_sample_rate
         # wav が目標よりも長い場合は切り詰める。
         elif n_compensation_samples < 0:
-            wav = wav[:n_compensation_samples]
+            wav = wav[:n_compensation_samples]  # internal_sample_rate
         self.logger.debug('waveform.shape after compensation: %s', wav.shape)
         # -------------------------------------------------------------------------------------
 
