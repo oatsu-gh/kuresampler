@@ -151,7 +151,11 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             raise ValueError(msg)
 
         # ボコーダーモデルのサンプリング周波数と内部処理のサンプリング周波数が異なる場合はエラー
-        if self._use_vocoder_model and self.vocoder_sample_rate != self._internal_sample_rate:
+        if (
+            self._use_vocoder_model
+            and self._vocoder_config is not None
+            and self.vocoder_sample_rate != self._internal_sample_rate
+        ):
             msg = (
                 f'vocoder_sample_rate ({self.vocoder_sample_rate}) '
                 f'does not match internal_sample_rate ({self._internal_sample_rate}).'
