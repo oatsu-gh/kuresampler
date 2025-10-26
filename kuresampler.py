@@ -278,7 +278,10 @@ class NeuralNetworkRender(Render):
                     )
                 # Resampler で vocoder モデルを使う場合
                 elif self._use_neural_resampler is True:
-                    assert self._vocoder_model_dir is not None  # 念のため型チェック
+                    # vocoder モデルがロード済みであることを確認
+                    assert self._vocoder_model is not None
+                    assert self._vocoder_in_scaler is not None
+                    assert self._vocoder_config is not None
                     resamp = NeuralNetworkResamp(
                         input_path=note.input_path,
                         output_path=note.cache_path,
