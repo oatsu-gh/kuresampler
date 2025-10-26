@@ -45,7 +45,7 @@ def _sanitize_world_features(
     sp: np.ndarray,
     ap: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Clean WORLD features by removing NaN/Inf and clipping values.
+    """WORLD特徴量のNaN/Infを除去し、値をクリッピングする。
 
     Args:
         f0 (np.ndarray): F0 [Hz]
@@ -53,28 +53,32 @@ def _sanitize_world_features(
         ap (np.ndarray): Aperiodicity
 
     Returns:
-        tuple: Cleaned (f0, sp, ap)
+        tuple: クリーニング後の (f0, sp, ap)
 
     """
-    # 特徴量の nan と inf を除去
+    # f0 の nan/inf を除去したのちクリッピング
     f0 = np.nan_to_num(f0, nan=0)
-    sp = np.nan_to_num(sp, nan=0, posinf=1, neginf=0)
-    ap = np.nan_to_num(ap, nan=1)
-    # 特徴量をクリッピング
     f0 = np.clip(f0, 0, None)
+
+    # sp の nan/inf を除去したのちクリッピング
+    sp = np.nan_to_num(sp, nan=0, posinf=1, neginf=0)
     sp = np.clip(sp, np.finfo(sp.dtype).tiny, 1)
+
+    # ap の nan/inf を除去したのちクリッピング
+    ap = np.nan_to_num(ap, nan=1)
     ap = np.clip(ap, np.finfo(ap.dtype).tiny, 1)
+
     return f0, sp, ap
 
 
 def _validate_npz_path(npz_path: Path) -> None:
-    """Validate that the path has .npz extension.
+    """パスの拡張子が .npz であることを検証する。
 
     Args:
-        npz_path (Path): Path to validate
+        npz_path (Path): 検証するパス
 
     Raises:
-        ValueError: If the path does not have .npz extension
+        ValueError: パスが .npz 拡張子を持たない場合
 
     """
     if npz_path.suffix != '.npz':
@@ -84,26 +88,26 @@ def _validate_npz_path(npz_path: Path) -> None:
 
 def _resample_waveform(
     waveform: np.ndarray,
-    orig_sr: int,
-    target_sr: int,
+    original_sample_rate: int,
+    target_sample_rate: int,
     resample_type: str,
 ) -> np.ndarray:
-    """Resample waveform to target sample rate.
+    """Waveform をリサンプルする。
 
     Args:
-        waveform (np.ndarray): Input waveform
-        orig_sr (int): Original sample rate
-        target_sr (int): Target sample rate
-        resample_type (str): Resampling method
+        waveform (np.ndarray): 入力波形
+        original_sample_rate (int): 元のサンプリングレート
+        target_sample_rate (int): 目標サンプリングレート
+        resample_type (str): リサンプリング方法
 
     Returns:
-        np.ndarray: Resampled waveform
+        np.ndarray: リサンプル後の波形
 
     """
     return librosa.resample(
         waveform,
-        orig_sr=orig_sr,
-        target_sr=target_sr,
+        orig_sr=original_sample_rate,
+        target_sr=target_sample_rate,
         res_type=resample_type,
     )
 
