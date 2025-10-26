@@ -517,7 +517,7 @@ class NeuralNetworkWavTool:
             dtype = np.float64
             self.f0 = np.zeros((n_frames,), dtype=dtype)
             self.sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
-            self.ap = np.ones((n_frames, self.fft_size // 2 + 1), dtype=dtype)
+            self.ap = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
 
     def __init_envelope(self, envelope: list[float]) -> None:
         """Envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
