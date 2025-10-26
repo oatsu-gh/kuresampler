@@ -30,6 +30,7 @@ from pathlib import Path
 
 import colored_traceback.auto  # noqa: F401
 import numpy as np
+import pyworld
 import torch
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
@@ -442,6 +443,11 @@ class NeuralNetworkWavTool:
             raise ValueError(msg)
         return self.vocoder_config.data.sample_rate
 
+    @property
+    def fft_size(self) -> int:
+        """FFTサイズ"""
+        return pyworld.get_cheaptrick_fft_size(self.internal_sample_rate)  # pyright: ignore[reportAttributeAccessIssue]
+
     def __init_length(
         self, original_length: float, original_overlap: float, residual_error: float
     ) -> None:
@@ -510,8 +516,8 @@ class NeuralNetworkWavTool:
             n_frames = ceil((self.length + self.stp) / self.frame_period)
             dtype = np.float64
             self.f0 = np.zeros((n_frames,), dtype=dtype)
-            self.sp = np.zeros((n_frames, 1025), dtype=dtype)
-            self.ap = np.ones((n_frames, 1025), dtype=dtype)
+            self.sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
+            self.ap = np.ones((n_frames, self.fft_size // 2 + 1), dtype=dtype)
 
     def __init_envelope(self, envelope: list[float]) -> None:
         """Envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
