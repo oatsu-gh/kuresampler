@@ -140,27 +140,23 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             self._vocoder_in_scaler = None
             self._vocoder_config = None
 
-        # use_vocoder_model が True なのにボコーダー関連の引数が一つでも None の場合はエラー
-        if self._use_vocoder_model and any(
-            x is None for x in (vocoder_model, vocoder_in_scaler, vocoder_config)
-        ):
-            msg = (
-                'When use_vocoder_model is True, '
-                'vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
-            )
-            raise ValueError(msg)
+        # ボコーダー関連の引数チェック
+        if self._use_vocoder_model:
+            # use_vocoder_model が True なのにボコーダー関連の引数が一つでも None の場合はエラー
+            if any(x is None for x in (vocoder_model, vocoder_in_scaler, vocoder_config)):
+                msg = (
+                    'When use_vocoder_model is True, '
+                    'vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
+                )
+                raise ValueError(msg)
 
-        # ボコーダーモデルのサンプリング周波数と内部処理のサンプリング周波数が異なる場合はエラー
-        if (
-            self._use_vocoder_model
-            and self._vocoder_config is not None
-            and self.vocoder_sample_rate != self._internal_sample_rate
-        ):
-            msg = (
-                f'vocoder_sample_rate ({self.vocoder_sample_rate}) '
-                f'does not match internal_sample_rate ({self._internal_sample_rate}).'
-            )
-            raise ValueError(msg)
+            # ボコーダーモデルと内部処理のサンプリング周波数が異なる場合はエラー
+            if self.vocoder_sample_rate != self._internal_sample_rate:
+                msg = (
+                    f'vocoder_sample_rate ({self.vocoder_sample_rate}) '
+                    f'does not match internal_sample_rate ({self._internal_sample_rate}).'
+                )
+                raise ValueError(msg)
 
     # MARK: properties
     @property
