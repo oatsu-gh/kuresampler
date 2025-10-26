@@ -131,9 +131,9 @@ class NeuralNetworkRender(Render):
             )
             logger.info('Vocoder model loaded.')
         else:
-            self._vocoder_model = None  # type: ignore[assignment]
-            self._vocoder_in_scaler = None  # type: ignore[assignment]
-            self._vocoder_config = None  # type: ignore[assignment]
+            self._vocoder_model = None
+            self._vocoder_in_scaler = None
+            self._vocoder_config = None
 
         self._export_wav = export_wav
         self._export_features = export_features
