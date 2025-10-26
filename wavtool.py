@@ -732,6 +732,8 @@ class NeuralNetworkWavTool:
             raise ValueError(msg)
 
         # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
+        # self._residual_error が正の場合、生成した波形が目標より短いので、ゼロパディング必要。
+        # self._residual_error が負の場合、生成した波形が目標より長いので、切り詰め必要。
         n_compensation_samples = round(self._residual_error / 1000 * self.internal_sample_rate)
         self.logger.debug('n_compensation_samples: %d', n_compensation_samples)
         self.logger.debug('waveform.shape before compensation: %s', wav.shape)
