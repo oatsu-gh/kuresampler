@@ -281,42 +281,6 @@ class NeuralNetworkRender(Render):
             wavtool.synthesize()
             self.logger.debug('Exported WAV: %s', out_wav_path)
 
-        # # 必要に応じて vocoder を用いて wav を生成
-        # if self._use_neural_wavtool is True:
-        #     self.logger.info('---------------')
-        #     self.logger.info('ニューラルボコーダーでWAVを一括生成します')
-        #     f0, sp, ap = npzfile_to_world(out_wav_path.with_suffix('.npz'))
-        #     # vocoder で wav を生成
-        #     # WORLD 特徴量を NNSVS 用に変換
-        #     mgc, lf0, vuv, bap = world_to_nnsvs(f0, sp, ap, self.vocoder_sample_rate)
-        #     # モデルに渡す用に特徴量をまとめる
-        #     multistream_features = (mgc, lf0, vuv, bap)
-        #     # self.logger.info(mgc.shape, lf0.shape, vuv.shape, bap.shape)
-        #     # waveformを生成
-        #     # NOTE: ここのsample_rate って vocoder のサンプルレートで大丈夫？
-        #     waveform = predict_waveform(
-        #         device=get_device(),
-        #         multistream_features=multistream_features,
-        #         vocoder=self._vocoder_model,
-        #         vocoder_config=self._vocoder_config,
-        #         vocoder_in_scaler=self._vocoder_in_scaler,
-        #         sample_rate=self.vocoder_sample_rate,
-        #         frame_period=self._vocoder_frame_period,
-        #         use_world_codec=True,
-        #         feature_type=self._vocoder_feature_type,
-        #         vocoder_type='usfgan',
-        #         vuv_threshold=self._vocoder_vuv_threshold,  # vuv 閾値設定はするけど使われない
-        #     )
-
-        #     # wav ファイルを書き出す
-        #     waveform_to_wavfile(
-        #         waveform,
-        #         out_wav_path,
-        #         in_sample_rate=self.vocoder_sample_rate,
-        #         out_sample_rate=self.vocoder_sample_rate,
-        #         resample_type='soxr_vhq',
-        #     )
-
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""
         if Path(self._cache_dir).is_dir():
@@ -354,10 +318,7 @@ def main_as_integrated_wavtool(path_ust_in: Path | str, path_wav_out: Path | str
     # utaupyでUSTを読み取る
     ust_utaupy = utaupy.ust.load(path_ust_in)
     voice_dir = ust_utaupy.voicedir
-    cache_dir = ust_utaupy.setting.get(
-        'CacheDir',
-        Path(__file__).parent / 'kuresampler.cache',
-    )
+    cache_dir = ust_utaupy.setting.get('CacheDir', Path(__file__).parent / 'kuresampler.cache')
 
     # 一時フォルダにustを出力してPyUtauCliで読み直す
     with TemporaryDirectory() as temp_dir:
