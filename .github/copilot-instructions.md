@@ -13,20 +13,19 @@
 
 ## About Language
 - The main maintainer is Japanese-native
-- PR or review summary must be in both Japanese and in English. Pull request やレビューの概要は日本語と英語の両方で説明してください。
-- Detail descriptions of PR, review or commit must be in Japanese, not English. プルリクエストやレビューやコミットの詳細は日本語で説明してください。
- PR descriptions should be in Japanese, not English.
+- Pull request やレビューの概要は必ず日本語と英語の両方で、同じ内容で説明してください。(PR and review summary must be in both Japanese and in English.)
+- プルリクエストやレビューやコミットの詳細は日本語で説明してください。(PR descriptions should be in Japanese, not English.)
 
 ## Architecture & Project Layout
 
 ### Core Components
-- **kuresampler.cs** (79 lines): C# wrapper that launches Python child processes (`kuresampler_child.bat`)
-- **kuresampler.py** (474 lines): Main render engine with `NeuralNetworkRender` class
-- **resampler.py** (406 lines): Core resampler classes (`WorldFeatureResamp`, `NeuralNetworkResamp`)
-- **wavtool.py** (466 lines): Audio crossfading and mixing (`WorldFeatureWavTool`)
-- **convert.py** (328 lines): Audio format conversions (WAV ↔ WORLD ↔ NNSVS features)
-- **util.py** (214 lines): Utilities for logging, device detection, model loading
-- **test.py** (421 lines): Test functions for development and validation
+- **kuresampler.cs**: C# wrapper that launches Python child processes (`kuresampler_child.bat`)
+- **kuresampler.py** : Main render engine with `NeuralNetworkRender` class
+- **resampler.py**: Core resampler classes (`WorldFeatureResamp`, `NeuralNetworkResamp`)
+- **wavtool.py**: Audio crossfading and mixing (`WorldFeatureWavTool`)
+- **convert.py**: Audio format conversions (WAV ↔ WORLD ↔ NNSVS features)
+- **util.py**: Utilities for logging, device detection, model loading
+- **test.py**: Test functions for development and validation
 
 ### Directory Structure
 ```
