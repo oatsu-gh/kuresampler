@@ -13,11 +13,11 @@
 @REM @echo %*
 
 @REM Current directory
-@set selfdir=%~dp0
+@set ROOT=%~dp0..\
 
 @REM @echo %selfdir%
 @set python_exe=python
-@set python_script=%selfdir%uhacker.py
+@set python_script=%ROOT%uhacker.py
 
 @REM Run python script if output file does not exist
 @%python_exe% %python_script% %*
