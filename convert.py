@@ -177,7 +177,7 @@ def waveform_to_wavfile(
 
 
 def waveform_to_world(
-    wav: np.ndarray,
+    waveform: np.ndarray,
     sample_rate: int,
     *,
     frame_period: int = DEFAULT_FRAME_PERIOD,
@@ -189,7 +189,7 @@ def waveform_to_world(
     """Convert a waveform (numpy array) to WORLD features.
 
     Args:
-        wav           (np.ndarray): Waveform as a numpy array.
+        waveform       (np.ndarray): Waveform as a numpy array.
         sample_rate   (int)       : Sample rate of the audio.
         frame_period  (float)     : Frame period in milliseconds.
         f0_extractor  (str)       : F0 extraction method. Select from ["harvest", "dio", "crepe"].
@@ -210,14 +210,12 @@ def waveform_to_world(
     # F0
     if f0_extractor == 'harvest':
         f0, timeaxis = pyworld.harvest(
-            wav, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(wav, f0, timeaxis, sample_rate)
     elif f0_extractor == 'dio':
         f0, timeaxis = pyworld.dio(
-            wav, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
+            waveform, sample_rate, frame_period=frame_period, f0_floor=f0_floor, f0_ceil=f0_ceil
         )
-        f0 = pyworld.stonemask(wav, f0, timeaxis, sample_rate)
     elif f0_extractor == 'crepe':
         msg = 'CREPE f0 extractor is not implemented yet.'
         raise NotImplementedError(msg)
@@ -229,9 +227,13 @@ def waveform_to_world(
         )
         raise ValueError(msg)
 
+    # stonemask を適用 (harvest, dio の場合)
+    if f0_extractor in ('harvest', 'dio'):
+        f0 = pyworld.stonemask(waveform, f0, timeaxis, sample_rate)
+
     # spectral_envelope, aperiodicity
-    spectral_envelope = pyworld.cheaptrick(wav, f0, timeaxis, sample_rate)
-    aperiodicity = pyworld.d4c(wav, f0, timeaxis, sample_rate, threshold=d4c_threshold)
+    spectral_envelope = pyworld.cheaptrick(waveform, f0, timeaxis, sample_rate)
+    aperiodicity = pyworld.d4c(waveform, f0, timeaxis, sample_rate, threshold=d4c_threshold)
 
     return f0, spectral_envelope, aperiodicity
 
