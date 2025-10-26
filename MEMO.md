@@ -18,6 +18,23 @@
 |    usfgan    |  world_org   |   ×   |   ×   |   ×   |   ×   |   ×   |   ×   |      ×      |      ×       | 未実装（NotImplementedError）          |
 
 
+#### Resampler と Wavtool のサンプリング周波数の取り扱い
+
+| #   | 処理内容                                   | flow | 標準resampler +  標準wavtool | **kuresampler** +  標準wavtool | **kuresampler** +  **kuresampler** | 標準resampler +  **kuresampler** |
+| --- | ------------------------------------------ | ---- | ---------------------------- | ------------------------------ | ---------------------------------- | -------------------------------- |
+| 1   | resampler 入力ファイル (原音)              | ↓    | wav (44.1kHz)                | wav (44.1kHz)                  | wav (44.1kHz)                      | wav (44.1kHz)                    |
+| 2   | resampler 入力後wavリサンプル              | ↓    | N/A                          | 44.1kHz → 48kHz                | 44.1kHz → 48kHz                    | N/A                              |
+| 3   | resampler 内部world_sr                     | ↓    | N/A                          | 48kHz                          | 48kHz                              | N/A                              |
+| 4   | resampler 内部model_sr                     | ↓    | N/A                          | 48kHz                          | N/A                                | N/A                              |
+| 5   | resampler 出力前wavリサンプル              | ↓    | -                            | 48kHz → 44.1kHz                | N/A                                | -                                |
+| 6   | 中間ファイル  (resampler出力・wavtool入力) | ↓    | wav (44.1kHz)                | wav (44.1kHz)                  | world特徴量 (48kHz)                | wav (44.1kHz)                    |
+| 7   | wavtool 入力後wavリサンプル                | ↓    | N/A                          | N/A                            | (変換不可)                         | 44.1kHz → 48kHz                  |
+| 8   | wavtool 内部world_sr                       | ↓    | 44.1kHz                      | 44.1kHz                        | 48kHz                              | 48kHz                            |
+| 9   | wavtool 出力前wavリサンプル                | ↓    | N/A                          | N/A                            | 48kHz→任意(44.1?)                  | 48kHz→任意(44.1?)                |
+| 10  | wavtool 出力wav                            | ↓    | 44.1kHz                      | 44.1kHz                        | 任意(44.1?)                        | 任意(44.1?)                      |
+| 11  | wavtool 出力world特徴量                    | ↓    | N/A                          | N/A                            | 48kHz                              | 48kHz                            |
+
+
 #### 特徴量フォーマットの相互変換
 
 ```txt
