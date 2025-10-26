@@ -796,6 +796,9 @@ def main_wavtool() -> None:
     # デバッグモード
     if args.debug:
         logger.setLevel(logging.DEBUG)
+    # 入出力wavパスをフルパスでデバッグ出力
+    logger.debug('Output wav path: %s', Path(args.output).resolve())
+    logger.debug('Input wav path: %s', Path(args.input).resolve())
     # length 文字列を float に変換
     length = str2float(args.length)
     # モデルロードを試みる
