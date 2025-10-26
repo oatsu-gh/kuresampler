@@ -123,7 +123,7 @@ def denoise_spike(
         upper_bound = a3 + iqr_multiplier * iqr
         # スパイクノイズを除去
         if f0_clean[i] < lower_bound or f0_clean[i] > upper_bound:
-            if logger is not None:
+            if isinstance(logger, logging.Logger):
                 logger.warning(f'Spike noise detected at index {i}: {f0_clean[i]}')
             else:
                 warn(f'Spike noise detected at index {i}: {f0_clean[i]}', stacklevel=2)
