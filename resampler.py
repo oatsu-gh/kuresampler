@@ -335,7 +335,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
             )
         # f0をstonemaskで補正
         f0 = pyworld.stonemask(  # pyright: ignore[reportAttributeAccessIssue]
-            original_waveform,
+            resampled_waveform,
             f0,
             t,
             self._internal_sample_rate,
