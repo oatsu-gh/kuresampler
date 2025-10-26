@@ -389,12 +389,13 @@ class NeuralNetworkWavTool:
 
         # frame_period と vocoder_frame_period が異なる場合は警告を出す
         if self.frame_period != self.vocoder_frame_period:
-            self.logger.error(
-                'frame_period (%d ms) and vocoder_frame_period (%d ms) are different. '
-                'This may result in unexpected behavior.',
-                self.frame_period,
-                self.vocoder_frame_period,
+            msg = (
+                f'frame_period ({self.frame_period} ms) '
+                f'and vocoder_frame_period ({self.vocoder_frame_period} ms) do not match. '
             )
+            self.logger.error(msg)
+            raise ValueError(msg)
+
         # use_vocoder_model が True の時はボコーダーモデルを代入する
         if use_vocoder_model:
             # vocoder model 関連の引数が全て揃っていることを確認
@@ -403,6 +404,7 @@ class NeuralNetworkWavTool:
                     'When use_vocoder_model is True, '
                     'vocoder_model, vocoder_in_scaler, and vocoder_config must be provided.'
                 )
+                self.logger.error(msg)
                 raise ValueError(msg)
             self.vocoder_model = vocoder_model
             self.vocoder_in_scaler = vocoder_in_scaler
@@ -414,6 +416,7 @@ class NeuralNetworkWavTool:
                     f'Vocoder model sample rate ({self.vocoder_config.data.sample_rate} Hz) '
                     f'and internal sample rate ({self.internal_sample_rate} Hz) are different.'
                 )
+                self.logger.error(msg)
                 raise ValueError(msg)
         # use_vocoder_model が False の場合
         else:
@@ -493,6 +496,7 @@ class NeuralNetworkWavTool:
                     f"NPZ file's sample rate ({npz_sample_rate} Hz) and "
                     f'internal_sample_rate ({self.internal_sample_rate} Hz) are different.'
                 )
+                self.logger.error(msg)
                 raise ValueError(msg)
         # wav のみ存在する場合はサンプルレート変換したのちに特徴量抽出する。
         elif self.input_wav.exists():
@@ -581,6 +585,7 @@ class NeuralNetworkWavTool:
         length_by_frame = round(self.length / self.frame_period)
         if length_by_frame <= 0:
             msg = f'Invalid length: {self.length} ms. Length must be greater than 0 ms.'
+            self.logger.error(msg)
             raise ValueError(msg)
         # クロップする
         self._apply_range()
@@ -613,6 +618,7 @@ class NeuralNetworkWavTool:
                     f"Existing NPZ file's sample rate ({npz_sample_rate} Hz) and "
                     f'internal_sample_rate ({self.internal_sample_rate} Hz) are different.'
                 )
+                self.logger.error(msg)
                 raise ValueError(msg)
         else:
             self.logger.info('No existing features found. Starting fresh.')
@@ -678,6 +684,7 @@ class NeuralNetworkWavTool:
         # append された特徴量が揃っていることを確認する
         if self.f0_appended is None or self.sp_appended is None or self.ap_appended is None:
             msg = 'f0_appended, sp_appended, or ap_appended is None. Call append() first.'
+            self.logger.error(msg)
             raise ValueError(msg)
 
         # npzファイルに書き出す
@@ -729,6 +736,7 @@ class NeuralNetworkWavTool:
 
         else:
             msg = f'Invalid use_vocoder_model: {self.use_vocoder_model}. Must be True or False.'
+            self.logger.error(msg)
             raise ValueError(msg)
 
         # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
@@ -813,6 +821,7 @@ def main_wavtool() -> None:
     if args.use_vocoder_model:
         if args.model_dir is None:
             msg = 'When --use_vocoder_model is specified, --model_dir must be provided.'
+            logger.error(msg)
             raise ValueError(msg)
         vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(args.model_dir)
     else:
