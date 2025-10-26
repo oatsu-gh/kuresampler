@@ -2,15 +2,33 @@
 """Utility functions for kuresampler.
 
 Functions:
-    get_device: PyTorch デバイスを取得する。
-    setup_logger: Loggerを作成する。
-    easy_interpolate: スパイクノイズ除去のため、線形補間またはキュービック補間で x=0 の値を求める。
-    denoise_spike: 1次元配列の f0 のスパイクノイズを除去する。
-    overlap_f0: f0をオーバーラップさせる。オーバーラップ区間に0Hzが含まれる場合は0Hzではない方の値を使用する。
-    overlap_sp: WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。
-    fill_nan_pair: 2つの配列のうち、片方がNaNで片方が数値のとき、NaNを数値で埋める。
-    _crossfade_world_feature: WORLD特徴量をクロスフェードさせる。f0でつかう想定。
-    load_vocoder_model: NNSVSのボコーダモデルを読み込む。
+    get_device:
+        PyTorch デバイスを取得する。
+
+    setup_logger:
+        Loggerを作成する。
+
+    easy_interpolate:
+        スパイクノイズ除去のため、線形補間またはキュービック補間で x=0 の値を求める。
+
+    denoise_spike:
+        1次元配列の f0 のスパイクノイズを除去する。
+
+    overlap_f0:
+        f0をオーバーラップさせる。
+        オーバーラップ区間に0Hzが含まれる場合は0Hzではない方の値を使用する。
+
+    overlap_sp:
+        WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。
+
+    fill_nan_pair:
+        2つの配列のうち、片方がNaNで片方が数値のとき、NaNを数値で埋める。
+
+    _crossfade_world_feature:
+        WORLD特徴量をクロスフェードさせる。f0でつかう想定。
+
+    load_vocoder_model:
+        NNSVSのボコーダモデルを読み込む。
 
 """
 
@@ -159,7 +177,8 @@ def _crossfade_world_feature(
         feature_a (np.ndarray): The first set of WORLD features.
         feature_b (np.ndarray): The second set of WORLD features.
         n_overlap (int): The number of samples to fade.
-        crossfade_shape (str | None): The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
+        crossfade_shape (str | None):
+            The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
 
     Returns:
         np.ndarray: The crossfaded WORLD features.
@@ -211,15 +230,15 @@ def _crossfade_world_feature(
             ...
         ValueError: Invalid n_overlap: 10. Overlap must be shorter than both of feature_a (7) and feature_b (6).
 
-    """
+    """  # noqa: E501
     # オーバーラップ区間が0の場合は単純結合して返す
     if n_overlap == 0:
         return np.concatenate([feature_a, feature_b], axis=0)
     # オーバーラップ区間が長すぎる場合はエラーを返す
     if n_overlap > min(feature_a.shape[0], feature_b.shape[0]):
         msg = (
-            f'Invalid n_overlap: {n_overlap}. '
-            f'Overlap must be shorter than both of feature_a ({feature_a.shape[0]}) and feature_b ({feature_b.shape[0]}).'
+            f'Invalid n_overlap: {n_overlap}. Overlap must be shorter than both of '
+            f'feature_a ({feature_a.shape[0]}) and feature_b ({feature_b.shape[0]}).'
         )
         raise ValueError(msg)
 
@@ -257,16 +276,16 @@ def overlap_f0(
     """f0をオーバーラップさせる。オーバーラップ区間に0Hzが含まれる場合は0Hzではない方の値を使用する。
 
     Args:
-        f0_a (np.ndarray): The first set of f0.
-        f0_b (np.ndarray): The second set of f0.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
+        f0_a (np.ndarray): First set of f0.
+        f0_b (np.ndarray): Second set of f0.
+        n_overlap (int): Number of samples to fade.
+        crossfade_shape (str): Shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
 
     Returns:
         np.ndarray: The crossfaded f0.
 
     """
-    # TODO: オーバーラップ領域以外も対数変換をしていて無駄なので、オーバーラップ領域だけ変換できるようにする。
+    # TODO: オーバーラップ領域以外、オーバーラップ領域だけの対数変換で軽量化する。
     # reshape
     f0_a = f0_a.reshape(-1, 1)
     f0_b = f0_b.reshape(-1, 1)
@@ -297,24 +316,25 @@ def overlap_sp(
     n_overlap: int,
     crossfade_shape: None | str = None,
 ) -> np.ndarray:
-    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。あらかじめ音量エンベロープが反映されていることを想定。
+    """WORLD特徴量の sp (Spectral envelope) をオーバーラップさせる。
 
+    あらかじめ音量エンベロープが反映されていることを想定。
     音量エンベロープによって線形ではなく2乗でパラメータフェードイン/フェードアウトされており、
     そのままオーバーラップすると音量が下がってしまうため、
     平方根スケールでオーバーラップしてから2乗に戻す必要がある。
     オーバーラップ領域を平方根スケールに変換 → 合算 → 2乗 → 前後と結合
 
     Args:
-        sp_a (np.ndarray): The first set of WORLD features.
-        sp_b (np.ndarray): The second set of WORLD features.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
+        sp_a (np.ndarray): First set of WORLD features.
+        sp_b (np.ndarray): Second set of WORLD features.
+        n_overlap (int): Number of samples to fade.
+        crossfade_shape (str): Crossfade shape. Select from [None, 'linear', 'cosine', 'cos'].
 
     Returns:
         np.ndarray: The crossfaded WORLD features.
 
     """
-    # TODO: オーバーラップ領域以外も対数変換をしていて無駄なので、オーバーラップ領域だけ変換できるようにする。
+    # TODO: オーバーラップ領域だけを対数変換したら高速化できる。
     sp_a = np.sqrt(sp_a)
     sp_b = np.sqrt(sp_b)
     result = _crossfade_world_feature(
@@ -336,10 +356,10 @@ def overlap_ap(
     """WORLD特徴量の ap (Aperiodicity) をオーバーラップさせる。クロスフェードを行う。
 
     Args:
-        ap_a (np.ndarray): The first set of aperiodicity features.
-        ap_b (np.ndarray): The second set of aperiodicity features.
-        n_overlap (int): The number of samples to fade.
-        crossfade_shape (str): The shape of the crossfade. Choose from 'linear', 'cosine', or 'cos'.
+        ap_a (np.ndarray): First set of aperiodicity features.
+        ap_b (np.ndarray): Second set of aperiodicity features.
+        n_overlap (int): Number of samples to fade.
+        crossfade_shape (str): Shape of the crossfade. Select from ['linear', 'cosine', 'cos'].
 
     Returns:
         np.ndarray: The crossfaded aperiodicity features.
