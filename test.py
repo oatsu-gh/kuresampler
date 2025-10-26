@@ -499,14 +499,14 @@ def test_wav2world2wav(path_wav_in: Path = TEST_WAV_IN) -> None:
         print('Original sample rate  :', original_sample_rate)
         print('Inprocess sample rate :', inprocess_sample_rate)
         print('Output sample rate    :', output_sample_rate)
-        f0, sp, ap = waveform_to_world(waveform_in, original_sample_rate)
+        f0, sp, ap = waveform_to_world(waveform_in, inprocess_sample_rate)
         print('Rendering waveform from world features...')
-        waveform_out = world_to_waveform(f0, sp, ap, output_sample_rate)
+        waveform_out = world_to_waveform(f0, sp, ap, inprocess_sample_rate)
         print('Exporting wavefile...')
         waveform_to_wavfile(
             waveform_out,
             path_wav_out,
-            original_sample_rate=output_sample_rate,
+            original_sample_rate=inprocess_sample_rate,
             target_sample_rate=output_sample_rate,
         )
         print('Output wavfile:', path_wav_out.resolve())
