@@ -73,6 +73,54 @@ def setup_logger(level=logging.INFO) -> logging.Logger:
     _logger.addHandler(handler)
     return _logger
 
+def str2float(length: float | str) -> float:
+    """UTAUのLength文字列をfloatに変換します。
+
+    NOTE: Copied function from PyWavTool.PyWavTool.length_string.str2float by delta-kuro.
+
+    Parameters
+    ----------
+    length :str
+        length文字列
+
+    Returns
+    -------
+    length :float
+
+
+    Notes
+    -----
+    | lengthは以下のいずれかの形で与えられます。
+    | tick@tempo
+    | tick@tempo+delta
+    | tick@tempo-delta
+
+    | 戻り値の計算は以下の通りです。
+    | 1拍あたりのms = 60*1000 / tempo
+    | 1tickあたりのms = 1拍あたりのms / 480
+    | length = 1tickあたりのms * tick +(-) delta
+
+    """
+    if isinstance(length, float):
+        return length
+    if isinstance(length, str):
+        temp: list[str] = length.split('@')
+        tempo: float
+        delta: float = 0
+        tick: int = int(temp[0])
+        if '+' in temp[1]:
+            tempo = float(temp[1].split('+')[0])
+            delta = float(temp[1].split('+')[1])
+        elif '-' in temp[1]:
+            tempo = float(temp[1].split('-')[0])
+            delta = -float(temp[1].split('-')[1])
+        else:
+            tempo = float(temp[1])
+        return 60000 / tempo / 480 * tick + delta
+    # float でも str でもない場合はエラー
+    msg = f'length must be float or str, but got {type(length)}'
+    raise TypeError(msg)
+
 
 def easy_interpolate(y: list[float] | np.ndarray) -> float:
     """スパイクノイズ除去のため、線形補間またはキュービック補間で x=0 の値を求める。

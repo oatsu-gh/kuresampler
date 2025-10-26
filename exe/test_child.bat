@@ -18,8 +18,9 @@
 @REM @echo %selfdir%
 @set python_exe=python
 @set python_script=%ROOT%integrated_engine.py
+@set model_dir=%ROOT%models\usfGAN_EnunuKodoku_0826\
 
 @REM Run python script if output file does not exist
-@%python_exe% %python_script% %*
+@%python_exe% %python_script% %* --model_dir %model_dir% --use_vocoder_model --debug
 @REM @echo =============================================================================
 PAUSE
