@@ -444,7 +444,7 @@ class NeuralNetworkWavTool:
 
     def __init_length(
         self, original_length: float, original_overlap: float, residual_error: float
-    ):
+    ) -> None:
         """self.length と self._residual_error を初期化する。
 
         Args:
