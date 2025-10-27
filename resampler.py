@@ -58,10 +58,10 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         target_tone: str,
         velocity: int,
         flag_value: str = '',
-        offset: float = 0,
-        target_ms: float = 0,
-        fixed_ms: float = 0,
-        end_ms: float = 0,
+        offset: float | None = None,
+        target_ms: float | None = None,
+        fixed_ms: float | None = None,
+        end_ms: float | None = None,
         volume: int = 100,
         modulation: int = 0,
         tempo: str | None = None,
@@ -85,10 +85,22 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         # logger 設定(先頭固定)======================================
         self.logger = setup_logger() if logger is None else logger
         # None が渡される可能性がある必須パラメータの処理============
-        # tempo が None の場合は '!120' に設定
+        if offset is None:
+            self.logger.warning('Offset is not specified, set to 0.0 by default')
+            offset = 0.0
+        if target_ms is None:
+            self.logger.warning('Target_ms is not specified, set to 0.0 by default')
+            target_ms = 0.0
+        if fixed_ms is None:
+            self.logger.warning('Fixed_ms is not specified, set to 0.0 by default')
+            fixed_ms = 0.0
+        if end_ms is None:
+            self.logger.warning('End_ms is not specified, set to 0.0 by default')
+            end_ms = 0.0
         if tempo is None:
-            self.logger.warning('Tempo is None, set to "!120" by default')
+            self.logger.warning('Tempo is not specified, set to "!120" by default')
             tempo = '!120'
+
         ## クラス変数への代入========================================
         self._input_path = input_path
         self._output_path = output_path
@@ -529,7 +541,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         else:
             self.logger.info('Synthesize WAV using WORLD Vocoder')
         # UST の音量を waveform に反映
-        self.adjustVolume()  # NOTE: self.adjustVolume() はオーバーライドされていることに注意。もとは synthesize() 後に実施される。 # noqa: E501
+        self.adjustVolume()  # NOTE: sel f.adjustVolume() はオーバーライドされていることに注意。もとは synthesize() 後に実施される。 # noqa: E501
         # synthesize はオーバーライドされているので vocoder または world を使って waveform 生成
         self.synthesize()
 
