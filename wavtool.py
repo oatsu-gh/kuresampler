@@ -305,6 +305,7 @@ class NeuralNetworkWavTool:
         internal_sample_rate: int = 48000,
         target_sample_rate: int = 44100,
         resample_type: str = 'soxr_vhq',
+        accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
     ) -> None:
         """NeuralNetworkWavTool のコンストラクタ"""
         self.logger = logger or setup_logger(level=logging.INFO)
@@ -318,6 +319,8 @@ class NeuralNetworkWavTool:
         self.internal_sample_rate = internal_sample_rate
         self.target_sample_rate = target_sample_rate
         self.resample_type = resample_type
+        # メモリ上の累積特徴量を保持
+        self.accumulated_features = accumulated_features
         # length と _residual_error を初期化
         self.__init_length(length, extract_overlap(envelope), residual_error)
 
@@ -567,7 +570,12 @@ class NeuralNetworkWavTool:
         TODO: ノート数が多いほどWAV生成が重くなるので何とかしたい。
         """
         # 既存ファイルの特徴量を読み取る。なければ空の配列を取得する。
-        if self.output_npz.exists():
+        # メモリ上の累積特徴量が渡されている場合はそれを使用
+        if self.accumulated_features is not None:
+            self.logger.info('Using accumulated features from memory')
+            long_f0, long_sp, long_ap = self.accumulated_features
+        # メモリ上の累積特徴量がない場合はファイルから読み込む
+        elif self.output_npz.exists():
             self.logger.info('Loading existing features from: %s', self.output_npz)
             long_f0, long_sp, long_ap, npz_sample_rate = npzfile_to_world(self.output_npz)
             if npz_sample_rate != self.internal_sample_rate:

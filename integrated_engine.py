@@ -308,6 +308,8 @@ def batch_wavetool(
     n_notes = len(wavetool_commands)
     # ノート時刻の丸め誤差
     residual_error: float = 0.0
+    # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
+    accumulated_features: tuple | None = None
 
     # 各ノートのwav加工を行う
     for i, cmd in tenumerate(
@@ -362,23 +364,30 @@ def batch_wavetool(
             internal_sample_rate=internal_sample_rate,
             target_sample_rate=target_sample_rate,
             resample_type=resample_type,
+            accumulated_features=accumulated_features,
         )
         residual_error = wavtool.residual_error
         logger.debug('residual_error (after wavtool)  : %.3f [ms]', residual_error)
 
         # wavtool を実行
         wavtool.append()
-        # npz 出力
-        world_to_npzfile(
+        # メモリ上で累積特徴量を更新
+        accumulated_features = (
             wavtool.f0_appended,
             wavtool.sp_appended,
             wavtool.ap_appended,
-            wavtool.internal_sample_rate,
-            wavtool.output_npz,
-            compress=False,
         )
-        # 最終ノートの時は wav 生成
+        # 最終ノートの時のみ npz と wav を出力
         if i == n_notes - 1:
+            # npz 出力
+            world_to_npzfile(
+                wavtool.f0_appended,
+                wavtool.sp_appended,
+                wavtool.ap_appended,
+                wavtool.internal_sample_rate,
+                wavtool.output_npz,
+                compress=False,
+            )
             logger.info('Rendering WAV...')
             wavtool.synthesize()
             logger.info('Render complete.')
