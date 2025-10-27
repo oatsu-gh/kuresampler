@@ -163,9 +163,7 @@ class NeuralNetworkRender(Render):
         # キャッシュフォルダを作成
         Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
         # 各ノートを処理
-        for note in tqdm(
-            self.notes, mininterval=0.02, colour='cyan', desc='Resample', unit='note'
-        ):
+        for note in tqdm(self.notes, mininterval=0, colour='cyan', desc='Resample', unit='note'):
             self.logger.info('\n---------------')
             if not note.require_resamp:
                 continue
