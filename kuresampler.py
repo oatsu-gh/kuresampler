@@ -29,6 +29,7 @@ from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
+# Import for loading WORLD features from npz files (used in chunked rendering)
 from convert import npzfile_to_world
 from resampler import NeuralNetworkResamp
 from resampler import main_resampler as _main_resampler
@@ -153,6 +154,47 @@ class NeuralNetworkRender(Render):
             msg = 'Vocoder config is not loaded. Cannot get sample rate.'
             raise ValueError(msg)
         return self._vocoder_config.data.sample_rate
+
+    def _create_synthesis_wavtool(
+        self,
+        output_wav_path: Path,
+        f0: np.ndarray,
+        sp: np.ndarray,
+        ap: np.ndarray,
+    ) -> NeuralNetworkWavTool:
+        """蓄積された特徴量を合成するための一時的な wavtool インスタンスを作成する。
+        
+        Args:
+            output_wav_path: 出力WAVファイルのパス
+            f0: F0特徴量
+            sp: スペクトル包絡特徴量
+            ap: 非周期性特徴量
+        
+        Returns:
+            特徴量が設定された NeuralNetworkWavTool インスタンス
+        """
+        wavtool = NeuralNetworkWavTool(
+            output_wav=output_wav_path,
+            input_wav=output_wav_path,  # ダミー（使用しない）
+            stp=0,
+            length=0,
+            envelope=[0, 0],  # ダミーエンベロープ
+            logger=self.logger,
+            residual_error=0,
+            use_vocoder_model=self._use_neural_wavtool,
+            vocoder_model=self._vocoder_model,
+            vocoder_in_scaler=self._vocoder_in_scaler,
+            vocoder_config=self._vocoder_config,
+            vocoder_type=self._vocoder_type,
+            vocoder_feature_type=self._vocoder_feature_type,
+            vocoder_vuv_threshold=self._vocoder_vuv_threshold,
+            vocoder_frame_period=self._vocoder_frame_period,
+        )
+        # 特徴量を直接設定
+        wavtool.f0_appended = f0
+        wavtool.sp_appended = sp
+        wavtool.ap_appended = ap
+        return wavtool
 
     def resamp(self, *, force: bool = False) -> None:
         """NeuralNetworkResampを使用してキャッシュファイルを生成する。
@@ -286,29 +328,8 @@ class NeuralNetworkRender(Render):
                 if out_npz_path.exists():
                     self.logger.info('Synthesizing accumulated features before rest.')
                     # 既存特徴量を読み込んで合成
-                    temp_wavtool = NeuralNetworkWavTool(
-                        output_wav=out_wav_path,
-                        input_wav=out_wav_path,  # ダミー（使用しない）
-                        stp=0,
-                        length=0,
-                        envelope=[0, 0],  # ダミーエンベロープ
-                        logger=self.logger,
-                        residual_error=0,
-                        use_vocoder_model=self._use_neural_wavtool,
-                        vocoder_model=self._vocoder_model,
-                        vocoder_in_scaler=self._vocoder_in_scaler,
-                        vocoder_config=self._vocoder_config,
-                        vocoder_type=self._vocoder_type,
-                        vocoder_feature_type=self._vocoder_feature_type,
-                        vocoder_vuv_threshold=self._vocoder_vuv_threshold,
-                        vocoder_frame_period=self._vocoder_frame_period,
-                    )
-                    # 既存の特徴量を読み込む
-                    f0, sp, ap, sample_rate = npzfile_to_world(out_npz_path)
-                    temp_wavtool.f0_appended = f0
-                    temp_wavtool.sp_appended = sp
-                    temp_wavtool.ap_appended = ap
-                    temp_wavtool._residual_error = residual_error
+                    f0, sp, ap, _ = npzfile_to_world(out_npz_path)
+                    temp_wavtool = self._create_synthesis_wavtool(out_wav_path, f0, sp, ap)
                     # WAV生成
                     temp_wavtool.synthesize()
                     # npzファイルを削除して次のチャンクのために初期化
@@ -326,29 +347,9 @@ class NeuralNetworkRender(Render):
         # 最後に残った特徴量があればレンダリング
         if out_npz_path.exists():
             self.logger.info('Synthesizing remaining accumulated features.')
-            final_wavtool = NeuralNetworkWavTool(
-                output_wav=out_wav_path,
-                input_wav=out_wav_path,  # ダミー（使用しない）
-                stp=0,
-                length=0,
-                envelope=[0, 0],  # ダミーエンベロープ
-                logger=self.logger,
-                residual_error=0,
-                use_vocoder_model=self._use_neural_wavtool,
-                vocoder_model=self._vocoder_model,
-                vocoder_in_scaler=self._vocoder_in_scaler,
-                vocoder_config=self._vocoder_config,
-                vocoder_type=self._vocoder_type,
-                vocoder_feature_type=self._vocoder_feature_type,
-                vocoder_vuv_threshold=self._vocoder_vuv_threshold,
-                vocoder_frame_period=self._vocoder_frame_period,
-            )
             # 既存の特徴量を読み込む
-            f0, sp, ap, sample_rate = npzfile_to_world(out_npz_path)
-            final_wavtool.f0_appended = f0
-            final_wavtool.sp_appended = sp
-            final_wavtool.ap_appended = ap
-            final_wavtool._residual_error = residual_error
+            f0, sp, ap, _ = npzfile_to_world(out_npz_path)
+            final_wavtool = self._create_synthesis_wavtool(out_wav_path, f0, sp, ap)
             # WAV生成
             final_wavtool.synthesize()
             # npzファイルを削除
