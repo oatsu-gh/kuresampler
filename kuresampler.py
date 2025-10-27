@@ -16,6 +16,7 @@ from shutil import rmtree
 from tempfile import TemporaryDirectory
 
 import colored_traceback.auto  # noqa: F401
+import numpy as np
 import torch
 import utaupy
 from PyUtauCli.projects.Render import Render
@@ -172,6 +173,11 @@ class NeuralNetworkRender(Render):
         
         Returns:
             特徴量が設定された NeuralNetworkWavTool インスタンス
+        
+        Note:
+            residual_error は 0 に設定されます。
+            チャンクのレンダリング時には、既に蓄積された完全な特徴量を合成するため、
+            個別ノートの長さ補正は不要です。
         """
         wavtool = NeuralNetworkWavTool(
             output_wav=output_wav_path,
@@ -180,7 +186,7 @@ class NeuralNetworkRender(Render):
             length=0,
             envelope=[0, 0],  # ダミーエンベロープ
             logger=self.logger,
-            residual_error=0,
+            residual_error=0,  # チャンク合成時は補正不要
             use_vocoder_model=self._use_neural_wavtool,
             vocoder_model=self._vocoder_model,
             vocoder_in_scaler=self._vocoder_in_scaler,
