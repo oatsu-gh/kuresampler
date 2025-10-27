@@ -444,6 +444,10 @@ class NeuralNetworkWavTool:
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
+
+        Note:
+            この関数は入力ファイル (input_wav/input_npz) の特徴量を読み込む。
+            累積特徴量 (accumulated_features) は append() メソッドで使用される。
         """
         # npz が存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
         if self.input_npz.exists():
