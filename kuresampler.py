@@ -29,6 +29,7 @@ from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
+from convert import npzfile_to_world
 from resampler import NeuralNetworkResamp
 from resampler import main_resampler as _main_resampler
 from util import load_vocoder_model, setup_logger
@@ -214,7 +215,10 @@ class NeuralNetworkRender(Render):
                 self.logger.debug('Using cache (%s)', note.cache_path)
 
     def append(self) -> None:
-        """WorldFeatureWavToolを用いて各ノートのキャッシュWAVまたはWORLD特徴量を連結し、WAV出力する。"""
+        """WorldFeatureWavToolを用いて各ノートのキャッシュWAVまたはWORLD特徴量を連結し、WAV出力する。
+        
+        休符で区切ってレンダリングを行うことでVRAM使用量を削減する。
+        """
         if self._force_wav_crossfade is True:
             self.logger.info('WAVでクロスフェードします (force_wav_crossfade=True)')
             super().append()
@@ -224,8 +228,9 @@ class NeuralNetworkRender(Render):
         out_dir.mkdir(exist_ok=True, parents=True)
         # wav, npz, whd, dat ファイルがすでに存在する場合は削除
         out_wav_path = Path(self._output_file)
+        out_npz_path = out_wav_path.with_suffix('.npz')
         out_wav_path.unlink(missing_ok=True)
-        out_wav_path.with_suffix('.npz').unlink(missing_ok=True)
+        out_npz_path.unlink(missing_ok=True)
         out_wav_path.with_suffix('.wav.whd').unlink(missing_ok=True)
         out_wav_path.with_suffix('.wav.dat').unlink(missing_ok=True)
 
@@ -273,11 +278,83 @@ class NeuralNetworkRender(Render):
             # 次のノートに引き継ぐ丸め誤差を取得
             residual_error = wavtool.residual_error
             self.logger.debug('residual_error: %.3f [ms]', residual_error)
-            # 特徴量を連結
-            wavtool.append()
+            
+            # 休符の場合は特別な処理を行う
+            if wavtool.is_rest:
+                self.logger.info('Rest note detected. Rendering accumulated features and appending silence.')
+                # 既存の特徴量がある場合は先にレンダリング
+                if out_npz_path.exists():
+                    self.logger.info('Synthesizing accumulated features before rest.')
+                    # 既存特徴量を読み込んで合成
+                    temp_wavtool = NeuralNetworkWavTool(
+                        output_wav=out_wav_path,
+                        input_wav=out_wav_path,  # ダミー（使用しない）
+                        stp=0,
+                        length=0,
+                        envelope=[0, 0],  # ダミーエンベロープ
+                        logger=self.logger,
+                        residual_error=0,
+                        use_vocoder_model=self._use_neural_wavtool,
+                        vocoder_model=self._vocoder_model,
+                        vocoder_in_scaler=self._vocoder_in_scaler,
+                        vocoder_config=self._vocoder_config,
+                        vocoder_type=self._vocoder_type,
+                        vocoder_feature_type=self._vocoder_feature_type,
+                        vocoder_vuv_threshold=self._vocoder_vuv_threshold,
+                        vocoder_frame_period=self._vocoder_frame_period,
+                    )
+                    # 既存の特徴量を読み込む
+                    f0, sp, ap, sample_rate = npzfile_to_world(out_npz_path)
+                    temp_wavtool.f0_appended = f0
+                    temp_wavtool.sp_appended = sp
+                    temp_wavtool.ap_appended = ap
+                    temp_wavtool._residual_error = residual_error
+                    # WAV生成
+                    temp_wavtool.synthesize()
+                    # npzファイルを削除して次のチャンクのために初期化
+                    out_npz_path.unlink(missing_ok=True)
+                    self.logger.info('Cleared feature buffer after rendering.')
+                
+                # 休符は直接無音をWAVに追加
+                wavtool.append_silence_to_wav()
+                self.logger.debug('Appended silence directly to WAV.')
+            else:
+                # 通常のノートは特徴量を連結するのみ（WAV生成は休符の前か最後に実施）
+                wavtool.append()
+                self.logger.debug('Appended features to buffer.')
+        
+        # 最後に残った特徴量があればレンダリング
+        if out_npz_path.exists():
+            self.logger.info('Synthesizing remaining accumulated features.')
+            final_wavtool = NeuralNetworkWavTool(
+                output_wav=out_wav_path,
+                input_wav=out_wav_path,  # ダミー（使用しない）
+                stp=0,
+                length=0,
+                envelope=[0, 0],  # ダミーエンベロープ
+                logger=self.logger,
+                residual_error=0,
+                use_vocoder_model=self._use_neural_wavtool,
+                vocoder_model=self._vocoder_model,
+                vocoder_in_scaler=self._vocoder_in_scaler,
+                vocoder_config=self._vocoder_config,
+                vocoder_type=self._vocoder_type,
+                vocoder_feature_type=self._vocoder_feature_type,
+                vocoder_vuv_threshold=self._vocoder_vuv_threshold,
+                vocoder_frame_period=self._vocoder_frame_period,
+            )
+            # 既存の特徴量を読み込む
+            f0, sp, ap, sample_rate = npzfile_to_world(out_npz_path)
+            final_wavtool.f0_appended = f0
+            final_wavtool.sp_appended = sp
+            final_wavtool.ap_appended = ap
+            final_wavtool._residual_error = residual_error
             # WAV生成
-            wavtool.synthesize()
-            self.logger.debug('Exported WAV: %s', out_wav_path)
+            final_wavtool.synthesize()
+            # npzファイルを削除
+            out_npz_path.unlink(missing_ok=True)
+            self.logger.info('Final rendering complete.')
+
 
     def clean(self) -> None:
         """キャッシュディレクトリと出力ファイルを削除する。"""

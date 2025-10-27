@@ -281,6 +281,7 @@ class NeuralNetworkWavTool:
     # その他
     logger: logging.Logger
     _residual_error: float  # 丸め誤差 [ms]
+    _is_rest: bool  # このノートが休符かどうか
 
     # MARK: __init__
     def __init__(
@@ -385,10 +386,18 @@ class NeuralNetworkWavTool:
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
+        # 休符判定フラグを設定
+        self._is_rest = not self.input_wav.exists() and not self.input_npz.exists()
+
     @property
     def residual_error(self) -> float:
         """このノート以降の length の丸め誤差 [ms]"""
         return self._residual_error
+
+    @property
+    def is_rest(self) -> bool:
+        """このノートが休符(無音)かどうか"""
+        return self._is_rest
 
     @property
     def vocoder_sample_rate(self) -> int:
@@ -559,6 +568,38 @@ class NeuralNetworkWavTool:
         # min, max を出力
         for name, array in kwargs.items():
             self.logger.debug('  %s (min, max): (%s, %s)', name, array.min(), array.max())
+
+    def append_silence_to_wav(self) -> None:
+        """既存のWAVファイルに直接無音を追加する。
+        
+        休符(無音ノート)に対して使用する。
+        特徴量を経由せず、直接WAVファイルに無音を追加することでノイズを防ぐ。
+        """
+        # 追加する無音の長さ(サンプル数)を計算
+        n_silence_samples = round(self.length / 1000 * self.target_sample_rate)
+        silence = np.zeros(n_silence_samples, dtype=np.float64)
+        
+        # 既存のWAVファイルが存在する場合は読み込んで結合
+        if self.output_wav.exists():
+            existing_wav, _, _ = wavfile_to_waveform(
+                self.output_wav,
+                target_sample_rate=self.target_sample_rate,
+                resample_type=self.resample_type,
+            )
+            combined_wav = np.concatenate([existing_wav, silence])
+        else:
+            combined_wav = silence
+        
+        # WAVファイルに書き出す
+        waveform_to_wavfile(
+            combined_wav,
+            self.output_wav,
+            original_sample_rate=self.target_sample_rate,
+            target_sample_rate=self.target_sample_rate,
+            resample_type=self.resample_type,
+        )
+        
+        self.logger.info('Appended silence (%d samples) to WAV file.', n_silence_samples)
 
     # MARK: append
     def append(self) -> None:
