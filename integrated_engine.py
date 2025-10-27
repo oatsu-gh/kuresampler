@@ -265,6 +265,7 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
             offset=float(offset),
             target_ms=float(target_ms),
             fixed_ms=float(fixed_ms),
+            end_ms=float(end_ms),
             volume=int(volume),
             modulation=int(modulation),
             tempo=str(tempo),
@@ -309,7 +310,13 @@ def batch_wavetool(
     residual_error: float = 0.0
 
     # 各ノートのwav加工を行う
-    for i, cmd in tenumerate(wavetool_commands, desc='WavTool', unit='note', colour='blue'):
+    for i, cmd in tenumerate(
+        wavetool_commands,
+        mininterval=0,
+        desc='WavTool',
+        unit='note',
+        colour='blue',
+    ):
         print()
         logger.info(cmd)
         if len(cmd) < 6:
@@ -323,12 +330,15 @@ def batch_wavetool(
             *envelope,
         ) = cmd[1:]  # cmd[0] は wavtool の実行ファイルパス
 
+        length_ms = str2float(length)
+
         # 各パラメータをログ出力
-        logger.debug(f'  output_path : {Path(output_path).name}')
-        logger.debug(f'  input_path  : {Path(input_path).name}')
-        logger.debug(f'  stp         : {stp}')
-        logger.debug(f'  length      : {length}')
-        logger.debug(f'  envelope    : {envelope}')
+        logger.debug(f'  output_path  : {Path(output_path).name}')
+        logger.debug(f'  input_path   : {Path(input_path).name}')
+        logger.debug(f'  stp          : {stp}')
+        logger.debug(f'  length (str) : {length}')
+        logger.debug(f'  length (ms)  : {length_ms} [ms]')
+        logger.debug(f'  envelope     : {envelope}')
 
         logger.debug('residual_error (before wavtool) : %.3f [ms]', residual_error)
         # wavtool インスタンスを生成
@@ -336,7 +346,7 @@ def batch_wavetool(
             output_wav=output_path,
             input_wav=input_path,
             stp=float(stp),
-            length=str2float(length),
+            length=length_ms,
             envelope=list(map(float, envelope)),
             logger=logger,
             use_vocoder_model=use_vocoder_model,
