@@ -223,6 +223,7 @@ class NeuralNetworkWavTool:
         export_wav: WAVファイルを出力するか否か
         export_features: WORLD特徴量を npz ファイルで出力するか否か
         frame_period: WORLD特徴量のフレーム周期 (ms)
+        accumulated_features: メモリ上の累積特徴量 (f0, sp, ap) のタプル (オプション)
 
     ## PyWavTool.WavTool からの変更点
     - whd と dat を使用しない
@@ -235,6 +236,7 @@ class NeuralNetworkWavTool:
     ### キャッシュの取り扱い
     - WAVキャッシュを使用する場合、WORLD 特徴量に変換してから append する。
     - NPZキャッシュを使用する場合、NPZファイルから直接特徴量を読み込んで append する。
+    - accumulated_features が渡された場合、メモリ上の特徴量を優先的に使用する。
 
     ### 内部データの取り扱い
     - self.dat は常に WORLD 特徴量を保持する。output のときだけ wav に変換する。
@@ -281,6 +283,7 @@ class NeuralNetworkWavTool:
     # その他
     logger: logging.Logger
     _residual_error: float  # 丸め誤差 [ms]
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None  # メモリ上の累積特徴量 (f0, sp, ap)
 
     # MARK: __init__
     def __init__(
