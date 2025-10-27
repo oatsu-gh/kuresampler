@@ -73,6 +73,7 @@ def setup_logger(level=logging.INFO) -> logging.Logger:
     _logger.addHandler(handler)
     return _logger
 
+
 def str2float(length: float | str) -> float:
     """UTAUのLength文字列をfloatに変換します。
 
@@ -109,14 +110,13 @@ def str2float(length: float | str) -> float:
         delta: float = 0
         tick: int = int(temp[0])
         if '+' in temp[1]:
-            tempo = float(temp[1].split('+')[0])
-            delta = float(temp[1].split('+')[1])
+            tempo, delta = map(float, temp[1].split('+', 1))
         elif '-' in temp[1]:
-            tempo = float(temp[1].split('-')[0])
-            delta = -float(temp[1].split('-')[1])
+            tempo, delta = map(float, temp[1].split('-', 1))
+            delta *= -1  # -76.923
         else:
             tempo = float(temp[1])
-        return 60000 / tempo / 480 * tick + delta
+        return 125 / tempo * tick + delta  # = 60000 / tempo / 480 * tick + delta
     # float でも str でもない場合はエラー
     msg = f'length must be float or str, but got {type(length)}'
     raise TypeError(msg)
@@ -218,8 +218,9 @@ def _crossfade_world_feature(
     feature_b: np.ndarray,
     n_overlap: int,
     crossfade_shape: str | None,
+    scale: str = 'linear',
 ) -> np.ndarray:
-    """WORLD特徴量をクロスフェードさせる。f0でつかう想定。
+    """WORLD特徴量をクロスフェードさせる。
 
     Args:
         feature_a (np.ndarray): The first set of WORLD features.
@@ -227,6 +228,10 @@ def _crossfade_world_feature(
         n_overlap (int): The number of samples to fade.
         crossfade_shape (str | None):
             The shape of the crossfade. Choose from None, 'linear', 'cosine', or 'cos'.
+        scale (str): Value scale for crossfading. Choose from 'linear', 'log', or 'sqrt'.
+            - 'linear': No transformation (for ap)
+            - 'log': Logarithmic scale (for f0)
+            - 'sqrt': Square root scale (for sp)
 
     Returns:
         np.ndarray: The crossfaded WORLD features.
@@ -282,6 +287,9 @@ def _crossfade_world_feature(
     # オーバーラップ区間が0の場合は単純結合して返す
     if n_overlap == 0:
         return np.concatenate([feature_a, feature_b], axis=0)
+    if n_overlap < 0:
+        msg = f'Invalid n_overlap: {n_overlap}. Overlap must be non-negative.'
+        raise ValueError(msg)
     # オーバーラップ区間が長すぎる場合はエラーを返す
     if n_overlap > min(feature_a.shape[0], feature_b.shape[0]):
         msg = (
@@ -290,8 +298,29 @@ def _crossfade_world_feature(
         )
         raise ValueError(msg)
 
+    # スケール変換（オーバーラップ領域のみを変換して最適化）
+    overlap_a = feature_a[-n_overlap:]
+    overlap_b = feature_b[:n_overlap]
+
+    if scale == 'linear':
+        # 線形スケール（ap用）
+        pass
+    elif scale == 'log':
+        # 対数スケール（f0用）: 0をNaNに置換してから対数変換
+        overlap_a = np.where(overlap_a == 0, np.nan, overlap_a)
+        overlap_b = np.where(overlap_b == 0, np.nan, overlap_b)
+        overlap_a = np.log(overlap_a)
+        overlap_b = np.log(overlap_b)
+    elif scale == 'sqrt':
+        # 平方根スケール（sp用）
+        overlap_a = np.sqrt(overlap_a)
+        overlap_b = np.sqrt(overlap_b)
+    else:
+        msg = f'Invalid scale: {scale}. Choose from "linear", "log", or "sqrt".'
+        raise ValueError(msg)
+
     # オーバーラップ区間の NaN を補完
-    overlap_a, overlap_b = fill_nan_pair(feature_a[-n_overlap:], feature_b[:n_overlap])
+    overlap_a, overlap_b = fill_nan_pair(overlap_a, overlap_b)
     # 単純オーバーラップ (エンベロープ反映後の sp で使用)
     if crossfade_shape is None:
         fade_out = np.ones((n_overlap, 1))
@@ -310,6 +339,15 @@ def _crossfade_world_feature(
         raise ValueError(msg)
     # クロスフェード区間計算
     overlap_area = overlap_a * fade_out + overlap_b * fade_in
+
+    # スケールを元に戻す
+    if scale == 'log':
+        overlap_area = np.exp(overlap_area)
+        # NaNを0に戻す（f0の0Hzを復元）
+        overlap_area = np.where(np.isnan(overlap_area), 0, overlap_area)
+    elif scale == 'sqrt':
+        overlap_area = np.square(overlap_area)
+
     # 前・クロスフェード部分・後ろを結合して返す
     result = np.concatenate([feature_a[:-n_overlap], overlap_area, feature_b[n_overlap:]], axis=0)
     return result
@@ -333,27 +371,17 @@ def overlap_f0(
         np.ndarray: The crossfaded f0.
 
     """
-    # TODO: オーバーラップ領域以外、オーバーラップ領域だけの対数変換で軽量化する。
     # reshape
     f0_a = f0_a.reshape(-1, 1)
     f0_b = f0_b.reshape(-1, 1)
-    # f0 = 0 を nan に置換
-    f0_a = np.where(f0_a == 0, np.nan, f0_a)
-    f0_b = np.where(f0_b == 0, np.nan, f0_b)
-    # 対数変換
-    log_f0_a = np.log(f0_a)  # nan 補完してあるのでもとの f0 に 0 は含まれない
-    log_f0_b = np.log(f0_b)  # nan 補完してあるのでもとの f0 に 0 は含まれない
-    # クロスフェード
+    # クロスフェード（対数スケールで処理、0→NaN→0の変換は_crossfade_world_feature内で実施）
     result = _crossfade_world_feature(
-        log_f0_a,
-        log_f0_b,
+        f0_a,
+        f0_b,
         n_overlap,
         crossfade_shape=crossfade_shape,
+        scale='log',
     )
-    # 指数変換して元に戻す
-    result = np.exp(result)
-    # nan を 0 に置換して元に戻す
-    result = np.where(np.isnan(result), 0, result)
     # reshape を戻してから返す
     return result.reshape(-1)
 
@@ -382,16 +410,14 @@ def overlap_sp(
         np.ndarray: The crossfaded WORLD features.
 
     """
-    # TODO: オーバーラップ領域だけを対数変換したら高速化できる。
-    sp_a = np.sqrt(sp_a)
-    sp_b = np.sqrt(sp_b)
+    # クロスフェード（平方根スケールで処理）
     result = _crossfade_world_feature(
         sp_a,
         sp_b,
         n_overlap,
         crossfade_shape=crossfade_shape,
+        scale='sqrt',
     )
-    result = np.square(result)
     return result
 
 
@@ -413,7 +439,9 @@ def overlap_ap(
         np.ndarray: The crossfaded aperiodicity features.
 
     """
-    result = _crossfade_world_feature(ap_a, ap_b, n_overlap, crossfade_shape=crossfade_shape)
+    result = _crossfade_world_feature(
+        ap_a, ap_b, n_overlap, crossfade_shape=crossfade_shape, scale='linear'
+    )
     return result
 
 

@@ -59,6 +59,7 @@ from util import (
     overlap_f0,
     overlap_sp,
     setup_logger,
+    str2float,
 )
 
 DEFAULT_SAMPLE_RATE = 44100
@@ -211,55 +212,6 @@ def parse_envelope(
         raise ValueError(msg)
 
     return p_list, v_list, overlap
-
-
-def str2float(length: float | str) -> float:
-    """UTAUのLength文字列をfloatに変換します。
-
-    NOTE: Copied function from PyWavTool.PyWavTool.length_string.str2float by delta-kuro.
-
-    Parameters
-    ----------
-    length :str
-        length文字列
-
-    Returns
-    -------
-    length :float
-
-
-    Notes
-    -----
-    | lengthは以下のいずれかの形で与えられます。
-    | tick@tempo
-    | tick@tempo+delta
-    | tick@tempo-delta
-
-    | 戻り値の計算は以下の通りです。
-    | 1拍あたりのms = 60*1000 / tempo
-    | 1tickあたりのms = 1拍あたりのms / 480
-    | length = 1tickあたりのms * tick +(-) delta
-
-    """
-    if isinstance(length, float):
-        return length
-    if isinstance(length, str):
-        temp: list[str] = length.split('@')
-        tempo: float
-        delta: float = 0
-        tick: int = int(temp[0])
-        if '+' in temp[1]:
-            tempo = float(temp[1].split('+')[0])
-            delta = float(temp[1].split('+')[1])
-        elif '-' in temp[1]:
-            tempo = float(temp[1].split('-')[0])
-            delta = -float(temp[1].split('-')[1])
-        else:
-            tempo = float(temp[1])
-        return 60000 / tempo / 480 * tick + delta
-    # float でも str でもない場合はエラー
-    msg = f'length must be float or str, but got {type(length)}'
-    raise TypeError(msg)
 
 
 # MARK: NeuralNetworkWavTool
@@ -470,14 +422,14 @@ class NeuralNetworkWavTool:
         rounded_length = round(adjusted_length / self.frame_period) * self.frame_period
         # 新しい丸め誤差を計算する
         new_residual_error = adjusted_length - rounded_length
-        self.logger.debug('residual_error (before): %.3f [ms]', residual_error)
-        self.logger.debug('original_overlap: %.3f [ms]', original_overlap)
-        self.logger.debug('rounded_overlap: %.3f [ms]', rounded_overlap)
-        self.logger.debug('overlap_error: %.3f [ms]', overlap_error)
-        self.logger.debug('original_length: %.3f [ms]', original_length)
-        self.logger.debug('adjusted_length: %.3f [ms]', adjusted_length)
-        self.logger.debug('rounded_length: %.3f [ms]', rounded_length)
-        self.logger.debug('new_residual_error (after): %.3f [ms]', new_residual_error)
+        self.logger.debug('residual_error (before)    : %.3f [ms]', residual_error)
+        self.logger.debug('original_overlap           : %.3f [ms]', original_overlap)
+        self.logger.debug('rounded_overlap            : %.3f [ms]', rounded_overlap)
+        self.logger.debug('overlap_error              : %.3f [ms]', overlap_error)
+        self.logger.debug('original_length            : %.3f [ms]', original_length)
+        self.logger.debug('adjusted_length            : %.3f [ms]', adjusted_length)
+        self.logger.debug('rounded_length             : %.3f [ms]', rounded_length)
+        self.logger.debug('new_residual_error (after) : %.3f [ms]', new_residual_error)
         self.length = rounded_length
         self._residual_error = new_residual_error
 
@@ -537,6 +489,11 @@ class NeuralNetworkWavTool:
         self.logger.debug('  ove: %s', ove)
         self.envelope_p = p
         self.envelope_v = v
+        # overlap が負の値のときにはクロスフェードができないので 0 に強制する
+        if ove < 0:
+            msg = f'Negative overlap value ({ove} ms) is detected. Forcing to 0 ms.'
+            self.logger.warning(msg)
+            ove = 0
         self.overlap = ove
 
     def _apply_range(self) -> None:
@@ -583,8 +540,8 @@ class NeuralNetworkWavTool:
         音量エンベロープの時刻と音量値に基づいて、f0, sp, ap の各フレームに対して音量調整を行う。
         """
         length_by_frame = round(self.length / self.frame_period)
-        if length_by_frame <= 0:
-            msg = f'Invalid length: {self.length} ms. Length must be greater than 0 ms.'
+        if length_by_frame < 0:
+            msg = f'Invalid length: {self.length} ms. Length must be non-negative.'
             self.logger.error(msg)
             raise ValueError(msg)
         # クロップする
