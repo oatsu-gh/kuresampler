@@ -223,6 +223,7 @@ class NeuralNetworkWavTool:
         export_wav: WAVファイルを出力するか否か
         export_features: WORLD特徴量を npz ファイルで出力するか否か
         frame_period: WORLD特徴量のフレーム周期 (ms)
+        accumulated_features: メモリ上の累積特徴量 (f0, sp, ap) のタプル (オプション)
 
     ## PyWavTool.WavTool からの変更点
     - whd と dat を使用しない
@@ -235,6 +236,7 @@ class NeuralNetworkWavTool:
     ### キャッシュの取り扱い
     - WAVキャッシュを使用する場合、WORLD 特徴量に変換してから append する。
     - NPZキャッシュを使用する場合、NPZファイルから直接特徴量を読み込んで append する。
+    - accumulated_features が渡された場合、メモリ上の特徴量を優先的に使用する。
 
     ### 内部データの取り扱い
     - self.dat は常に WORLD 特徴量を保持する。output のときだけ wav に変換する。
@@ -281,6 +283,7 @@ class NeuralNetworkWavTool:
     # その他
     logger: logging.Logger
     _residual_error: float  # 丸め誤差 [ms]
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None  # メモリ上の累積特徴量 (f0, sp, ap)
 
     # MARK: __init__
     def __init__(
@@ -305,6 +308,7 @@ class NeuralNetworkWavTool:
         internal_sample_rate: int = 48000,
         target_sample_rate: int = 44100,
         resample_type: str = 'soxr_vhq',
+        accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
     ) -> None:
         """NeuralNetworkWavTool のコンストラクタ"""
         self.logger = logger or setup_logger(level=logging.INFO)
@@ -318,6 +322,8 @@ class NeuralNetworkWavTool:
         self.internal_sample_rate = internal_sample_rate
         self.target_sample_rate = target_sample_rate
         self.resample_type = resample_type
+        # メモリ上の累積特徴量を保持
+        self.accumulated_features = accumulated_features
         # length と _residual_error を初期化
         self.__init_length(length, extract_overlap(envelope), residual_error)
 
@@ -438,6 +444,10 @@ class NeuralNetworkWavTool:
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
+
+        Note:
+            この関数は入力ファイル (input_wav/input_npz) の特徴量を読み込む。
+            累積特徴量 (accumulated_features) は append() メソッドで使用される。
         """
         # npz が存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
         if self.input_npz.exists():
@@ -567,7 +577,12 @@ class NeuralNetworkWavTool:
         TODO: ノート数が多いほどWAV生成が重くなるので何とかしたい。
         """
         # 既存ファイルの特徴量を読み取る。なければ空の配列を取得する。
-        if self.output_npz.exists():
+        # メモリ上の累積特徴量が渡されている場合はそれを使用
+        if self.accumulated_features is not None:
+            self.logger.info('Using accumulated features from memory')
+            long_f0, long_sp, long_ap = self.accumulated_features
+        # メモリ上の累積特徴量がない場合はファイルから読み込む
+        elif self.output_npz.exists():
             self.logger.info('Loading existing features from: %s', self.output_npz)
             long_f0, long_sp, long_ap, npz_sample_rate = npzfile_to_world(self.output_npz)
             if npz_sample_rate != self.internal_sample_rate:

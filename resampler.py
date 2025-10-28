@@ -56,16 +56,16 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         input_path: str,
         output_path: str,
         target_tone: str,
-        velocity: int,
-        flag_value: str = '',
-        offset: float | None = None,
-        target_ms: float | None = None,
-        fixed_ms: float | None = None,
-        end_ms: float | None = None,
-        volume: int = 100,
-        modulation: int = 0,
-        tempo: str | None = None,
-        pitchbend: str = '',
+        velocity: int | str,  # default: 100
+        flag_value: str | None = None,  # default: ''
+        offset: float | str | None = None,  # default: 0.0
+        target_ms: float | str | None = None,  # default: 0.0
+        fixed_ms: float | str | None = None,  # default: 0.0
+        end_ms: float | str | None = None,  # default: 0.0
+        volume: int | str | None = None,  # default: 100
+        modulation: int | str | None = None,  # default: 100
+        tempo: str | None = None,  # default: '!120'
+        pitchbend: str | None = None,  # default: ''
         *,
         use_vocoder_model: bool,
         logger: Logger | None = None,
@@ -84,22 +84,20 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         """Initialize NeuralNetworkResamp."""
         # logger 設定(先頭固定)======================================
         self.logger = setup_logger() if logger is None else logger
+
+        # 子音速度は必須だが型変換は必要=============================
+        velocity = int(velocity)
+
         # None が渡される可能性がある必須パラメータの処理============
-        if offset is None:
-            self.logger.warning('Offset is not specified, set to 0.0 by default')
-            offset = 0.0
-        if target_ms is None:
-            self.logger.warning('Target_ms is not specified, set to 0.0 by default')
-            target_ms = 0.0
-        if fixed_ms is None:
-            self.logger.warning('Fixed_ms is not specified, set to 0.0 by default')
-            fixed_ms = 0.0
-        if end_ms is None:
-            self.logger.warning('End_ms is not specified, set to 0.0 by default')
-            end_ms = 0.0
-        if tempo is None:
-            self.logger.warning('Tempo is not specified, set to "!120" by default')
-            tempo = '!120'
+        flag_value = str(flag_value or '')
+        offset = float(offset or 0.0)
+        target_ms = float(target_ms or 0.0)
+        fixed_ms = float(fixed_ms or 0.0)
+        end_ms = float(end_ms or 0.0)
+        volume = int(volume if volume is not None else 100)
+        modulation = int(modulation or 100)
+        tempo = str(tempo or '!120')
+        pitchbend = str(pitchbend or '')
 
         ## クラス変数への代入========================================
         self._input_path = input_path
