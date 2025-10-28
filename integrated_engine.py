@@ -222,12 +222,14 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
     for cmd in tqdm(resampler_commands, desc='Resampler', unit='note', colour='green'):
         print()
         logger.info(cmd)
-        if len(cmd) == 13:
-            # pitchbend がない場合は空文字列を追加
-            cmd.append('')
-        elif len(cmd) != 14:
-            logger.error(f'Number of arguments must be 13 or 14({len(cmd)}): {cmd}')
+        len_cmd = len(cmd)
+        # 引数の数をチェック
+        if len_cmd < 5 or len_cmd > 14:
+            logger.error(f'Number of arguments must be 5 to 14 ({len_cmd}): {cmd}')
             continue
+
+        # 引数を14個に揃える
+        cmd_14 = cmd + [None] * (14 - len_cmd)
         (
             input_path,
             output_path,
@@ -242,10 +244,10 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
             modulation,
             tempo,
             pitchbend,
-        ) = cmd[1:]  # cmd[0] は resampler の実行ファイルパス
+        ) = cmd_14[1:]  # cmd[0] は resampler の実行ファイルパス
 
-        logger.debug(f'  input_path  : {Path(input_path).name}')
-        logger.debug(f'  output_path : {Path(output_path).name}')
+        logger.debug(f'  input_path  : {Path(input_path).name}')  # pyright: ignore[reportArgumentType]
+        logger.debug(f'  output_path : {Path(output_path).name}')  # pyright: ignore[reportArgumentType]
         logger.debug(f'  target_tone : {target_tone}')
         logger.debug(f'  velocity    : {velocity}')
         logger.debug(f'  flag_value  : {flag_value}')
@@ -260,18 +262,18 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
 
         try:
             resampler = NeuralNetworkResamp(
-                input_path=input_path,
-                output_path=output_path,
-                target_tone=target_tone,
-                velocity=int(velocity),
+                input_path=input_path,  # pyright: ignore[reportArgumentType]
+                output_path=output_path,  # pyright: ignore[reportArgumentType]
+                target_tone=target_tone,  # pyright: ignore[reportArgumentType]
+                velocity=velocity,  # pyright: ignore[reportArgumentType]
                 flag_value=flag_value,
-                offset=float(offset),
-                target_ms=float(target_ms),
-                fixed_ms=float(fixed_ms),
-                end_ms=float(end_ms),
-                volume=int(volume),
-                modulation=int(modulation),
-                tempo=str(tempo),
+                offset=offset,
+                target_ms=target_ms,
+                fixed_ms=fixed_ms,
+                end_ms=end_ms,
+                volume=volume,
+                modulation=modulation,
+                tempo=tempo,
                 pitchbend=pitchbend,
                 use_vocoder_model=False,
                 logger=logger,
@@ -279,6 +281,7 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
             )
 
             resampler.resamp()
+        # 例外を握り潰す
         except Exception as e:
             logger.error(f'Resampler error: {e}')
 
