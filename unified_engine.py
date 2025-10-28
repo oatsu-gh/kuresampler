@@ -351,6 +351,9 @@ def batch_wavetool(
     # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
     accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
+    # ログ出力抑制
+    original_log_level = logger.level
+    logger.setLevel(logging.WARNING)
     # 各ノートのwav加工を行う
     for i, cmd in tenumerate(
         wavetool_commands,
@@ -359,7 +362,6 @@ def batch_wavetool(
         unit='note',
         colour='blue',
     ):
-        print()
         logger.debug(cmd)
         if len(cmd) < 6:
             logger.error(f'Number of wavtool arguments must be 6 or larger ({len(cmd)}): {cmd}')
@@ -417,8 +419,10 @@ def batch_wavetool(
             wavtool.sp_appended,
             wavtool.ap_appended,
         )
+
         # 最終ノートの時のみ npz と wav を出力
         if i == n_notes - 1:
+            logger.setLevel(original_log_level)
             logger.info('Rendering WAV...')
             wavtool.synthesize()
             logger.info('Render complete.')
