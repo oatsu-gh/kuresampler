@@ -18,9 +18,11 @@ temp_helper.bat の内容
 """
 
 import argparse
+import logging
+import os
 import shlex
 import sys
-from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING, Logger  # noqa: F401
+from logging import INFO, Logger
 from pathlib import Path
 from pprint import pprint
 from warnings import warn
@@ -31,9 +33,8 @@ import torch
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
-from tqdm import tqdm
 from tqdm.contrib import tenumerate
-from tqdm.contrib.concurrent import process_map
+from tqdm.contrib.concurrent import thread_map
 
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
@@ -45,7 +46,7 @@ TEMP_BAT = Path('temp.bat')
 TEMP_WAV = Path('temp.wav')
 TEMP_NPZ = Path('temp.npz')
 DEFAULT_ENCODING = 'cp932'
-
+MAX_WORKERS = os.cpu_count() or 1
 
 def i_am_the_first(temp_wav_path: Path = TEMP_WAV) -> bool:
     """自分が1番目の処理なのかそれ以外なのかを判定する。
@@ -210,15 +211,14 @@ def parse_temp_bat(
     return variables, resamp_commands, tool_commands
 
 
-def _process_resampler_command(cmd_and_log_level: tuple[list[str], int]) -> None:
+def _process_resampler_command(cmd_and_logger: tuple[list[str], Logger]) -> None:
     """単一の resampler コマンドを処理する（マルチプロセス用ワーカー関数）。
 
     Args:
-        cmd_and_log_level: (resampler_command, log_level) のタプル
+        cmd_and_logger: (resampler_command, logger) のタプル
+
     """
-    cmd, log_level = cmd_and_log_level
-    # 各プロセスで独自のロガーを作成
-    logger = setup_logger(log_level)
+    cmd, logger = cmd_and_logger
 
     logger.debug(cmd)
     len_cmd = len(cmd)
@@ -285,7 +285,9 @@ def _process_resampler_command(cmd_and_log_level: tuple[list[str], int]) -> None
         logger.error(f'Resampler error: {e}')
 
 
-def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
+def batch_resampler(
+    logger: Logger, resampler_commands: list[list[str]], *, max_workers: int = MAX_WORKERS
+):
     """resampler_commands に基づいて resampler をマルチプロセスで実行する。
 
     コマンドの例
@@ -294,21 +296,26 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
     -----------------------
 
     """
-    # ログレベルを取得（各プロセスで使用）
-    log_level = logger.level
+    # 各コマンドとロガーをタプルにして準備
+    commands_with_logger = [(cmd, logger) for cmd in resampler_commands]
 
-    # 各コマンドとログレベルをタプルにして準備
-    commands_with_log_level = [(cmd, log_level) for cmd in resampler_commands]
+    # マルチスレッドでのログ出力抑制
+    original_log_level = logger.level
+    logger.setLevel(logging.WARNING)
 
     # マルチプロセスで resampler を実行
-    process_map(
+    thread_map(
         _process_resampler_command,
-        commands_with_log_level,
+        commands_with_logger,
         desc='Resampler',
         unit='note',
         colour='green',
         chunksize=1,
+        mininterval=0,
+        max_workers=max_workers,
     )
+    # logger レベルを元に戻す
+    logger.setLevel(original_log_level)
 
 
 def batch_wavetool(
@@ -353,7 +360,7 @@ def batch_wavetool(
         colour='blue',
     ):
         print()
-        logger.info(cmd)
+        logger.debug(cmd)
         if len(cmd) < 6:
             logger.error(f'Number of wavtool arguments must be 6 or larger ({len(cmd)}): {cmd}')
             continue
@@ -463,7 +470,7 @@ def main():
 
     # デバッグモード
     if args.debug:
-        logger.setLevel(DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     # ボコーダーモデルを使用するか否か
     use_vocoder_model = args.use_vocoder_model
@@ -484,12 +491,14 @@ def main():
     # helper.bat の内容を空にする
     helper_path = Path(variables.get('helper', 'helper.bat'))
     clear_helper_bat(helper_path)
-    print('\nVariables:')
-    pprint(variables)
-    print(f'\nResampler commands ({len(resamp_commands)}):')
-    pprint(resamp_commands, compact=True)
-    print(f'\nWavTool commands ({len(wavtool_commands)}):')
-    pprint(wavtool_commands, compact=True)
+
+    if args.debug:
+        print('\nVariables:')
+        pprint(variables)
+        print(f'\nResampler commands ({len(resamp_commands)}):')
+        pprint(resamp_commands, compact=True)
+        print(f'\nWavTool commands ({len(wavtool_commands)}):')
+        pprint(wavtool_commands, compact=True)
 
     print('------------------------------------')
     # resampler を順次実行する
