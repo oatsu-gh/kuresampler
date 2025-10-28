@@ -26,14 +26,13 @@ from pprint import pprint
 from warnings import warn
 
 import colored_traceback.auto  # noqa: F401
+import numpy as np
 import torch
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 from tqdm import tqdm
 from tqdm.contrib import tenumerate
-
-from convert import world_to_npzfile
 
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
@@ -223,8 +222,11 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
     for cmd in tqdm(resampler_commands, desc='Resampler', unit='note', colour='green'):
         print()
         logger.info(cmd)
-        if len(cmd) != 14:
-            logger.error(f'Unexpected number of arguments ({len(cmd)}): {cmd}')
+        if len(cmd) == 13:
+            # pitchbend がない場合は空文字列を追加
+            cmd.append('')
+        elif len(cmd) != 14:
+            logger.error(f'Number of arguments must be 13 or 14({len(cmd)}): {cmd}')
             continue
         (
             input_path,
@@ -256,26 +258,29 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
         logger.debug(f'  tempo       : {tempo}')
         logger.debug(f'  pitchbend   : {pitchbend}')
 
-        resampler = NeuralNetworkResamp(
-            input_path=input_path,
-            output_path=output_path,
-            target_tone=target_tone,
-            velocity=int(velocity),
-            flag_value=flag_value,
-            offset=float(offset),
-            target_ms=float(target_ms),
-            fixed_ms=float(fixed_ms),
-            end_ms=float(end_ms),
-            volume=int(volume),
-            modulation=int(modulation),
-            tempo=str(tempo),
-            pitchbend=pitchbend,
-            use_vocoder_model=False,
-            logger=logger,
-            export_features=True,
-        )
+        try:
+            resampler = NeuralNetworkResamp(
+                input_path=input_path,
+                output_path=output_path,
+                target_tone=target_tone,
+                velocity=int(velocity),
+                flag_value=flag_value,
+                offset=float(offset),
+                target_ms=float(target_ms),
+                fixed_ms=float(fixed_ms),
+                end_ms=float(end_ms),
+                volume=int(volume),
+                modulation=int(modulation),
+                tempo=str(tempo),
+                pitchbend=pitchbend,
+                use_vocoder_model=False,
+                logger=logger,
+                export_features=True,
+            )
 
-        resampler.resamp()
+            resampler.resamp()
+        except Exception as e:
+            logger.error(f'Resampler error: {e}')
 
 
 def batch_wavetool(
@@ -309,7 +314,7 @@ def batch_wavetool(
     # ノート時刻の丸め誤差
     residual_error: float = 0.0
     # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
-    accumulated_features: tuple | None = None
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
     # 各ノートのwav加工を行う
     for i, cmd in tenumerate(
@@ -322,7 +327,7 @@ def batch_wavetool(
         print()
         logger.info(cmd)
         if len(cmd) < 6:
-            logger.error(f'Number of arguments must be 6 or larger ({len(cmd)}): {cmd}')
+            logger.error(f'Number of wavtool arguments must be 6 or larger ({len(cmd)}): {cmd}')
             continue
         (
             output_path,
@@ -379,15 +384,6 @@ def batch_wavetool(
         )
         # 最終ノートの時のみ npz と wav を出力
         if i == n_notes - 1:
-            # npz 出力
-            world_to_npzfile(
-                wavtool.f0_appended,
-                wavtool.sp_appended,
-                wavtool.ap_appended,
-                wavtool.internal_sample_rate,
-                wavtool.output_npz,
-                compress=False,
-            )
             logger.info('Rendering WAV...')
             wavtool.synthesize()
             logger.info('Render complete.')

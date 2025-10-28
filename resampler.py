@@ -65,7 +65,7 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         volume: int = 100,
         modulation: int = 0,
         tempo: str | None = None,
-        pitchbend: str = '',
+        pitchbend: str | None = None,
         *,
         use_vocoder_model: bool,
         logger: Logger | None = None,
@@ -100,6 +100,9 @@ class NeuralNetworkResamp(pyrwu.Resamp):
         if tempo is None:
             self.logger.warning('Tempo is not specified, set to "!120" by default')
             tempo = '!120'
+        if pitchbend is None:
+            self.logger.warning('Pitchbend is not specified, set to "" by default')
+            pitchbend = ''
 
         ## クラス変数への代入========================================
         self._input_path = input_path
