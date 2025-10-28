@@ -4,7 +4,7 @@
 @if exist %output% goto :eof
 
 @echo =============================================================================
-@echo                          Utau Engine Wrapper
+@echo                          Unified Kuresampler
 @echo =============================================================================
 @REM Batch filename
 @REM @echo %0
@@ -17,7 +17,7 @@
 
 @REM @echo %selfdir%
 @set python_exe=python
-@set python_script=%ROOT%integrated_engine.py
+@set python_script=%ROOT%unified_engine.py
 @set model_dir=%ROOT%models\usfGAN_EnunuKodoku_0826\
 
 @REM Run python script if output file does not exist
