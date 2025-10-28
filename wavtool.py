@@ -283,7 +283,8 @@ class NeuralNetworkWavTool:
     # その他
     logger: logging.Logger
     _residual_error: float  # 丸め誤差 [ms]
-    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None  # メモリ上の累積特徴量 (f0, sp, ap)
+    # メモリ上の累積特徴量 (f0, sp, ap)
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None
 
     # MARK: __init__
     def __init__(
