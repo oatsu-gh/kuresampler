@@ -33,6 +33,7 @@ from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 from tqdm import tqdm
 from tqdm.contrib import tenumerate
+from tqdm.contrib.concurrent import process_map
 
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
@@ -209,8 +210,82 @@ def parse_temp_bat(
     return variables, resamp_commands, tool_commands
 
 
+def _process_resampler_command(cmd_and_log_level: tuple[list[str], int]) -> None:
+    """単一の resampler コマンドを処理する（マルチプロセス用ワーカー関数）。
+
+    Args:
+        cmd_and_log_level: (resampler_command, log_level) のタプル
+    """
+    cmd, log_level = cmd_and_log_level
+    # 各プロセスで独自のロガーを作成
+    logger = setup_logger(log_level)
+
+    len_cmd = len(cmd)
+    # 引数の数をチェック
+    if len_cmd < 5 or len_cmd > 14:
+        logger.error(f'Number of arguments must be 5 to 14 ({len_cmd}): {cmd}')
+        return
+
+    # 引数を14個に揃える
+    cmd_14 = cmd + [None] * (14 - len_cmd)
+    (
+        input_path,
+        output_path,
+        target_tone,
+        velocity,
+        flag_value,
+        offset,
+        target_ms,
+        fixed_ms,
+        end_ms,
+        volume,
+        modulation,
+        tempo,
+        pitchbend,
+    ) = cmd_14[1:]  # cmd[0] は resampler の実行ファイルパス
+
+    logger.debug(f'  input_path  : {Path(input_path).name}')  # pyright: ignore[reportArgumentType]
+    logger.debug(f'  output_path : {Path(output_path).name}')  # pyright: ignore[reportArgumentType]
+    logger.debug(f'  target_tone : {target_tone}')
+    logger.debug(f'  velocity    : {velocity}')
+    logger.debug(f'  flag_value  : {flag_value}')
+    logger.debug(f'  offset      : {offset}')
+    logger.debug(f'  target_ms   : {target_ms}')
+    logger.debug(f'  fixed_ms    : {fixed_ms}')
+    logger.debug(f'  end_ms      : {end_ms}')
+    logger.debug(f'  volume      : {volume}')
+    logger.debug(f'  modulation  : {modulation}')
+    logger.debug(f'  tempo       : {tempo}')
+    logger.debug(f'  pitchbend   : {pitchbend}')
+
+    try:
+        resampler = NeuralNetworkResamp(
+            input_path=input_path,  # pyright: ignore[reportArgumentType]
+            output_path=output_path,  # pyright: ignore[reportArgumentType]
+            target_tone=target_tone,  # pyright: ignore[reportArgumentType]
+            velocity=velocity,  # pyright: ignore[reportArgumentType]
+            flag_value=flag_value,
+            offset=offset,
+            target_ms=target_ms,
+            fixed_ms=fixed_ms,
+            end_ms=end_ms,
+            volume=volume,
+            modulation=modulation,
+            tempo=tempo,
+            pitchbend=pitchbend,
+            use_vocoder_model=False,
+            logger=logger,
+            export_features=True,
+        )
+
+        resampler.resamp()
+    # 例外を握り潰す
+    except Exception as e:
+        logger.error(f'Resampler error: {e}')
+
+
 def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
-    """resampler_commands に基づいて resampler を順次実行する。
+    """resampler_commands に基づいて resampler をマルチプロセスで実行する。
 
     コマンドの例
     -----------------------
@@ -218,72 +293,21 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
     -----------------------
 
     """
-    # 各ノートのピッチシフトや伸縮を行う
-    for cmd in tqdm(resampler_commands, desc='Resampler', unit='note', colour='green'):
-        print()
-        logger.info(cmd)
-        len_cmd = len(cmd)
-        # 引数の数をチェック
-        if len_cmd < 5 or len_cmd > 14:
-            logger.error(f'Number of arguments must be 5 to 14 ({len_cmd}): {cmd}')
-            continue
+    # ログレベルを取得（各プロセスで使用）
+    log_level = logger.level
 
-        # 引数を14個に揃える
-        cmd_14 = cmd + [None] * (14 - len_cmd)
-        (
-            input_path,
-            output_path,
-            target_tone,
-            velocity,
-            flag_value,
-            offset,
-            target_ms,
-            fixed_ms,
-            end_ms,
-            volume,
-            modulation,
-            tempo,
-            pitchbend,
-        ) = cmd_14[1:]  # cmd[0] は resampler の実行ファイルパス
+    # 各コマンドとログレベルをタプルにして準備
+    commands_with_log_level = [(cmd, log_level) for cmd in resampler_commands]
 
-        logger.debug(f'  input_path  : {Path(input_path).name}')  # pyright: ignore[reportArgumentType]
-        logger.debug(f'  output_path : {Path(output_path).name}')  # pyright: ignore[reportArgumentType]
-        logger.debug(f'  target_tone : {target_tone}')
-        logger.debug(f'  velocity    : {velocity}')
-        logger.debug(f'  flag_value  : {flag_value}')
-        logger.debug(f'  offset      : {offset}')
-        logger.debug(f'  target_ms   : {target_ms}')
-        logger.debug(f'  fixed_ms    : {fixed_ms}')
-        logger.debug(f'  end_ms      : {end_ms}')
-        logger.debug(f'  volume      : {volume}')
-        logger.debug(f'  modulation  : {modulation}')
-        logger.debug(f'  tempo       : {tempo}')
-        logger.debug(f'  pitchbend   : {pitchbend}')
-
-        try:
-            resampler = NeuralNetworkResamp(
-                input_path=input_path,  # pyright: ignore[reportArgumentType]
-                output_path=output_path,  # pyright: ignore[reportArgumentType]
-                target_tone=target_tone,  # pyright: ignore[reportArgumentType]
-                velocity=velocity,  # pyright: ignore[reportArgumentType]
-                flag_value=flag_value,
-                offset=offset,
-                target_ms=target_ms,
-                fixed_ms=fixed_ms,
-                end_ms=end_ms,
-                volume=volume,
-                modulation=modulation,
-                tempo=tempo,
-                pitchbend=pitchbend,
-                use_vocoder_model=False,
-                logger=logger,
-                export_features=True,
-            )
-
-            resampler.resamp()
-        # 例外を握り潰す
-        except Exception as e:
-            logger.error(f'Resampler error: {e}')
+    # マルチプロセスで resampler を実行
+    process_map(
+        _process_resampler_command,
+        commands_with_log_level,
+        desc='Resampler',
+        unit='note',
+        colour='green',
+        chunksize=1,
+    )
 
 
 def batch_wavetool(
