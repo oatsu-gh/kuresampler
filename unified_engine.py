@@ -220,7 +220,7 @@ def _process_resampler_command(cmd_and_log_level: tuple[list[str], int]) -> None
     # 各プロセスで独自のロガーを作成
     logger = setup_logger(log_level)
 
-    logger.info(cmd)
+    logger.debug(cmd)
     len_cmd = len(cmd)
     # 引数の数をチェック
     if len_cmd < 5 or len_cmd > 14:
