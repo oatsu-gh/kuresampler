@@ -18,9 +18,11 @@ temp_helper.bat の内容
 """
 
 import argparse
+import logging
+import os
 import shlex
 import sys
-from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING, Logger  # noqa: F401
+from logging import INFO, Logger
 from pathlib import Path
 from pprint import pprint
 from warnings import warn
@@ -31,8 +33,8 @@ import torch
 from nnsvs.util import StandardScaler
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
-from tqdm import tqdm
 from tqdm.contrib import tenumerate
+from tqdm.contrib.concurrent import thread_map
 
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))  # for local import
@@ -44,7 +46,7 @@ TEMP_BAT = Path('temp.bat')
 TEMP_WAV = Path('temp.wav')
 TEMP_NPZ = Path('temp.npz')
 DEFAULT_ENCODING = 'cp932'
-
+MAX_WORKERS = os.cpu_count() or 1
 
 def i_am_the_first(temp_wav_path: Path = TEMP_WAV) -> bool:
     """自分が1番目の処理なのかそれ以外なのかを判定する。
@@ -209,8 +211,84 @@ def parse_temp_bat(
     return variables, resamp_commands, tool_commands
 
 
-def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
-    """resampler_commands に基づいて resampler を順次実行する。
+def _process_resampler_command(cmd_and_logger: tuple[list[str], Logger]) -> None:
+    """単一の resampler コマンドを処理する（マルチプロセス用ワーカー関数）。
+
+    Args:
+        cmd_and_logger: (resampler_command, logger) のタプル
+
+    """
+    cmd, logger = cmd_and_logger
+
+    logger.debug(cmd)
+    len_cmd = len(cmd)
+    # 引数の数をチェック
+    if len_cmd < 5 or len_cmd > 14:
+        logger.error(f'Number of arguments must be 5 to 14 ({len_cmd}): {cmd}')
+        return
+
+    # 引数を14個に揃える
+    cmd_14 = cmd + [None] * (14 - len_cmd)
+    (
+        input_path,
+        output_path,
+        target_tone,
+        velocity,
+        flag_value,
+        offset,
+        target_ms,
+        fixed_ms,
+        end_ms,
+        volume,
+        modulation,
+        tempo,
+        pitchbend,
+    ) = cmd_14[1:]  # cmd[0] は resampler の実行ファイルパス
+
+    logger.debug(f'  input_path  : {Path(input_path).name}')  # pyright: ignore[reportArgumentType]
+    logger.debug(f'  output_path : {Path(output_path).name}')  # pyright: ignore[reportArgumentType]
+    logger.debug(f'  target_tone : {target_tone}')
+    logger.debug(f'  velocity    : {velocity}')
+    logger.debug(f'  flag_value  : {flag_value}')
+    logger.debug(f'  offset      : {offset}')
+    logger.debug(f'  target_ms   : {target_ms}')
+    logger.debug(f'  fixed_ms    : {fixed_ms}')
+    logger.debug(f'  end_ms      : {end_ms}')
+    logger.debug(f'  volume      : {volume}')
+    logger.debug(f'  modulation  : {modulation}')
+    logger.debug(f'  tempo       : {tempo}')
+    logger.debug(f'  pitchbend   : {pitchbend}')
+
+    try:
+        resampler = NeuralNetworkResamp(
+            input_path=input_path,  # pyright: ignore[reportArgumentType]
+            output_path=output_path,  # pyright: ignore[reportArgumentType]
+            target_tone=target_tone,  # pyright: ignore[reportArgumentType]
+            velocity=velocity,  # pyright: ignore[reportArgumentType]
+            flag_value=flag_value,
+            offset=offset,
+            target_ms=target_ms,
+            fixed_ms=fixed_ms,
+            end_ms=end_ms,
+            volume=volume,
+            modulation=modulation,
+            tempo=tempo,
+            pitchbend=pitchbend,
+            use_vocoder_model=False,
+            logger=logger,
+            export_features=True,
+        )
+
+        resampler.resamp()
+    # 例外を握り潰す
+    except Exception as e:
+        logger.error(f'Resampler error: {e}')
+
+
+def batch_resampler(
+    logger: Logger, resampler_commands: list[list[str]], *, max_workers: int = MAX_WORKERS
+):
+    """resampler_commands に基づいて resampler をマルチプロセスで実行する。
 
     コマンドの例
     -----------------------
@@ -218,72 +296,26 @@ def batch_resampler(logger: Logger, resampler_commands: list[list[str]]):
     -----------------------
 
     """
-    # 各ノートのピッチシフトや伸縮を行う
-    for cmd in tqdm(resampler_commands, desc='Resampler', unit='note', colour='green'):
-        print()
-        logger.info(cmd)
-        len_cmd = len(cmd)
-        # 引数の数をチェック
-        if len_cmd < 5 or len_cmd > 14:
-            logger.error(f'Number of arguments must be 5 to 14 ({len_cmd}): {cmd}')
-            continue
+    # 各コマンドとロガーをタプルにして準備
+    commands_with_logger = [(cmd, logger) for cmd in resampler_commands]
 
-        # 引数を14個に揃える
-        cmd_14 = cmd + [None] * (14 - len_cmd)
-        (
-            input_path,
-            output_path,
-            target_tone,
-            velocity,
-            flag_value,
-            offset,
-            target_ms,
-            fixed_ms,
-            end_ms,
-            volume,
-            modulation,
-            tempo,
-            pitchbend,
-        ) = cmd_14[1:]  # cmd[0] は resampler の実行ファイルパス
+    # マルチスレッドでのログ出力抑制
+    original_log_level = logger.level
+    logger.setLevel(logging.WARNING)
 
-        logger.debug(f'  input_path  : {Path(input_path).name}')  # pyright: ignore[reportArgumentType]
-        logger.debug(f'  output_path : {Path(output_path).name}')  # pyright: ignore[reportArgumentType]
-        logger.debug(f'  target_tone : {target_tone}')
-        logger.debug(f'  velocity    : {velocity}')
-        logger.debug(f'  flag_value  : {flag_value}')
-        logger.debug(f'  offset      : {offset}')
-        logger.debug(f'  target_ms   : {target_ms}')
-        logger.debug(f'  fixed_ms    : {fixed_ms}')
-        logger.debug(f'  end_ms      : {end_ms}')
-        logger.debug(f'  volume      : {volume}')
-        logger.debug(f'  modulation  : {modulation}')
-        logger.debug(f'  tempo       : {tempo}')
-        logger.debug(f'  pitchbend   : {pitchbend}')
-
-        try:
-            resampler = NeuralNetworkResamp(
-                input_path=input_path,  # pyright: ignore[reportArgumentType]
-                output_path=output_path,  # pyright: ignore[reportArgumentType]
-                target_tone=target_tone,  # pyright: ignore[reportArgumentType]
-                velocity=velocity,  # pyright: ignore[reportArgumentType]
-                flag_value=flag_value,
-                offset=offset,
-                target_ms=target_ms,
-                fixed_ms=fixed_ms,
-                end_ms=end_ms,
-                volume=volume,
-                modulation=modulation,
-                tempo=tempo,
-                pitchbend=pitchbend,
-                use_vocoder_model=False,
-                logger=logger,
-                export_features=True,
-            )
-
-            resampler.resamp()
-        # 例外を握り潰す
-        except Exception as e:
-            logger.error(f'Resampler error: {e}')
+    # マルチプロセスで resampler を実行
+    thread_map(
+        _process_resampler_command,
+        commands_with_logger,
+        desc='Resampler',
+        unit='note',
+        colour='green',
+        chunksize=1,
+        mininterval=0,
+        max_workers=max_workers,
+    )
+    # logger レベルを元に戻す
+    logger.setLevel(original_log_level)
 
 
 def batch_wavetool(
@@ -319,6 +351,9 @@ def batch_wavetool(
     # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
     accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
+    # ログ出力抑制
+    original_log_level = logger.level
+    logger.setLevel(logging.WARNING)
     # 各ノートのwav加工を行う
     for i, cmd in tenumerate(
         wavetool_commands,
@@ -327,8 +362,7 @@ def batch_wavetool(
         unit='note',
         colour='blue',
     ):
-        print()
-        logger.info(cmd)
+        logger.debug(cmd)
         if len(cmd) < 6:
             logger.error(f'Number of wavtool arguments must be 6 or larger ({len(cmd)}): {cmd}')
             continue
@@ -385,8 +419,10 @@ def batch_wavetool(
             wavtool.sp_appended,
             wavtool.ap_appended,
         )
+
         # 最終ノートの時のみ npz と wav を出力
         if i == n_notes - 1:
+            logger.setLevel(original_log_level)
             logger.info('Rendering WAV...')
             wavtool.synthesize()
             logger.info('Render complete.')
@@ -438,7 +474,7 @@ def main():
 
     # デバッグモード
     if args.debug:
-        logger.setLevel(DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     # ボコーダーモデルを使用するか否か
     use_vocoder_model = args.use_vocoder_model
@@ -459,12 +495,14 @@ def main():
     # helper.bat の内容を空にする
     helper_path = Path(variables.get('helper', 'helper.bat'))
     clear_helper_bat(helper_path)
-    print('\nVariables:')
-    pprint(variables)
-    print(f'\nResampler commands ({len(resamp_commands)}):')
-    pprint(resamp_commands, compact=True)
-    print(f'\nWavTool commands ({len(wavtool_commands)}):')
-    pprint(wavtool_commands, compact=True)
+
+    if args.debug:
+        print('\nVariables:')
+        pprint(variables)
+        print(f'\nResampler commands ({len(resamp_commands)}):')
+        pprint(resamp_commands, compact=True)
+        print(f'\nWavTool commands ({len(wavtool_commands)}):')
+        pprint(wavtool_commands, compact=True)
 
     print('------------------------------------')
     # resampler を順次実行する

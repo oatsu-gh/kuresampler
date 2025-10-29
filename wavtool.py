@@ -283,7 +283,8 @@ class NeuralNetworkWavTool:
     # その他
     logger: logging.Logger
     _residual_error: float  # 丸め誤差 [ms]
-    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None  # メモリ上の累積特徴量 (f0, sp, ap)
+    # メモリ上の累積特徴量 (f0, sp, ap)
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None
 
     # MARK: __init__
     def __init__(
@@ -448,6 +449,7 @@ class NeuralNetworkWavTool:
         Note:
             この関数は入力ファイル (input_wav/input_npz) の特徴量を読み込む。
             累積特徴量 (accumulated_features) は append() メソッドで使用される。
+
         """
         # npz が存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
         if self.input_npz.exists():
@@ -579,7 +581,7 @@ class NeuralNetworkWavTool:
         # 既存ファイルの特徴量を読み取る。なければ空の配列を取得する。
         # メモリ上の累積特徴量が渡されている場合はそれを使用
         if self.accumulated_features is not None:
-            self.logger.info('Using accumulated features from memory')
+            self.logger.info('Using features on memory')
             long_f0, long_sp, long_ap = self.accumulated_features
         # メモリ上の累積特徴量がない場合はファイルから読み込む
         elif self.output_npz.exists():
