@@ -520,4 +520,8 @@ def world_to_nnsvs_to_waveform(
         vuv_threshold=vuv_threshold,
     )
 
+    # GPUメモリ開放
+    if str(device) == 'cuda':
+        torch.cuda.empty_cache()
+
     return waveform  # vocoder_sample_rate
