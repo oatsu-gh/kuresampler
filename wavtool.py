@@ -19,11 +19,24 @@ wavtool の処理の流れ
 - 自身が 先頭ノート/中間ノート/最終ノート のいずれなのか不明なので、wav ファイルは常に出力必要。
 - wav ファイルを出力する際、既存の wav ファイルがある場合は、オーバーラップ時間を考慮して重ねる。
 
-"""
 
+UTAU から wavtool に渡されるコマンドの例
+-----------------------
+<tool> <output> <temp> <stp> <length> <envelope>
+-----------------------
+    tool   : wavtool.exe など実行ファイルのパス
+    output : 出力wavファイルパス
+    temp   : 入力wavファイルパス
+    stp    : 入力wav使用開始位置[ms]
+    length : ノート長さ[ms]
+    env    : 音量エンベロープのパラメータ (複数可)
+
+
+"""
 import argparse
 import logging
 import sys
+from copy import copy
 from functools import partial
 from math import ceil
 from pathlib import Path
@@ -80,10 +93,14 @@ def extract_overlap(envelope: list[float]) -> float:
     len_envelope = len(envelope)
     if len_envelope in [2, 7]:
         return 0.0
-    if len_envelope in [8, 9, 11]:
+    if len_envelope in [8, 9, 10, 11]:
         return envelope[7]
-    msg = f'Invalid envelope length ({len_envelope}). The length must be 2, 7, 8, 9, or 11.'
+    msg = (
+        f'Invalid envelope length ({len_envelope}). '
+        f'The length must be 2, 7, 8, 9, 10, or 11.: {envelope}'
+    )
     raise ValueError(msg)
+    # return 0.0
 
 
 def parse_envelope(
@@ -107,6 +124,7 @@ def parse_envelope(
     - 長さ7 : p1 p2 p3 v1 v2 v3 v4
     - 長さ8 : p1 p2 p3 v1 v2 v3 v4 ove
     - 長さ9 : p1 p2 p3 v1 v2 v3 v4 ove p4
+    - 長さ10: p1 p2 p3 v1 v2 v3 v4 ove p4 ?? ※詳細不明
     - 長さ11: p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5
     p1, p2, p3, p4, p5, ove : float (ms)
     v1, v2, v3, v4, v5 : int (1-200)
@@ -166,7 +184,8 @@ def parse_envelope(
         v_list = [0, v1, v2, v3, v4, 0]
         overlap = envelope[7]
     # 長さ9の時は p4 が追加される
-    elif len_envelope == 9:
+    # 長さが10の時は何が追加されているかよくわからない(0)ので、9と同じ処理をする
+    elif len_envelope in (9, 10):
         # [p1, p2, p3, v1, v2, v3, v4, ove, p4]
         p1, p2, p3 = envelope[0:3]
         v1, v2, v3, v4 = envelope[3:7]
@@ -203,7 +222,10 @@ def parse_envelope(
         v_list = [0, v1, v2, v5, v3, v4, 0]
     # それ以外の要素数はエラー
     else:
-        msg = f'Invalid envelope length ({len_envelope}). The length must be 2, 7, 8, 9, or 11.'
+        msg = (
+            f'Invalid envelope length ({len_envelope}). '
+            f'The length must be 2, 7, 8, 9, or 11.: {envelope}'
+        )
         raise ValueError(msg)
 
     # p_list が昇順になっていない場合はエラー
@@ -266,6 +288,8 @@ class NeuralNetworkWavTool:
     internal_sample_rate: int  # 内部処理のサンプルレート [Hz]
     target_sample_rate: int  # 出力wavのサンプルレート [Hz]
     resample_type: str  # リサンプリングの種類
+    # 出力用データ
+    _waveform: np.ndarray | None  # 出力wavの波形データ
     # 音量エンベロープ関連
     envelope_p: list[float]  # 音量エンベロープの時刻のリスト [ms]
     envelope_v: list[int]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
@@ -368,7 +392,7 @@ class NeuralNetworkWavTool:
             self.vocoder_model = vocoder_model
             self.vocoder_in_scaler = vocoder_in_scaler
             self.vocoder_config = vocoder_config
-            self.logger.info('Using vocoder model: %s', self.use_vocoder_model)
+            self.logger.info(f'Using vocoder model: {self.use_vocoder_model}')
             # サンプルレートチェック
             if self.vocoder_config.data.sample_rate != self.internal_sample_rate:
                 msg = (
@@ -409,6 +433,20 @@ class NeuralNetworkWavTool:
     def fft_size(self) -> int:
         """FFTサイズ"""
         return pyworld.get_cheaptrick_fft_size(self.internal_sample_rate)  # pyright: ignore[reportAttributeAccessIssue]
+
+    @property
+    def waveform(self) -> np.ndarray:
+        """出力wavの波形データ"""
+        if self._waveform is None:
+            msg = 'self._waveform is None. Run generate_waveform() first.'
+            self.logger.error(msg)
+            raise ValueError(msg)
+        return self._waveform
+
+    @waveform.setter
+    def waveform(self, value: np.ndarray) -> None:
+        """出力wavの波形データをセットする。"""
+        self._waveform = value
 
     def __init_length(
         self, original_length: float, original_overlap: float, residual_error: float
@@ -526,14 +564,20 @@ class NeuralNetworkWavTool:
 
         TODO: 音量エンベロープの時刻と音量値に基づいて、spectrogram の音量加工を行う。
         """
-        self.logger.debug('envelope_p: %s', self.envelope_p)
+        n_frames = self.sp.shape[0]
+        self.logger.debug('envelope_p : %s', self.envelope_p)
+        self.logger.debug('envelope_v : %s', self.envelope_v)
+        self.logger.debug('sp.shape   : %s', self.sp.shape)
+        self.logger.debug('n_frames   : %s', n_frames)
         # エンベロープが2点以下の場合は何もしない
         if len(self.envelope_p) < 2:
             return
         # エンベロープが3点以上の場合は音量エンベロープを適用する
-        n_frames = self.f0.shape[0]
-        x = np.arange(n_frames)
+        x = np.arange(n_frames) + 0.5
         # 時刻をフレーム単位に変換
+        ## NOTE: 時刻(slice)でなくフレーム(index)で音量制御する都合上、
+        ## NOTE: xp の最大値を n_frames-1 にしないと終端フレームが0にならないので時刻補正必要。
+        ## TODO: 非常に短いノートではクロスフェード長がずれてしまう可能性があるため、フェードイン(p1,2,5)/アウト(p3,4)の時刻を別々に計算するなどの厳密な実装が必要。  # noqa: E501
         xp = [round(p / self.frame_period) for p in self.envelope_p]
         # 音量値(0-200)を0-2に正規化 (余った v は無視)
         fp = [v / 100.0 for v in self.envelope_v[: len(xp)]]
@@ -541,6 +585,11 @@ class NeuralNetworkWavTool:
         volume_envelope = np.interp(x, xp, fp)
         # sp に音量エンベロープを適用する。音量を x 倍するには sp を x^2 倍する。
         self.sp *= volume_envelope[:, np.newaxis] ** 2
+        self.logger.debug('x                    : %s', x)
+        self.logger.debug('xp                   : %s', xp)
+        self.logger.debug('fp                   : %s', fp)
+        self.logger.debug('volume_envelope      : %s', volume_envelope)
+        self.logger.debug('volume_envelope.shape: %s', volume_envelope.shape)
 
     def _apply_all(self) -> None:
         """self.f0, self.sp, self.ap に stp, length, envelope を適用する。
@@ -608,7 +657,7 @@ class NeuralNetworkWavTool:
 
         # overlap をフレーム数に変換
         n_overlap_frames = round(self.overlap / self.frame_period)
-        self.logger.info('overlap_frames: %s', n_overlap_frames)
+        self.logger.debug('overlap_frames: %s', n_overlap_frames)
 
         # デバッグ出力 --------------------------
         self.logger.debug('Features before overlap:')
@@ -661,16 +710,6 @@ class NeuralNetworkWavTool:
             self.logger.error(msg)
             raise ValueError(msg)
 
-        # npzファイルに書き出す
-        world_to_npzfile(
-            self.f0_appended,
-            self.sp_appended,
-            self.ap_appended,
-            self.internal_sample_rate,
-            self.output_npz,
-            compress=False,
-        )
-
         # ボコーダーモデルを使用しない場合
         if self.use_vocoder_model is False:
             # wav 生成
@@ -713,6 +752,34 @@ class NeuralNetworkWavTool:
             self.logger.error(msg)
             raise ValueError(msg)
 
+        self.waveform = wav
+
+    def save_npz(self) -> None:
+        """WORLD特徴量をnpzファイルで保存する。"""
+        # append された特徴量が揃っていることを確認する
+        if self.f0_appended is None or self.sp_appended is None or self.ap_appended is None:
+            msg = 'f0_appended, sp_appended, or ap_appended is None. Call append() first.'
+            self.logger.error(msg)
+            raise ValueError(msg)
+        # npzファイルに保存
+        world_to_npzfile(
+            self.f0_appended,
+            self.sp_appended,
+            self.ap_appended,
+            self.internal_sample_rate,
+            self.output_npz,
+        )
+        self.logger.info('Saved WORLD features to: %s', self.output_npz)
+
+    def save_wav(self) -> None:
+        """wavファイルを保存する。"""
+        # waveform が生成されていることを確認する
+        if self.waveform is None:
+            msg = 'waveform is None. Call synthesize() first.'
+            self.logger.error(msg)
+            raise ValueError(msg)
+        wav: np.ndarray = copy(self.waveform)
+
         # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
         # self._residual_error が正の場合、生成した波形が目標より短いので、ゼロパディング必要。
         # self._residual_error が負の場合、生成した波形が目標より長いので、切り詰め必要。
@@ -727,15 +794,16 @@ class NeuralNetworkWavTool:
             wav = wav[:n_compensation_samples]  # internal_sample_rate
         self.logger.debug('waveform.shape after compensation: %s', wav.shape)
         # -------------------------------------------------------------------------------------
-
-        # wavファイルに書き出す。
+        # wav ファイルに保存
         waveform_to_wavfile(
             wav,
             self.output_wav,
-            original_sample_rate=self.internal_sample_rate,
-            target_sample_rate=self.target_sample_rate,
+            self.internal_sample_rate,
+            self.target_sample_rate,
             resample_type=self.resample_type,
-        )  # target_sample_rate
+            dtype=wav.dtype,
+        )
+        self.logger.info('Saved wav to: %s', self.output_wav)
 
 
 # MARK: main_wavtool
@@ -816,8 +884,11 @@ def main_wavtool() -> None:
     )
     # wavtool で音声WORLD特徴量を結合
     wavtool.append()
-    # wav ファイルを生成
+    # wav データを生成
     wavtool.synthesize()
+    # npz と wav ファイルを保存
+    wavtool.save_npz()
+    wavtool.save_wav()
 
 
 if __name__ == '__main__':
