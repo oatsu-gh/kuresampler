@@ -106,6 +106,8 @@ def parse_envelope(
 
     # 各値を frame_period に基づいて丸める (フェードインとフェードアウト時間をそろえるため)
     envelope = list(map(_round_by_frame, envelope))
+    # length も frame_period に基づいて丸める (ノート終了時刻のずれを防ぐため)
+    length = _round_by_frame(length)
     # エンベロープが2点以外で想定される点数のとき
     p_list: list[float]
     v_list: list[float]
@@ -272,7 +274,8 @@ class WorldFeatureWavTool:
         self._output_npz = Path(output_wav).with_suffix('.npz')
         self._frame_period = frame_period
         self._stp = stp
-        self._length = length
+        # length を frame_period に基づいて丸める (ノート終了時刻のずれを防ぐため)
+        self._length = round(length / frame_period) * frame_period
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
         # envelope_p, envelope_v, overlap を初期化
@@ -454,6 +457,7 @@ def main_wavtool() -> None:
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4' "
             "or 'p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5'"
         ),
+    )
     args = parser.parse_args()
     # length 文字列を float に変換
     length = str2float(args.length)
