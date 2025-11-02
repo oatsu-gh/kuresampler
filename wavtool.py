@@ -58,14 +58,17 @@ from util import (
 
 
 def _round_by_frame(x: float, frame_period: float) -> float:
-    """frame_period に基づいて x を丸める。
+    """frame_period の倍数に丸める。
+
+    WORLD 特徴量処理における時間的な整合性を保つため、値を frame_period の最も近い倍数に丸めます。
+    例: frame_period=5.0 の場合、487.3 → 485.0、487.6 → 490.0
 
     Args:
-        x (float): 丸める対象の値
+        x (float): 丸める対象の値 (ms)
         frame_period (float): フレーム周期 (ms)
 
     Returns:
-        float: 丸められた値
+        float: 丸められた値 (ms)。frame_period の倍数になります。
     """
     return round(x / frame_period) * frame_period
 
@@ -285,14 +288,22 @@ class WorldFeatureWavTool:
         self._output_npz = Path(output_wav).with_suffix('.npz')
         self._frame_period = frame_period
         self._stp = stp
+        # logger を初期化（他の処理より先に初期化してログ出力できるようにする）
+        self._logger = logger or setup_logger(level=logging.INFO)
         # length を frame_period に基づいて丸める (ノート終了時刻のずれを防ぐため)
-        self._length = _round_by_frame(length, frame_period)
+        rounded_length = _round_by_frame(length, frame_period)
+        if abs(rounded_length - length) > 0.01:  # 丸め誤差が 0.01ms 以上の場合のみログ出力
+            self._logger.debug(
+                'Length rounded: %.2f ms → %.2f ms (diff: %.2f ms)',
+                length,
+                rounded_length,
+                rounded_length - length,
+            )
+        self._length = rounded_length
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
         # envelope_p, envelope_v, overlap を初期化
         self.__init_envelope(envelope)
-        # logger を初期化
-        self._logger = logger or setup_logger(level=logging.INFO)
         # 出力フォルダが存在しなければ作成
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
