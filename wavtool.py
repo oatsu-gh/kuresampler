@@ -57,6 +57,19 @@ from util import (
 )
 
 
+def _round_by_frame(x: float, frame_period: float) -> float:
+    """frame_period に基づいて x を丸める。
+
+    Args:
+        x (float): 丸める対象の値
+        frame_period (float): フレーム周期 (ms)
+
+    Returns:
+        float: 丸められた値
+    """
+    return round(x / frame_period) * frame_period
+
+
 def parse_envelope(
     envelope: list[float], length: float, frame_period: float
 ) -> tuple[list, list, float]:
@@ -65,6 +78,8 @@ def parse_envelope(
     Args:
         envelope (list[float]): エンベロープの値のリスト
         length (float): ノートの長さ(先行発声含む)(ms)
+        frame_period (float): フレーム周期 (ms)
+
     Returns:
         tuple: (p, v, ove)
             p (list[float]): 音量制御の時刻のリスト(ms)。エンベロープが2点の場合空配列。
@@ -100,14 +115,10 @@ def parse_envelope(
     if len_envelope == 2:
         return [], [], 0
 
-    def _round_by_frame(x: float) -> float:
-        """frame_period に基づいて x を丸める。"""
-        return round(x / frame_period) * frame_period
-
     # 各値を frame_period に基づいて丸める (フェードインとフェードアウト時間をそろえるため)
-    envelope = list(map(_round_by_frame, envelope))
+    envelope = [_round_by_frame(x, frame_period) for x in envelope]
     # length も frame_period に基づいて丸める (ノート終了時刻のずれを防ぐため)
-    length = _round_by_frame(length)
+    length = _round_by_frame(length, frame_period)
     # エンベロープが2点以外で想定される点数のとき
     p_list: list[float]
     v_list: list[float]
@@ -275,7 +286,7 @@ class WorldFeatureWavTool:
         self._frame_period = frame_period
         self._stp = stp
         # length を frame_period に基づいて丸める (ノート終了時刻のずれを防ぐため)
-        self._length = round(length / frame_period) * frame_period
+        self._length = _round_by_frame(length, frame_period)
         # sample_rate, f0, sp, ap を初期化
         self.__init_features()
         # envelope_p, envelope_v, overlap を初期化
