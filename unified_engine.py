@@ -657,7 +657,7 @@ def segmented_wavtool(
     if not (len(waveform_list) == len(overlap_list) == len(residual_error_list)):
         msg = (
             f'Length of waveform_list ({len(waveform_list)}) and '
-            f'adjusted_overlap_list ({len(overlap_list)}) and '
+            f'overlap_list ({len(overlap_list)}) and '
             f'residual_error_list ({len(residual_error_list)}) do not match.'
         )
         raise ValueError(msg)
