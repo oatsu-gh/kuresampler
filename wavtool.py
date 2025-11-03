@@ -100,7 +100,6 @@ def extract_overlap(envelope: list[float]) -> float:
         f'The length must be 2, 7, 8, 9, 10, or 11.: {envelope}'
     )
     raise ValueError(msg)
-    # return 0.0
 
 
 def parse_envelope(
