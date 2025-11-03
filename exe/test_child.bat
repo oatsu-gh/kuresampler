@@ -22,7 +22,7 @@
 @REM @set model_dir=%ROOT%models\usfGAN_NamineRitsu_4130\
 
 @REM Run python script if output file does not exist
-@%python_exe% %python_script% %* --model_dir %model_dir% --use_vocoder_model
-@REM @%python_exe% %python_script% %* --model_dir %model_dir% --use_vocoder_model --debug
+@REM @%python_exe% %python_script% %* --model_dir %model_dir% --use_vocoder_model
+@%python_exe% %python_script% %* --model_dir %model_dir% --use_vocoder_model --debug
 @REM @echo =============================================================================
-@REM PAUSE
+PAUSE
