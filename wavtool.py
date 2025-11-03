@@ -798,8 +798,8 @@ class NeuralNetworkWavTool:
         waveform_to_wavfile(
             wav,
             self.output_wav,
-            self.internal_sample_rate,
-            self.target_sample_rate,
+            original_sample_rate=self.internal_sample_rate,
+            target_sample_rate=self.target_sample_rate,
             resample_type=self.resample_type,
             dtype=wav.dtype,
         )
