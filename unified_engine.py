@@ -22,7 +22,6 @@ import logging
 import os
 import shlex
 import sys
-from copy import copy
 from logging import INFO, Logger
 from pathlib import Path
 from pprint import pprint
@@ -504,7 +503,7 @@ def batch_wavtool(
         logger.debug('Synthesis complete.')
 
         # 結合された特徴量をもとに生成した waveform
-        waveform = copy(wavtool.waveform)  # pyright: ignore[reportPossiblyUnboundVariable]
+        waveform = wavtool.waveform.copy()  # pyright: ignore[reportPossiblyUnboundVariable]
         resampled_waveform = librosa.resample(
             waveform,
             orig_sr=internal_sample_rate,
