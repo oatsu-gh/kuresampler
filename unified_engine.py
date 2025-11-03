@@ -676,8 +676,8 @@ def segmented_wavtool(
             unit='seg',
         ):
             # オーバーラップ値を補正する
-            ## residual_error が正の時は wav が短めなので、次の休符とのoverlapを短くする。
-            ## residual_error が負の時は wav が長めなので、次の休符とのoverlapを長くする。
+            ## residual_error が正の時は wav が短めなので、次のセグメントとのoverlapを短くする。
+            ## residual_error が負の時は wav が長めなので、次のセグメントとのoverlapを長くする。
             adjusted_overlap = seg_overlap - residual_error
             residual_error = seg_res_err
             logger.debug('Overlapping waveforms with overlap: %.3f [ms]', adjusted_overlap)
@@ -828,11 +828,19 @@ def main():
         vocoder_config=vocoder_config,
         target_sample_rate=sample_rate,
     )
+    tqdm.write(f'Final residual error after segmented wavtool: {last_residual_error:.3f} [ms]')
+    tqdm.write(
+        f'Final waveform length: {len(waveform)} samples ({len(waveform) / sample_rate:.3f} sec)'
+    )
     # 最終セグメントの長さずれの分だけサンプル数を補正する
     waveform = fix_waveform_length(
         waveform,
         last_residual_error,
         sample_rate=sample_rate,
+    )
+    tqdm.write(
+        f'Waveform length after length fix: {len(waveform)} samples '
+        f'({len(waveform) / sample_rate:.3f} sec)'
     )
     # WAV ファイル出力
     waveform_to_wavfile(
