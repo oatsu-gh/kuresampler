@@ -60,7 +60,7 @@ def setup_logger(level=logging.INFO) -> logging.Logger:
         '[%(filename)s:%(lineno)d][%(log_color)s%(levelname)s%(reset)s] %(message)s',
         log_colors={
             'DEBUG': 'green',
-            'INFO': 'blue',
+            'INFO': 'cyan',
             'WARNING': 'yellow',
             'ERROR': 'red',
             'CRITICAL': 'red,bg_white',
@@ -444,6 +444,72 @@ def overlap_ap(
     )
     return result
 
+def overlap_waveform(
+    wav_a: np.ndarray,
+    wav_b: np.ndarray,
+    *,
+    overlap_ms: float,
+    sample_rate: int,
+) -> np.ndarray:
+    """波形を単純オーバーラップさせる。"""
+    ## 入力チェック
+    # 型が一致するかチェック
+    if wav_a.dtype != wav_b.dtype:
+        msg = f'Waveform dtype mismatch: wav_a.dtype={wav_a.dtype}, wav_b.dtype={wav_b.dtype}'
+        raise ValueError(msg)
+    # 波形が1次元配列かチェック
+    if wav_a.ndim != 1 or wav_b.ndim != 1:
+        msg = f'Waveform must be 1D array. Got wav_a.ndim={wav_a.ndim}, wav_b.ndim={wav_b.ndim}'
+        raise ValueError(msg)
+    # オーバーラップ部分のサンプル数
+    n_overlap = int(overlap_ms * sample_rate / 1000)
+
+    # オーバーラップが 0 の場合は単純結合
+    if n_overlap == 0:
+        result = np.concatenate([wav_a, wav_b], axis=0)
+    # オーバーラップが正の場合はオーバーラップ部分を加算
+    elif n_overlap > 0:
+        result = np.concatenate(
+            [
+                wav_a[:-n_overlap],
+                wav_a[-n_overlap:] + wav_b[:n_overlap],
+                wav_b[n_overlap:],
+            ],
+            axis=0,
+        )
+    # オーバーラップが負の場合は間に無音を挟む
+    else:
+        result = np.concatenate(
+            [
+                wav_a,
+                np.zeros(-n_overlap, dtype=wav_a.dtype),
+                wav_b,
+            ],
+            axis=0,
+        )
+    return result
+
+
+def fade_waveform(
+    waveform: np.ndarray,
+    fade_in_ms: float,
+    fade_out_ms: float,
+    *,
+    sample_rate: int,
+) -> np.ndarray:
+    """波形にフェードイン・フェードアウトを適用する。"""
+    n_samples = waveform.shape[0]
+    # フェードイン・フェードアウトのサンプル数
+    n_fade_in = round(fade_in_ms * sample_rate / 1000)
+    n_fade_out = round(fade_out_ms * sample_rate / 1000)
+    # フェードイン
+    if n_fade_in > 0:
+        waveform[:n_fade_in] *= np.linspace(0.0, 1.0, n_fade_in)[:n_samples] ** 2
+    # フェードアウト
+    if n_fade_out > 0:
+        waveform[-n_fade_out:] *= np.linspace(1.0, 0.0, n_fade_out)[-n_samples:] ** 2
+
+    return waveform
 
 def load_vocoder_model(
     model_dir: Path | str,

@@ -277,6 +277,8 @@ class NeuralNetworkRender(Render):
             wavtool.append()
             # WAV生成
             wavtool.synthesize()
+            wavtool.save_wav()
+            wavtool.save_npz()
             self.logger.debug('Exported WAV: %s', out_wav_path)
 
     def clean(self) -> None:
