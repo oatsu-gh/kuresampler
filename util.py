@@ -54,7 +54,7 @@ def get_device() -> torch.device:
     return device
 
 
-def setup_logger(level=logging.INFO) -> logging.Logger:
+def setup_logger(level=logging.INFO, name: str | None = None) -> logging.Logger:
     """Loggerを作成する。"""
     formatter = ColoredFormatter(
         '[%(filename)s:%(lineno)d][%(log_color)s%(levelname)s%(reset)s] %(message)s',
@@ -68,10 +68,15 @@ def setup_logger(level=logging.INFO) -> logging.Logger:
     )
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    _logger = logging.getLogger(__name__)
+    _logger = logging.getLogger(name)
     _logger.setLevel(level)
     _logger.addHandler(handler)
     return _logger
+
+
+def round_by_frame(x: float, frame_period: float) -> float:
+    """frame_period に基づいて x を丸める。"""
+    return round(x / frame_period) * frame_period
 
 
 def str2float(length: float | str) -> float:
