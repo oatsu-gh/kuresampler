@@ -229,7 +229,7 @@ class NeuralNetworkRender(Render):
         out_wav_path.with_suffix('.wav.whd').unlink(missing_ok=True)
         out_wav_path.with_suffix('.wav.dat').unlink(missing_ok=True)
 
-        residual_error = 0.0  # wavtool で生じる累積丸め誤差 [ms]
+        carryover_error = 0.0  # wavtool で生じる累積丸め誤差 [ms]
 
         # 特徴量クロスフェードを実施
         for note in tqdm(
@@ -260,7 +260,7 @@ class NeuralNetworkRender(Render):
                 length=note.output_ms,
                 envelope=[float(item) for item in note.envelope.split(' ')],
                 logger=self.logger,
-                residual_error=residual_error,
+                carryover_error=carryover_error,
                 use_vocoder_model=self._use_neural_wavtool,
                 vocoder_model=self._vocoder_model,
                 vocoder_in_scaler=self._vocoder_in_scaler,
@@ -271,8 +271,8 @@ class NeuralNetworkRender(Render):
                 vocoder_frame_period=self._vocoder_frame_period,
             )
             # 次のノートに引き継ぐ丸め誤差を取得
-            residual_error = wavtool.residual_error
-            self.logger.debug('residual_error: %.3f [ms]', residual_error)
+            carryover_error = wavtool.carryover_error
+            self.logger.debug('carryover_error: %.3f [ms]', carryover_error)
             # 特徴量を連結
             wavtool.append()
             # WAV生成
