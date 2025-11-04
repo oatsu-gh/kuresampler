@@ -71,6 +71,7 @@ from util import (
     overlap_ap,
     overlap_f0,
     overlap_sp,
+    round_by_frame,
     setup_logger,
     str2float,
 )
@@ -78,12 +79,7 @@ from util import (
 DEFAULT_SAMPLE_RATE = 44100
 
 
-def round_by_frame(x: float, frame_period: float) -> float:
-    """frame_period に基づいて x を丸める。"""
-    return round(x / frame_period) * frame_period
-
-
-def extract_overlap(envelope: list[float]) -> float:
+def get_overlap(envelope: list[float]) -> float:
     """Envelope から ove だけを取得する。
 
     Args:
@@ -100,139 +96,6 @@ def extract_overlap(envelope: list[float]) -> float:
         f'The length must be 2, 7, 8, 9, 10, or 11.: {envelope}'
     )
     raise ValueError(msg)
-
-
-def parse_envelope(
-    envelope: list[float], rounded_length: float, frame_period: float
-) -> tuple[list, list, float]:
-    """Envelope のパターンを解析し、時刻のリストと音量のリストとoverlap時間を返す。
-
-    Args:
-        envelope (list[float]): エンベロープの値のリスト
-        rounded_length (float): ノートの長さ(先行発声含む)(ms)。事前に frame_period で丸めておく。
-        frame_period (float)  : WORLD特徴量のフレーム周期(ms)
-
-    Returns:
-        tuple: (p, v, ove)
-            p (list[float]): 音量制御の時刻のリスト(ms)。エンベロープが2点の場合空配列。
-            v (list[int])  : 音量値のリスト。0-200の範囲であることを想定。
-            ove (float)    : クロスフェード時間(ms)。エンベロープにoveがない場合は0を返す。
-
-    ## エンベロープのパターン
-    - 長さ2 : p1 p2
-    - 長さ7 : p1 p2 p3 v1 v2 v3 v4
-    - 長さ8 : p1 p2 p3 v1 v2 v3 v4 ove
-    - 長さ9 : p1 p2 p3 v1 v2 v3 v4 ove p4
-    - 長さ10: p1 p2 p3 v1 v2 v3 v4 ove p4 ?? ※詳細不明
-    - 長さ11: p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5
-    p1, p2, p3, p4, p5, ove : float (ms)
-    v1, v2, v3, v4, v5 : int (1-200)
-
-    ## 各値の計算方法
-    p1: ノート頭からの相対時刻(ms)
-    p2: p1 からの相対時刻(ms)。
-    p3: p4 がない場合は末端からの相対距離(ms)。 p4 がある場合は p4 からの相対距離(ms)。
-    p4: 末端からの相対時刻(ms)
-    p5: p2 からの相対時刻(ms)
-    v1: そのまま
-    v2: そのまま
-    v3: そのまま
-    v4: そのまま
-    v5: そのまま
-
-    """
-    # エンベロープの要素数
-    len_envelope = len(envelope)
-    # エンベロープが2点のときは空配列を返す
-    # TODO: 空配列でいいのか再検討(そのまま使って問題ない配列を返したい)
-    if len_envelope == 2:
-        return [], [], 0
-
-    # 丸め関数を定義
-    round_func = partial(round_by_frame, frame_period=frame_period)
-
-    # エンベロープが2点以外で想定される点数のとき
-    p_list: list[float]
-    v_list: list[float]
-    overlap: float
-    # 長さ7の時は [p1, p2, p3, v1, v2, v3, v4] のみ
-    if len_envelope == 7:
-        p1, p2, p3 = envelope[0:3]
-        v1, v2, v3, v4 = envelope[3:7]
-        p_list = [
-            0,
-            round_func(p1),
-            round_func(p1 + p2),
-            rounded_length - round_func(p3),
-            rounded_length,
-        ]
-        v_list = [0, v1, v2, v3, v4, 0]
-        overlap = 0
-    # 長さ8の時は overlap が追加される
-    elif len_envelope == 8:
-        # [p1, p2, p3, v1, v2, v3, v4, ove]
-        p1, p2, p3 = envelope[0:3]
-        v1, v2, v3, v4 = envelope[3:7]
-        p_list = [
-            0,
-            round_func(p1),
-            round_func(p1 + p2),
-            rounded_length - round_func(p3),
-            rounded_length,
-        ]
-        v_list = [0, v1, v2, v3, v4, 0]
-        overlap = envelope[7]
-    # 長さ9の時は p4 が追加される
-    # 長さが10の時は何が追加されているかよくわからない(0)ので、9と同じ処理をする
-    elif len_envelope in (9, 10):
-        # [p1, p2, p3, v1, v2, v3, v4, ove, p4]
-        p1, p2, p3 = envelope[0:3]
-        v1, v2, v3, v4 = envelope[3:7]
-        overlap = envelope[7]
-        p4 = envelope[8]
-        p_list = [
-            0,
-            round_func(p1),
-            round_func(p1 + p2),
-            rounded_length - round_func(p4 + p3),
-            rounded_length - round_func(p4),
-            rounded_length,
-        ]
-        v_list = [0, v1, v2, v3, v4, 0]
-    # 長さが11の時は p5, v5 が追加される
-    elif len_envelope == 11:
-        # [p1, p2, p3, v1, v2, v3, v4, ove, p4, p5, v5]
-        p1, p2, p3 = envelope[0:3]
-        v1, v2, v3, v4 = envelope[3:7]
-        overlap = envelope[7]
-        p4 = envelope[8]
-        p5 = envelope[9]
-        v5 = envelope[10]
-        # NOTE: p5 の位置は p2 と p3 の間であることに注意!
-        p_list = [
-            0,
-            round_func(p1),
-            round_func(p1 + p2),
-            round_func(p1 + p2 + p5),
-            rounded_length - round_func(p4 + p3),
-            rounded_length - round_func(p4),
-            rounded_length,
-        ]  # 絶対時刻
-        v_list = [0, v1, v2, v5, v3, v4, 0]
-    # それ以外の要素数はエラー
-    else:
-        msg = (
-            f'Invalid envelope length ({len_envelope}). '
-            f'The length must be 2, 7, 8, 9, or 11.: {envelope}'
-        )
-        raise ValueError(msg)
-
-    # p_list が昇順になっていない場合はエラー
-    if p_list != sorted(p_list):
-        msg = f'p_list must be in ascending order, but got {p_list}.'
-        raise ValueError(msg)
-
-    return p_list, v_list, overlap
 
 
 # MARK: NeuralNetworkWavTool
@@ -291,7 +154,7 @@ class NeuralNetworkWavTool:
     _waveform: np.ndarray | None  # 出力wavの波形データ
     # 音量エンベロープ関連
     envelope_p: list[float]  # 音量エンベロープの時刻のリスト [ms]
-    envelope_v: list[int]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
+    envelope_v: list[float]  # 音量エンベロープの音量値のリスト(0-100-200) [-]
     overlap: float  # クロスフェード時間 [ms]
     # ボコーダー関連
     use_vocoder_model: bool = True  # Vocoder model を使用するか否か
@@ -305,9 +168,8 @@ class NeuralNetworkWavTool:
     device: torch.device
     # その他
     logger: logging.Logger
-    _residual_error: float  # 丸め誤差 [ms]
-    # メモリ上の累積特徴量 (f0, sp, ap)
-    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None
+    carryover_error: float  # 丸め誤差 [ms]
+    accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
     # MARK: __init__
     def __init__(
@@ -321,7 +183,7 @@ class NeuralNetworkWavTool:
         use_vocoder_model: bool,
         logger: logging.Logger | None = None,
         frame_period: int = 5,
-        residual_error: float = 0.0,  # このノート以前の時刻丸め誤差
+        carryover_error: float = 0.0,  # このノート以前の時刻丸め誤差
         vocoder_model: torch.nn.Module | None = None,
         vocoder_in_scaler: StandardScaler | None = None,
         vocoder_config: DictConfig | ListConfig | None = None,
@@ -333,33 +195,27 @@ class NeuralNetworkWavTool:
         target_sample_rate: int = 44100,
         resample_type: str = 'soxr_vhq',
         accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
+        feature_dtype: str = 'float64',
     ) -> None:
         """NeuralNetworkWavTool のコンストラクタ"""
-        self.logger = logger or setup_logger(level=logging.INFO)
+        self.logger = logger or setup_logger(level=logging.INFO, name=self.__class__.__name__)
         self.input_wav = Path(input_wav)
         self.input_npz = Path(input_wav).with_suffix('.npz')
         self.output_wav = Path(output_wav)
         self.output_npz = Path(output_wav).with_suffix('.npz')
         self.frame_period = frame_period
         self.stp = stp
+        self.feature_dtype = feature_dtype
         # サンプルレート関連の初期化
         self.internal_sample_rate = internal_sample_rate
         self.target_sample_rate = target_sample_rate
         self.resample_type = resample_type
-        # メモリ上の累積特徴量を保持
-        self.accumulated_features = accumulated_features
-        # length と _residual_error を初期化
-        self.__init_length(length, extract_overlap(envelope), residual_error)
-
+        # length, envelope_p, envelope_v, overlap, carryover_error を初期化
+        self._init_length_and_envelope(length, envelope, carryover_error)
+        # length と carryover_error を初期化
         # sample_rate, f0, sp, ap を初期化
-        self.__init_features()
+        self._init_features()
 
-        # デバッグ出力: f0, sp, ap のshape,min,maxを確認
-        self.logger.debug('Initial features:')
-        self.debug_features(f0=self.f0, sp=self.sp, ap=self.ap)
-
-        # envelope_p, envelope_v, overlap を初期化
-        self.__init_envelope(envelope)
         # デバイス設定
         self.device = get_device()
         # ボコーダー関連の設定
@@ -368,6 +224,8 @@ class NeuralNetworkWavTool:
         self.vocoder_feature_type = vocoder_feature_type
         self.vocoder_vuv_threshold = vocoder_vuv_threshold
         self.vocoder_frame_period = vocoder_frame_period
+        # その他
+        self.accumulated_features = accumulated_features
 
         # frame_period と vocoder_frame_period が異なる場合は警告を出す
         if self.frame_period != self.vocoder_frame_period:
@@ -416,11 +274,6 @@ class NeuralNetworkWavTool:
         Path(output_wav).parent.mkdir(parents=True, exist_ok=True)
 
     @property
-    def residual_error(self) -> float:
-        """このノート以降の length の丸め誤差 [ms]"""
-        return self._residual_error
-
-    @property
     def vocoder_sample_rate(self) -> int:
         """ボコーダーモデルのwav出力サンプリング周波数"""
         if self.vocoder_config is None:
@@ -447,103 +300,233 @@ class NeuralNetworkWavTool:
         """出力wavの波形データをセットする。"""
         self._waveform = value
 
-    def __init_length(
-        self, original_length: float, original_overlap: float, residual_error: float
+    def _init_length_and_envelope(
+        self, original_length: float, envelope: list[float], initial_error: float
     ) -> None:
-        """self.length と self._residual_error を初期化する。
+        """self.length, self._residual_error, self.overlap, self.envelope_p, self.envelope_v, self.overlap を初期化する。
 
         Args:
-            original_length (float): 元の長さ [ms]
-            original_overlap (float): 元のオーバーラップ [ms]
-            residual_error (float): このノート以前の丸め誤差 [ms]
+            original_length     (float)        : 元の長さ [ms]
+            envelope            (list[float])  : エンベロープの値のリスト
+            initial_error     (float)        : 直前ノートまでの丸め誤差 [ms]
 
-        """
-        rounded_overlap = round_by_frame(original_overlap, self.frame_period)
-        overlap_error = original_overlap - rounded_overlap
-        # 以前の丸め誤差を考慮して length を調整する
-        adjusted_length = original_length + residual_error - overlap_error
-        # frame_period に基づいて length を丸める
-        rounded_length = round(adjusted_length / self.frame_period) * self.frame_period
-        # 新しい丸め誤差を計算する
-        new_residual_error = adjusted_length - rounded_length
-        self.logger.debug('residual_error (before)    : %.3f [ms]', residual_error)
-        self.logger.debug('original_overlap           : %.3f [ms]', original_overlap)
-        self.logger.debug('rounded_overlap            : %.3f [ms]', rounded_overlap)
-        self.logger.debug('overlap_error              : %.3f [ms]', overlap_error)
-        self.logger.debug('original_length            : %.3f [ms]', original_length)
-        self.logger.debug('adjusted_length            : %.3f [ms]', adjusted_length)
-        self.logger.debug('rounded_length             : %.3f [ms]', rounded_length)
-        self.logger.debug('new_residual_error (after) : %.3f [ms]', new_residual_error)
+        Results:
+            self.envelope_p      (list[float]) : 時刻のリスト(ms)。エンベロープが2点の場合空配列。
+            self.envelope_v      (list[float]) : 音量値のリスト。0-200の範囲であることを想定。
+            self.overlap         (float)       : クロスフェード時間(ms)。
+            self.carryover_error (float)       : 次のノートに持ち越す丸め誤差(ms)
+
+        ## エンベロープのパターン
+        - 長さ2 : p1 p2
+        - 長さ7 : p1 p2 p3 v1 v2 v3 v4
+        - 長さ8 : p1 p2 p3 v1 v2 v3 v4 ove
+        - 長さ9 : p1 p2 p3 v1 v2 v3 v4 ove p4
+        - 長さ10: p1 p2 p3 v1 v2 v3 v4 ove p4 Unknown ※詳細不明
+        - 長さ11: p1 p2 p3 v1 v2 v3 v4 ove p4 p5 v5
+        p1, p2, p3, p4, p5, ove : float (ms)
+        v1, v2, v3, v4, v5 : int (1-200)
+
+        ## 各値の計算方法
+        p1: ノート頭からの相対時刻(ms)
+        p2: p1 からの相対時刻(ms)。
+        p3: p4 がない場合は末端からの相対距離(ms)。 p4 がある場合は p4 からの相対距離(ms)。
+        p4: 末端からの相対時刻(ms)
+        p5: p2 からの相対時刻(ms)
+        v1: そのまま
+        v2: そのまま
+        v3: そのまま
+        v4: そのまま
+        v5: そのまま
+
+        """  # noqa: E501
+        # 丸め関数を定義
+        round_func = partial(round_by_frame, frame_period=self.frame_period)
+
+        # オーバーラップの丸め誤差を計算
+        original_overlap = get_overlap(envelope)
+        rounded_overlap = round_func(original_overlap)
+        # overlap が負の値のときにはクロスフェードができないので 0 に強制する
+        if rounded_overlap < 0:
+            msg = f'Negative overlap ({rounded_overlap} ms) is detected. Force 0 ms.'
+            self.logger.warning(msg)
+            rounded_overlap = 0
+        overlap_error = (
+            original_overlap - rounded_overlap
+        )  # 正の場合はオーバーラップ時間が短くなったことを意味する -> 実質ノート長が長くなる
+
+        # オーバーラップの丸め誤差を考慮して length を調整
+        rounded_length = round_func(initial_error + original_length - overlap_error)
+        # 次のノートに持ち越す丸め誤差を計算
+        final_error = (original_length - original_overlap) - (rounded_length - rounded_overlap)
+
+        # エンベロープを要素数に応じて展開 -------------------------
+        len_envelope = len(envelope)
+        rounded_p_list: list[float]
+        v_list: list[float]
+
+        ## 長さ2の時は空配列を返す
+        if len_envelope == 2:
+            rounded_p_list = []
+            v_list = []
+            rounded_overlap = 0
+
+        ## 長さ7の時は overlap がない
+        ## [p1, p2, p3, v1, v2, v3, v4]
+        elif len_envelope == 7:
+            p1, p2, p3 = envelope[0:3]
+            v1, v2, v3, v4 = envelope[3:7]
+            rounded_p_list = [
+                0,
+                round_func(p1),
+                round_func(p1 + p2),
+                rounded_length - round_func(p3),
+                rounded_length,
+            ]
+            v_list = [0, v1, v2, v3, v4, 0]
+            rounded_overlap = 0
+        ## 長さ8の時は overlap が追加される
+        ## [p1, p2, p3, v1, v2, v3, v4, ove]
+        elif len_envelope == 8:
+            p1, p2, p3 = envelope[0:3]
+            v1, v2, v3, v4 = envelope[3:7]
+            rounded_p_list = [
+                0,
+                round_func(p1),
+                round_func(p1 + p2),
+                rounded_length - round_func(p3),
+                rounded_length,
+            ]
+            v_list = [0, v1, v2, v3, v4, 0]
+            rounded_overlap = round_func(envelope[7])
+        ## 長さ9 の時は p4 が追加される。
+        ## [p1, p2, p3, v1, v2, v3, v4, ove, p4]
+        ## 長さが10の時は何が追加されているかよくわからない(値は0)が、9と同じ処理をする
+        ## [p1, p2, p3, v1, v2, v3, v4, ove, p4, Unknown]
+        elif len_envelope in (9, 10):
+            # [p1, p2, p3, v1, v2, v3, v4, ove, p4]
+            p1, p2, p3 = envelope[0:3]
+            v1, v2, v3, v4 = envelope[3:7]
+            rounded_overlap = round_func(envelope[7])
+            p4 = envelope[8]
+            rounded_p_list = [
+                0,
+                round_func(p1),
+                round_func(p1 + p2),
+                rounded_length - round_func(p4 + p3),
+                rounded_length - round_func(p4),
+                rounded_length,
+            ]
+            v_list = [0, v1, v2, v3, v4, 0]
+        ## 長さが11の時は p5, v5 が追加される
+        ## [p1, p2, p3, v1, v2, v3, v4, ove, p4, p5, v5]
+        elif len_envelope == 11:
+            # [p1, p2, p3, v1, v2, v3, v4, ove, p4, p5, v5]
+            p1, p2, p3 = envelope[0:3]
+            v1, v2, v3, v4 = envelope[3:7]
+            rounded_overlap = round_func(envelope[7])
+            p4 = envelope[8]
+            p5 = envelope[9]
+            v5 = envelope[10]
+            # NOTE: p5 の位置は p2 と p3 の間であることに注意!
+            rounded_p_list = [
+                0,
+                round_func(p1),
+                round_func(p1 + p2),
+                round_func(p1 + p2 + p5),
+                rounded_length - round_func(p4 + p3),
+                rounded_length - round_func(p4),
+                rounded_length,
+            ]  # 絶対時刻
+            v_list = [0, v1, v2, v5, v3, v4, 0]
+        # それ以外の要素数はエラー
+        else:
+            msg = (
+                f'Invalid envelope length ({len_envelope}). '
+                f'The length must be 2, 7, 8, 9, or 11.: {envelope}'
+            )
+            raise ValueError(msg)
+        # p_list が昇順になっていない場合はエラー
+        if rounded_p_list != sorted(rounded_p_list):
+            msg = f'p_list must be in ascending order, but got {rounded_p_list}.'
+            raise ValueError(msg)
+
+        # デバッグ出力
+        self.logger.debug('Initialized length and envelope:')
+        self.logger.debug('  initial_error     : %s ms', initial_error)
+        self.logger.debug('  original_overlap  : %s ms', original_overlap)
+        self.logger.debug('  rounded_overlap   : %s ms', rounded_overlap)
+        self.logger.debug('  original_length   : %s ms', original_length)
+        self.logger.debug('  rounded_length    : %s ms', rounded_length)
+        self.logger.debug('  final_error       : %s ms', final_error)
+        self.logger.debug('  envelope_p        : %s', rounded_p_list)
+        self.logger.debug('  envelope_v        : %s', v_list)
+        # 値をセット
         self.length = rounded_length
-        self._residual_error = new_residual_error
+        self.envelope_p = rounded_p_list
+        self.envelope_v = v_list
+        self.overlap = rounded_overlap
+        self.carryover_error = final_error
 
-    def __init_features(self) -> None:
+    def _init_features(self) -> None:
         """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
 
         入力wavまたはnpzを読み込み、WORLD特徴量に変換して self.f0, self.sp, self.ap にセットする。
         npzが存在する場合はnpzを優先的に読み込む。
+        特徴量が渡されている場合はそれを優先的に使用する。
+
+        Args:
+            accumulated_features (tuple[np.ndarray, np.ndarray, np.ndarray] | None):
+                メモリ上の累積特徴量 (f0, sp, ap) のタプル
 
         Note:
             この関数は入力ファイル (input_wav/input_npz) の特徴量を読み込む。
-            累積特徴量 (accumulated_features) は append() メソッドで使用される。
 
         """
-        # npz が存在する場合、wav からサンプルレートを取得し、npz から特徴量を取得する。
+        # npz が存在する場合は npz から特徴量とサンプルレートを取得する。
         if self.input_npz.exists():
-            self.f0, self.sp, self.ap, npz_sample_rate = npzfile_to_world(self.input_npz)
+            self.logger.debug(f'Using WORLD features from NPZ: {self.input_npz}')
+            f0, sp, ap, npz_sample_rate = npzfile_to_world(self.input_npz)
             # npz のサンプルレートが内部サンプルレートと異なる場合はエラー
             if npz_sample_rate != self.internal_sample_rate:
                 msg = (
                     f"NPZ file's sample rate ({npz_sample_rate} Hz) and "
-                    f'internal_sample_rate ({self.internal_sample_rate} Hz) are different.'
+                    f'internal_sample_rate ({self.internal_sample_rate} Hz) do not match.'
                 )
                 self.logger.error(msg)
                 raise ValueError(msg)
+
         # wav のみ存在する場合はサンプルレート変換したのちに特徴量抽出する。
         elif self.input_wav.exists():
+            self.logger.debug(f'Using WORLD features from WAV: {self.input_wav}')
             waveform, _, _ = wavfile_to_waveform(
                 self.input_wav,
                 target_sample_rate=self.internal_sample_rate,
                 resample_type=self.resample_type,
             )
-            self.f0, self.sp, self.ap = waveform_to_world(
+            f0, sp, ap = waveform_to_world(
                 waveform,
                 sample_rate=self.internal_sample_rate,
                 frame_period=self.frame_period,
             )
-        # wav と npz が両方とも存在しない場合は無音特徴量を使用する。
+        # メモリ上の特徴量も npz も wav も存在しない場合は無音特徴量を使用する。
         else:
             msg = (
-                f'Input file not found: {self.input_wav} or {self.input_npz}. '
+                f'Both WAV ({self.input_wav}) and NPZ ({self.input_npz}) do not exist. '
                 'Using silent features.'
             )
-            self.logger.warning(msg, stacklevel=1)
+            self.logger.info(msg)
             n_frames = ceil(self.length / self.frame_period)
-            dtype = np.float64
-            self.f0 = np.zeros((n_frames,), dtype=dtype)
-            self.sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
-            self.ap = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=dtype)
+            f0 = np.zeros((n_frames,), dtype=self.feature_dtype)
+            sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=self.feature_dtype)
+            ap = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=self.feature_dtype)
 
-    def __init_envelope(self, envelope: list[float]) -> None:
-        """Envelope を解析し、self.envelope_p, self.envelope_v, self.overlap を初期化する。
-
-        Args:
-            envelope (list[float]): エンベロープの値のリスト
-
-        """
-        p, v, ove = parse_envelope(envelope, self.length, self.frame_period)
-        self.logger.debug('Parsed envelope:')
-        self.logger.debug('  p  : %s', p)
-        self.logger.debug('  v  : %s', v)
-        self.logger.debug('  ove: %s', ove)
-        self.envelope_p = p
-        self.envelope_v = v
-        # overlap が負の値のときにはクロスフェードができないので 0 に強制する
-        if ove < 0:
-            msg = f'Negative overlap value ({ove} ms) is detected. Forcing to 0 ms.'
-            self.logger.warning(msg)
-            ove = 0
-        self.overlap = ove
+        # 読み取った特徴量の dtype を揃える
+        self.f0 = f0.astype(self.feature_dtype)
+        self.sp = sp.astype(self.feature_dtype)
+        self.ap = ap.astype(self.feature_dtype)
+        # デバッグ出力: f0, sp, ap のshape,min,maxを確認
+        self.logger.debug('Initial features:')
+        self.debug_features(f0=self.f0, sp=self.sp, ap=self.ap)
 
     def _apply_range(self) -> None:
         """self.f0, self.sp, self.ap に stp, length を適用する。
@@ -682,9 +665,9 @@ class NeuralNetworkWavTool:
             long_sp = overlap_sp(long_sp, self.sp, n_overlap_frames, crossfade_shape=None)
             long_ap = overlap_ap(long_ap, self.ap, n_overlap_frames, crossfade_shape='linear')
         # 追記後の特徴量を保存
-        self.f0_appended = long_f0
-        self.ap_appended = long_ap
-        self.sp_appended = long_sp
+        self.f0_appended = long_f0.astype(self.feature_dtype)
+        self.ap_appended = long_ap.astype(self.feature_dtype)
+        self.sp_appended = long_sp.astype(self.feature_dtype)
         # デバッグ出力 --------------------------
         self.logger.debug('Features after overlap:')
         self.debug_features(
@@ -780,9 +763,9 @@ class NeuralNetworkWavTool:
         wav: np.ndarray = copy(self.waveform)
 
         # wavform の長さを丸め誤差分だけ補正する ----------------------------------------------
-        # self._residual_error が正の場合、生成した波形が目標より短いので、ゼロパディング必要。
-        # self._residual_error が負の場合、生成した波形が目標より長いので、切り詰め必要。
-        n_compensation_samples = round(self._residual_error / 1000 * self.internal_sample_rate)
+        # self.carryover_error が正の場合、生成した波形が目標より短いので、ゼロパディング必要。
+        # self.carryover_error が負の場合、生成した波形が目標より長いので、切り詰め必要。
+        n_compensation_samples = round(self.carryover_error / 1000 * self.internal_sample_rate)
         self.logger.debug('n_compensation_samples: %d', n_compensation_samples)
         self.logger.debug('waveform.shape before compensation: %s', wav.shape)
         # wav が目標よりも短い場合はゼロパディングする。
