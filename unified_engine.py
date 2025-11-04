@@ -377,7 +377,7 @@ def batch_wavtool(
     # wavtool インスタンス保持用の変数
     wavtool: NeuralNetworkWavTool
     # ノート時刻の丸め誤差
-    residual_error: float = 0.0
+    carryover_error: float = 0.0
     # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
     accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
@@ -387,7 +387,7 @@ def batch_wavtool(
         raise ValueError(msg)
     # 各ノートのパラメータを格納するリスト
     overlap_list: list[float] = []
-    residual_error_list: list[float] = []
+    carryover_error_list: list[float] = []
 
     # 各ノートのwav加工を行う
     with logging_redirect_tqdm([logger]):
@@ -423,7 +423,7 @@ def batch_wavtool(
                 logger.debug(f'  length (ms)  : {length_ms} [ms]')
                 logger.debug(f'  envelope     : {envelope}')
 
-                logger.debug('residual_error (before wavtool) : %.3f [ms]', residual_error)
+                logger.debug('carryover_error (before wavtool) : %.3f [ms]', carryover_error)
                 # wavtool インスタンスを生成
                 wavtool = NeuralNetworkWavTool(
                     output_wav=output_path,
@@ -434,7 +434,7 @@ def batch_wavtool(
                     logger=logger,
                     use_vocoder_model=use_vocoder_model,
                     frame_period=frame_period,
-                    residual_error=residual_error,
+                    carryover_error=carryover_error,
                     vocoder_model=vocoder_model,
                     vocoder_in_scaler=vocoder_in_scaler,
                     vocoder_config=vocoder_config,
@@ -447,8 +447,8 @@ def batch_wavtool(
                     resample_type=resample_type,
                     accumulated_features=accumulated_features,
                 )
-                residual_error = wavtool.residual_error
-                logger.debug('residual_error (after wavtool)  : %.3f [ms]', residual_error)
+                carryover_error = wavtool.carryover_error
+                logger.debug('carryover_error (after wavtool)  : %.3f [ms]', carryover_error)
 
                 # wavtool を実行
                 wavtool.append()
@@ -460,8 +460,8 @@ def batch_wavtool(
                 )
                 # 各ノートのオーバーラップ長[ms]を保存
                 overlap_list.append(wavtool.overlap)
-                # 各ノートの residual_error[ms] を保存
-                residual_error_list.append(residual_error)
+                # 各ノートの carryover_error[ms] を保存
+                carryover_error_list.append(carryover_error)
             except Exception as e:
                 logger.critical(f'Exception occurred for the note: {cmd}')
                 raise e
@@ -476,14 +476,15 @@ def batch_wavtool(
     # 特徴量の要素数が0の場合は waveform で空のndarrayを返す
     if accumulated_features[0].shape[0] == 0:
         logger.debug('No features to synthesize. Returning empty waveform.')
-        return np.array([], dtype=DEFAULT_DTYPE), overlap_list[0], residual_error_list[-1]
+        return np.array([], dtype=DEFAULT_DTYPE), overlap_list[0], carryover_error_list[-1]
 
     # 無音かどうかの判定
     sp_appended = accumulated_features[1]
     seg_is_silence = sp_appended.sum() == 0.0
-    # 特徴量の要素数が0ではないが無音の場合は、ボコーダーを通さずに完全な無音のwaveformを生成する
+
+    # 無音の場合は、ボコーダーを通さずに完全な無音のwaveformを生成する
     if seg_is_silence:
-        total_duration_ms = sp_appended.shape[0] * frame_period
+        total_duration_ms = sp_appended.shape[0] * frame_period + carryover_error  # 誤差を吸収
         logger.debug(
             'This segment is a silence. Generating silent waveform (%.3f ms).',
             total_duration_ms,
@@ -493,9 +494,9 @@ def batch_wavtool(
             sample_rate=target_sample_rate,
             dtype=DEFAULT_DTYPE,
         )
-        resampled_waveform = silent_waveform
+        waveform = silent_waveform
         first_overlap_ms = overlap_list[0]
-        last_residual_error_ms = residual_error_list[-1]
+        last_carryover_error_ms = 0  # 誤差を吸収したので0にする
 
     # 特徴量の要素数が0ではないかつ無音ではない場合は、ボコーダーでwaveformを合成する
     else:
@@ -504,34 +505,34 @@ def batch_wavtool(
 
         # 結合された特徴量をもとに生成した waveform
         waveform = wavtool.waveform.copy()  # pyright: ignore[reportPossiblyUnboundVariable]
-        resampled_waveform = librosa.resample(
+        waveform = librosa.resample(
             waveform,
             orig_sr=internal_sample_rate,
             target_sr=target_sample_rate,
             res_type=resample_type,
         )
         first_overlap_ms = overlap_list[0]
-        last_residual_error_ms = residual_error_list[-1]
+        last_carryover_error_ms = carryover_error_list[-1]
 
     # 生成した waveform と 音声長の誤差[ms] を返す
-    return resampled_waveform.astype(dtype), first_overlap_ms, last_residual_error_ms
+    return waveform.astype(dtype), first_overlap_ms, last_carryover_error_ms
 
 
 def fix_waveform_length(
-    waveform: np.ndarray, residual_error_ms: float, sample_rate: int
+    waveform: np.ndarray, carryover_error_ms: float, sample_rate: int
 ) -> np.ndarray:
-    """Waveform の長さを residual_error_ms に基づいて修正する。
+    """Waveform の長さを carryover_error_ms に基づいて修正する。
 
     Args:
         waveform: 入力波形
-        residual_error_ms: 波形長の誤差[ms]
+        carryover_error_ms: 波形長の誤差[ms]
         sample_rate: サンプリングレート[Hz]
 
     Returns:
         修正後の波形
 
     """
-    num_error_samples = round(residual_error_ms * sample_rate / 1000)
+    num_error_samples = round(carryover_error_ms * sample_rate / 1000)
     # wav が目標よりも短い場合はゼロパディングする。
     if num_error_samples > 0:
         waveform = np.pad(waveform, (0, num_error_samples))
@@ -639,54 +640,58 @@ def segmented_wavtool(
     )
 
     # セグメントごとに waveform を生成してリストに格納
-    # TODO: 休符セグメントは無音波形を生成する。overlap と residual_error に注意。
+    # TODO: 休符セグメントは無音波形を生成する。overlap と carryover_error に注意。
     waveform_list: list[np.ndarray] = []
-    residual_error_list: list[float] = []
+    carryover_error_list: list[float] = []
     overlap_list: list[float] = []
     with logging_redirect_tqdm([logger]):
         for seg_commands in tqdm(
-            segment_list, desc='Synthesizing wav segments', unit='seg', colour='magenta'
+            segment_list,
+            desc='Synthesizing wav segments',
+            unit='seg',
+            colour='magenta',
+            mininterval=0,
         ):
-            wav, first_overlap, last_residual_error = partial_batch_wavtool(seg_commands)
+            wav, first_overlap, last_carryover_error = partial_batch_wavtool(seg_commands)
             waveform_list.append(wav)
             overlap_list.append(first_overlap)
-            residual_error_list.append(last_residual_error)
+            carryover_error_list.append(last_carryover_error)
 
     # zip ループを回す前に要素数チェック
-    if not (len(waveform_list) == len(overlap_list) == len(residual_error_list)):
+    if not (len(waveform_list) == len(overlap_list) == len(carryover_error_list)):
         msg = (
             f'Length of waveform_list ({len(waveform_list)}) and '
             f'overlap_list ({len(overlap_list)}) and '
-            f'residual_error_list ({len(residual_error_list)}) do not match.'
+            f'carryover_error ({len(carryover_error_list)}) do not match.'
         )
         raise ValueError(msg)
     # 各セグメントの waveform をつなげる
     long_waveform: np.ndarray = waveform_list[0]
     adjusted_overlap: float = overlap_list[0]
-    residual_error: float = residual_error_list[0]
+    carryover_error: float = carryover_error_list[0]
     with logging_redirect_tqdm([logger]):
-        for seg_wav, seg_overlap, seg_res_err in tzip(
+        for seg_wav, seg_overlap, seg_carryover_err in tzip(
             waveform_list[1:],
             overlap_list[1:],
-            residual_error_list[1:],
+            carryover_error_list[1:],
             mininterval=0,
             colour='red',
             desc='Concatenating waveform segments',
             unit='seg',
         ):
             # オーバーラップ値を補正する
-            ## residual_error が正の時は wav が短めなので、次のセグメントとのoverlapを短くする。
-            ## residual_error が負の時は wav が長めなので、次のセグメントとのoverlapを長くする。
-            adjusted_overlap = seg_overlap - residual_error
-            residual_error = seg_res_err
+            ## carryover_error が正の時は wav が短めなので、次のセグメントとのoverlapを短くする。
+            ## carryover_error が負の時は wav が長めなので、次のセグメントとのoverlapを長くする。
+            adjusted_overlap = seg_overlap - carryover_error
+            carryover_error = seg_carryover_err
             logger.debug('Overlapping waveforms with overlap: %.3f [ms]', adjusted_overlap)
             logger.debug('Waveform shapes: %s, %s', long_waveform.shape, seg_wav.shape)
             # waveform の長さが0の場合はスキップする
             if len(seg_wav) == 0:
                 logger.debug('Skipping empty segment waveform.')
                 # オーバーラップが行われないことでずれるので次のノートの引き継がせる
-                # 次のノートのオーバーラップを長くしないといけない -> res_error を小さくする
-                residual_error = seg_res_err - adjusted_overlap
+                # 次のノートのオーバーラップを長くしないといけない -> carryover_error を小さくする
+                carryover_error = seg_carryover_err - adjusted_overlap
                 continue
             # 微小なフェードインとフェードアウトを行う
             faded_seg_wav = fade_waveform(
@@ -703,7 +708,7 @@ def segmented_wavtool(
                 sample_rate=target_sample_rate,
             )
     # 最終的な waveform を返す
-    return long_waveform, adjusted_overlap, residual_error
+    return long_waveform, adjusted_overlap, carryover_error
 
 # noqa: T201
 def main():
