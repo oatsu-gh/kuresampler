@@ -38,7 +38,6 @@ import logging
 import sys
 from copy import copy
 from functools import partial
-from math import ceil
 from pathlib import Path
 
 import colored_traceback.auto  # noqa: F401
@@ -129,6 +128,30 @@ class NeuralNetworkWavTool:
 
     TODO: 音量ノーマライズの際に WORLD 特徴量にノーマライズをかける方法を検討する。いったんWAVに変換して係数を算出する?
 
+
+    Example:
+        # 2つのWAV結合後の長さが想定通りであることを確認する。
+        >>> wavtool = NeuralNetworkWavTool(
+        ...     output_wav='test_nnwavtool_output.wav',
+        ...     input_wav='test/sine_440Hz_sr44100.wav',
+        ...     stp=0,
+        ...     length=201.0,
+        ...     # p1 p2 p3 v1 v2 v3 v4 ove p4
+        ...     envelope=[6.0, 12.0, 12.0, 50, 100, 100, 50, 11.3, 6.0],
+        ...     use_vocoder_model=False,
+        ...     carryover_error=2.0,
+        ... )
+        >>> wavtool.overlap  # 誤差 = 11.3-10 = 1.3
+        10
+        >>> wavtool.length  # ノート長さ [ms] = carryover_error(2.0) + 元length(201.0) - overlap誤差(1.3) = 201.7 を5で丸め
+        200
+        >>> wavtool.envelope_p  # 音量エンベロープの時刻リスト
+        [0, 5, 20, 180, 195, 200]
+        >>> wavtool.envelope_v  # 音量エンベロープの音量リスト
+        [0, 50, 100, 100, 50, 0]
+        >>> wavtool.carryover_error  # {carryover_error(2.0) + 元length(201) - 元overlap(11.3)} - (丸めlength(200) - 丸めoverlap(10))
+        1.6999999999999886
+
     """  # noqa: E501
 
     # 入出力パス
@@ -183,7 +206,6 @@ class NeuralNetworkWavTool:
         use_vocoder_model: bool,
         logger: logging.Logger | None = None,
         frame_period: int = 5,
-        carryover_error: float = 0.0,  # このノート以前の時刻丸め誤差
         vocoder_model: torch.nn.Module | None = None,
         vocoder_in_scaler: StandardScaler | None = None,
         vocoder_config: DictConfig | ListConfig | None = None,
@@ -196,6 +218,7 @@ class NeuralNetworkWavTool:
         resample_type: str = 'soxr_vhq',
         accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
         feature_dtype: str = 'float64',
+        carryover_error: float = 0.0,  # このノート以前の時刻丸め誤差
     ) -> None:
         """NeuralNetworkWavTool のコンストラクタ"""
         self.logger = logger or setup_logger(level=logging.INFO, name=self.__class__.__name__)
@@ -204,14 +227,17 @@ class NeuralNetworkWavTool:
         self.output_wav = Path(output_wav)
         self.output_npz = Path(output_wav).with_suffix('.npz')
         self.frame_period = frame_period
-        self.stp = stp
         self.feature_dtype = feature_dtype
         # サンプルレート関連の初期化
         self.internal_sample_rate = internal_sample_rate
         self.target_sample_rate = target_sample_rate
         self.resample_type = resample_type
+        # carryover_error を仮初期化。stp や length の初期化で更新される。
+        self.carryover_error = carryover_error
         # length, envelope_p, envelope_v, overlap, carryover_error を初期化
-        self._init_length_and_envelope(length, envelope, carryover_error)
+        self._init_length_and_envelope(length, envelope)
+        # stp を初期化
+        self._init_stp(stp)
         # length と carryover_error を初期化
         # sample_rate, f0, sp, ap を初期化
         self._init_features()
@@ -300,10 +326,8 @@ class NeuralNetworkWavTool:
         """出力wavの波形データをセットする。"""
         self._waveform = value
 
-    def _init_length_and_envelope(
-        self, original_length: float, envelope: list[float], initial_error: float
-    ) -> None:
-        """self.length, self._residual_error, self.overlap, self.envelope_p, self.envelope_v, self.overlap を初期化する。
+    def _init_length_and_envelope(self, original_length: float, envelope: list[float]) -> None:
+        """self.length, self.carryover_error, self.overlap, self.envelope_p, self.envelope_v, self.overlap を初期化する。
 
         Args:
             original_length     (float)        : 元の長さ [ms]
@@ -341,7 +365,8 @@ class NeuralNetworkWavTool:
         """  # noqa: E501
         # 丸め関数を定義
         round_func = partial(round_by_frame, frame_period=self.frame_period)
-
+        # 初期誤差を取得
+        initial_error = self.carryover_error
         # オーバーラップの丸め誤差を計算
         original_overlap = get_overlap(envelope)
         rounded_overlap = round_func(original_overlap)
@@ -357,7 +382,8 @@ class NeuralNetworkWavTool:
         # オーバーラップの丸め誤差を考慮して length を調整
         rounded_length = round_func(initial_error + original_length - overlap_error)
         # 次のノートに持ち越す丸め誤差を計算
-        final_error = (original_length - original_overlap) - (rounded_length - rounded_overlap)
+        ## 本来の実質長さ - 丸め後の実質長さ
+        final_error = (initial_error + original_length - original_overlap) - (rounded_length - rounded_overlap)  # noqa: E501 # fmt: skip
 
         # エンベロープを要素数に応じて展開 -------------------------
         len_envelope = len(envelope)
@@ -467,6 +493,13 @@ class NeuralNetworkWavTool:
         self.overlap = rounded_overlap
         self.carryover_error = final_error
 
+    def _init_stp(self, stp: float) -> None:
+        """self.stp を初期化する。その際の丸め誤差を carryover_error に加算する。"""
+        rounded_stp = round_by_frame(stp, frame_period=self.frame_period)
+        stp_error = stp - rounded_stp
+        self.stp = rounded_stp
+        self.carryover_error -= stp_error
+
     def _init_features(self) -> None:
         """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
 
@@ -515,7 +548,7 @@ class NeuralNetworkWavTool:
                 'Using silent features.'
             )
             self.logger.info(msg)
-            n_frames = ceil(self.length / self.frame_period)
+            n_frames = round(self.length / self.frame_period)
             f0 = np.zeros((n_frames,), dtype=self.feature_dtype)
             sp = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=self.feature_dtype)
             ap = np.zeros((n_frames, self.fft_size // 2 + 1), dtype=self.feature_dtype)
