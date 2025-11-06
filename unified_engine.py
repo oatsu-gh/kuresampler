@@ -357,6 +357,7 @@ def batch_wavtool(
     target_sample_rate: int = 44100,
     resample_type: str = 'soxr_vhq',
     dtype: str = DEFAULT_DTYPE,
+    carryover_error: float = 0.0,
 ) -> tuple[np.ndarray, float, float]:
     """wavetool_commands に基づいて wavtool を順次実行する。
 
@@ -376,8 +377,6 @@ def batch_wavtool(
     n_notes = len(wavtool_commands)
     # wavtool インスタンス保持用の変数
     wavtool: NeuralNetworkWavTool
-    # ノート時刻の丸め誤差
-    carryover_error: float = 0.0
     # メモリ上で累積特徴量を保持 (ファイルI/Oを減らすため)
     accumulated_features: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
 
@@ -415,7 +414,7 @@ def batch_wavtool(
 
                 length_ms = str2float(length)
 
-                # 各パラメータをログ出力
+                # 各パラメーターをログ出力
                 logger.debug(f'  output_path  : {Path(output_path).name}')
                 logger.debug(f'  input_path   : {Path(input_path).name}')
                 logger.debug(f'  stp          : {stp}')
@@ -447,8 +446,11 @@ def batch_wavtool(
                     resample_type=resample_type,
                     accumulated_features=accumulated_features,
                 )
-                carryover_error = wavtool.carryover_error
-                logger.debug('carryover_error (after wavtool)  : %.3f [ms]', carryover_error)
+                # 丸め後の各パラメーターをログ出力
+                logger.debug(f'  stp (rounded)    : {wavtool.stp} [ms]')
+                logger.debug(f'  length (rounded) : {wavtool.length} [ms]')
+                logger.debug(f'  overlap          : {wavtool.overlap} [ms]')
+                logger.debug(f'  envelope         : {wavtool.envelope_p}')
 
                 # wavtool を実行
                 wavtool.append()
@@ -461,7 +463,10 @@ def batch_wavtool(
                 # 各ノートのオーバーラップ長[ms]を保存
                 overlap_list.append(wavtool.overlap)
                 # 各ノートの carryover_error[ms] を保存
+                carryover_error = wavtool.carryover_error
                 carryover_error_list.append(carryover_error)
+                logger.debug('carryover_error (after wavtool)  : %.3f [ms]', carryover_error)
+
             except Exception as e:
                 logger.critical(f'Exception occurred for the note: {cmd}')
                 raise e
