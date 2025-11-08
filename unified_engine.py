@@ -336,7 +336,7 @@ def generate_silent_waveform(duration_ms: float, sample_rate: int, dtype='float6
         無音波形 (np.ndarray)
 
     """
-    num_samples = int(duration_ms * sample_rate / 1000)
+    num_samples = round(duration_ms * sample_rate / 1000)
     return np.zeros(num_samples, dtype=dtype)
 
 
@@ -537,6 +537,7 @@ def fix_waveform_length(
         修正後の波形
 
     """
+    # TODO: round にするか int にするか考える
     num_error_samples = round(carryover_error_ms * sample_rate / 1000)
     # wav が目標よりも短い場合はゼロパディングする。
     if num_error_samples > 0:
@@ -776,7 +777,11 @@ def main():
             msg = 'When --use_vocoder_model is specified, --model_dir must be provided.'
             logger.error(msg)
             raise ValueError(msg)
+        original_logger_level = logger.level
+        if logger.level >= logging.DEBUG:
+            logger.setLevel(logging.WARNING)
         vocoder_model, vocoder_in_scaler, vocoder_config = load_vocoder_model(args.model_dir)
+        logger.setLevel(original_logger_level)
     else:
         vocoder_model = None
         vocoder_in_scaler = None
@@ -828,7 +833,7 @@ def main():
     # )
 
     # segmented wavtool を実行する (セグメント版)
-    waveform, _first_overlap, last_residual_error = segmented_wavtool(
+    waveform, _first_overlap, final_carryover_error = segmented_wavtool(
         logger,
         wavtool_commands,
         use_vocoder_model=use_vocoder_model,
@@ -837,14 +842,14 @@ def main():
         vocoder_config=vocoder_config,
         target_sample_rate=sample_rate,
     )
-    tqdm.write(f'Final residual error after segmented wavtool: {last_residual_error:.3f} [ms]')
+    tqdm.write(f'Final duration error after segmented wavtool: {final_carryover_error:.3f} [ms]')
     tqdm.write(
         f'Final waveform length: {len(waveform)} samples ({len(waveform) / sample_rate:.3f} sec)'
     )
     # 最終セグメントの長さずれの分だけサンプル数を補正する
     waveform = fix_waveform_length(
         waveform,
-        last_residual_error,
+        final_carryover_error,
         sample_rate=sample_rate,
     )
     tqdm.write(
