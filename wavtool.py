@@ -367,23 +367,29 @@ class NeuralNetworkWavTool:
         round_func = partial(round_by_frame, frame_period=self.frame_period)
         # 初期誤差を取得
         initial_error = self.carryover_error
-        # オーバーラップの丸め誤差を計算
+        # オーバーラップ時間を取得
         original_overlap = get_overlap(envelope)
         rounded_overlap = round_func(original_overlap)
-        # overlap が負の値のときにはクロスフェードができないので 0 に強制する
+        # オーバーラップ値がマイナスの場合はデバッグログを出す
         if rounded_overlap < 0:
-            msg = f'Negative overlap ({rounded_overlap} ms) is detected. Force 0 ms.'
-            self.logger.warning(msg)
-            rounded_overlap = 0
+            msg = f'Negative overlap ({rounded_overlap} ms) is detected.'
+            self.logger.debug(msg)
         overlap_error = (
             original_overlap - rounded_overlap
         )  # 正の場合はオーバーラップ時間が短くなったことを意味する -> 実質ノート長が長くなる
 
         # オーバーラップの丸め誤差を考慮して length を調整
         rounded_length = round_func(initial_error + original_length - overlap_error)
-        # 次のノートに持ち越す丸め誤差を計算
+        # 次のノートに持ち越す丸め誤差を計算---------------------
+        ## 本来の実質長さ
+        # original_net_length = original_length - original_overlap
+        # required_net_length = initial_error + original_net_length
+        # actual_net_length = rounded_length - rounded_overlap
         ## 本来の実質長さ - 丸め後の実質長さ
+        # final_error = required_net_length - actual_net_length
+        # 計算式をまとめる ↓
         final_error = (initial_error + original_length - original_overlap) - (rounded_length - rounded_overlap)  # noqa: E501 # fmt: skip
+        # -------------------------------------------------------
 
         # エンベロープを要素数に応じて展開 -------------------------
         len_envelope = len(envelope)
@@ -394,7 +400,7 @@ class NeuralNetworkWavTool:
         if len_envelope == 2:
             rounded_p_list = []
             v_list = []
-            rounded_overlap = 0
+            _ove = 0
 
         ## 長さ7の時は overlap がない
         ## [p1, p2, p3, v1, v2, v3, v4]
@@ -409,7 +415,7 @@ class NeuralNetworkWavTool:
                 rounded_length,
             ]
             v_list = [0, v1, v2, v3, v4, 0]
-            rounded_overlap = 0
+            _ove = 0  # 事前にoverlap計算が済んでいるのでダミー変数に格納
         ## 長さ8の時は overlap が追加される
         ## [p1, p2, p3, v1, v2, v3, v4, ove]
         elif len_envelope == 8:
@@ -423,7 +429,7 @@ class NeuralNetworkWavTool:
                 rounded_length,
             ]
             v_list = [0, v1, v2, v3, v4, 0]
-            rounded_overlap = round_func(envelope[7])
+            _ove = round_func(envelope[7])  # 事前にoverlap計算が済んでいるのでダミー変数に格納
         ## 長さ9 の時は p4 が追加される。
         ## [p1, p2, p3, v1, v2, v3, v4, ove, p4]
         ## 長さが10の時は何が追加されているかよくわからない(値は0)が、9と同じ処理をする
@@ -432,7 +438,7 @@ class NeuralNetworkWavTool:
             # [p1, p2, p3, v1, v2, v3, v4, ove, p4]
             p1, p2, p3 = envelope[0:3]
             v1, v2, v3, v4 = envelope[3:7]
-            rounded_overlap = round_func(envelope[7])
+            _ove = round_func(envelope[7])  # 事前にoverlap計算が済んでいるのでダミー変数に格納
             p4 = envelope[8]
             rounded_p_list = [
                 0,
@@ -449,7 +455,7 @@ class NeuralNetworkWavTool:
             # [p1, p2, p3, v1, v2, v3, v4, ove, p4, p5, v5]
             p1, p2, p3 = envelope[0:3]
             v1, v2, v3, v4 = envelope[3:7]
-            rounded_overlap = round_func(envelope[7])
+            _ove = round_func(envelope[7])  # 事前にoverlap計算が済んでいるのでダミー変数に格納
             p4 = envelope[8]
             p5 = envelope[9]
             v5 = envelope[10]
@@ -496,9 +502,7 @@ class NeuralNetworkWavTool:
     def _init_stp(self, stp: float) -> None:
         """self.stp を初期化する。その際の丸め誤差を carryover_error に加算する。"""
         rounded_stp = round_by_frame(stp, frame_period=self.frame_period)
-        stp_error = stp - rounded_stp
         self.stp = rounded_stp
-        self.carryover_error -= stp_error
 
     def _init_features(self) -> None:
         """self.f0, self.sp, self.ap, self.sample_rate を初期化する。
@@ -719,6 +723,11 @@ class NeuralNetworkWavTool:
             もしくは、エンジン一括実行を行うツールで、レンダリング開始前に .npz を消す処理を追加する。
 
         """  # noqa: E501
+        original_level = self.logger.level
+        # DEBUG レベル以上の場合は WARNING レベルに下げてログ出力抑制
+        if self.logger.level >= logging.DEBUG:
+            self.logger.setLevel(logging.WARNING)
+
         # append された特徴量が揃っていることを確認する
         if self.f0_appended is None or self.sp_appended is None or self.ap_appended is None:
             msg = 'f0_appended, sp_appended, or ap_appended is None. Call append() first.'
@@ -766,6 +775,14 @@ class NeuralNetworkWavTool:
             msg = f'Invalid use_vocoder_model: {self.use_vocoder_model}. Must be True or False.'
             self.logger.error(msg)
             raise ValueError(msg)
+
+        # 元のログレベルに戻す
+        self.logger.setLevel(original_level)
+        msg = (
+            f'wav samples = {wav.shape[0]} '
+            f'({wav.shape[0] / self.internal_sample_rate * 1000:.3f} ms)'
+        )
+        self.logger.debug(msg)
 
         self.waveform = wav
 
