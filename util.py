@@ -73,7 +73,6 @@ def setup_logger(level=logging.INFO, name: str | None = None) -> logging.Logger:
     _logger.addHandler(handler)
     return _logger
 
-
 def round_by_frame(x: float, frame_period: float) -> float:
     """frame_period に基づいて x を丸める。"""
     return round(x / frame_period) * frame_period
@@ -113,7 +112,7 @@ def str2float(length: float | str) -> float:
         temp: list[str] = length.split('@')
         tempo: float
         delta: float = 0
-        tick: int = int(temp[0])
+        tick: int = round(float(temp[0]))
         if '+' in temp[1]:
             tempo, delta = map(float, temp[1].split('+', 1))
         elif '-' in temp[1]:
@@ -177,7 +176,7 @@ def denoise_spike(
         # スパイクノイズを除去
         if f0_clean[i] < lower_bound or f0_clean[i] > upper_bound:
             if logger is not None:
-                logger.warning(f'Spike noise detected at index {i}: {f0_clean[i]}')
+                logger.info(f'Spike noise is detected and fixed at index {i}: {f0_clean[i]}')
             else:
                 warn(f'Spike noise detected at index {i}: {f0_clean[i]}', stacklevel=2)
             y = [
@@ -241,6 +240,9 @@ def _crossfade_world_feature(
     Returns:
         np.ndarray: The crossfaded WORLD features.
 
+    Notes:
+        - オーバーラップが負の場合は、そのサンプル数分だけ隙間を線形補間で埋める。
+
     Examples:
         1. オーバーラップ区間が0の場合は単純結合して返す
         >>> _crossfade_world_feature(
@@ -292,9 +294,11 @@ def _crossfade_world_feature(
     # オーバーラップ区間が0の場合は単純結合して返す
     if n_overlap == 0:
         return np.concatenate([feature_a, feature_b], axis=0)
+    # オーバーラップが負の場合は、そのサンプル数分だけ隙間を線形補間で埋める。
     if n_overlap < 0:
-        msg = f'Invalid n_overlap: {n_overlap}. Overlap must be non-negative.'
-        raise ValueError(msg)
+        gap_size = -n_overlap
+        gap = np.linspace(feature_a[-1], feature_b[0], gap_size + 2, axis=0)[1:-1]
+        return np.concatenate([feature_a, gap, feature_b], axis=0)
     # オーバーラップ区間が長すぎる場合はエラーを返す
     if n_overlap > min(feature_a.shape[0], feature_b.shape[0]):
         msg = (
@@ -467,7 +471,7 @@ def overlap_waveform(
         msg = f'Waveform must be 1D array. Got wav_a.ndim={wav_a.ndim}, wav_b.ndim={wav_b.ndim}'
         raise ValueError(msg)
     # オーバーラップ部分のサンプル数
-    n_overlap = int(overlap_ms * sample_rate / 1000)
+    n_overlap = round(overlap_ms * sample_rate / 1000)
 
     # オーバーラップが 0 の場合は単純結合
     if n_overlap == 0:
