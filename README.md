@@ -1,6 +1,8 @@
 # kuresampler
 WORLD と ニューラルボコーダーを利用した UTAU エンジンです。自然なクロスフェードと高品質な出音の両立を目指します。
 
+[EN README](https://github.com/oatsu-gh/kuresampler/blob/main/README_EN.md)
+
 ## 使い方
 ### サーバー & クライアントモード (推奨)
 - kuresampler v0.1.0 で追加されたモードです。サーバー・クライアント方式により高速に動作します。
